@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
 	float mu = k / (2 * (1 + v));
 	float lambda = (k * v) / ((1 + v) * (1 - 2 * v));
 
-	settings.deltaT = 0.05;
+	settings.deltaT = 0.005;
 	settings.gravity = -9.8;
 	settings.lambda = lambda;
 	settings.mu = mu;
