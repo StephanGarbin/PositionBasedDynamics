@@ -16,6 +16,10 @@
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
+std::vector<Eigen::Vector3f> temporaryPositions;
+std::vector<int> numConstraintInfluences;
+PBDSolver solver;
+
 PBDSolverSettings settings;
 
 int numMilliseconds = 0;
@@ -49,7 +53,7 @@ void mainLoopGLUT(void)
 
 	//Advance Solver
 	tbb::tick_count start = tbb::tick_count::now();
-	PBDSolver::advanceSystem(tetrahedra, particles, settings);
+	solver.advanceSystem(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	tbb::tick_count end = tbb::tick_count::now();
 	sumExecutionTime += (end - start).seconds();
 	if (currentFrame % timingPrintInterval == 0)
@@ -86,7 +90,7 @@ void idleLoopGLUT(void)
 
 	//Advance Solver
 	tbb::tick_count start = tbb::tick_count::now();
-	PBDSolver::advanceSystem(tetrahedra, particles, settings);
+	solver.advanceSystem(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	tbb::tick_count end = tbb::tick_count::now();
 	sumExecutionTime += (end - start).seconds();
 	if (currentFrame % timingPrintInterval == 0)
@@ -140,7 +144,7 @@ int main(int argc, char* argv[])
 	float mu = k / (2 * (1 + v));
 	float lambda = (k * v) / ((1 + v) * (1 - 2 * v));
 
-	settings.deltaT = 0.005;
+	settings.deltaT = 0.05;
 	settings.gravity = -9.8;
 	settings.lambda = lambda;
 	settings.mu = mu;
@@ -176,6 +180,8 @@ int main(int argc, char* argv[])
 	std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
 	std::cout << "Num Tets: " << tetrahedra.size() << "; Num Nodes: " << particles->size() << std::endl;
 
+	numConstraintInfluences.resize(particles->size());
+	temporaryPositions.resize(particles->size());
 
 	GLUTSettings glutSsettings;
 	glutSsettings.height = 1024;
