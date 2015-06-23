@@ -132,37 +132,22 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//}
 
 			//if (F.determinant() < 1.0e-04f || tetrahedra[t].getVolume() < 0.00001)
-			if (F.determinant() < 0.0f)
+			//if (F.determinant() < 0.0f)
 			{
-				computeGreenStrainAndPiolaStressInversion(F, Volume, settings.mu, settings.lambda, sigma, epsilon, strainEnergy);
-				//computeGradCGreen(Volume, tetrahedra[t].getReferenceShapeMatrixInverseTranspose(), sigma, gradient);
+				computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy);
 			}
-			else
+			//else
 			{
-				computeGreenStrainAndPiolaStress(F, Volume, settings.mu, settings.lambda, sigma, epsilon, strainEnergy);
-				//computeGradCGreen(Volume, tetrahedra[t].getReferenceShapeMatrixInverseTranspose(), sigma, gradient);
+				//computeGreenStrainAndPiolaStress(F, Volume, settings.mu, settings.lambda, sigma, epsilon, strainEnergy);
 			}
-
-			float strainEnergyClamp = 0.00001;
-
-			if (strainEnergy < -strainEnergyClamp)
-			{
-				strainEnergy = -strainEnergyClamp;
-			}
-
-			if (strainEnergy > strainEnergyClamp)
-			{
-				strainEnergy = strainEnergyClamp;
-			}
-
 
 			//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
-			if (tetrahedra[t].getVolume() < 0.00001)
-			{
-				std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
-			}
+			//if (tetrahedra[t].getVolume() < 0.00001)
+			//{
+			//	std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
+			//}
 
-			gradientTemp = Volume * sigma * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
+			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
 			gradient.col(0) = gradientTemp.col(0);
 			gradient.col(1) = gradientTemp.col(1);
 			gradient.col(2) = gradientTemp.col(2);
@@ -476,35 +461,17 @@ float I1, float I2, float logI3,
 float& strainEnergy, float volume,
 const PBDSolverSettings& settings)
 {
-	float determinantF = F.determinant();
+	//Compute Eigendecomposition of F
+	Eigen::Vector3f S;
 
-	//No deformation
-	if (F.isIdentity())
-	{
-		return false;
-	}
+	Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+	U = eigenSolver.pseudoEigenvalueMatrix();
+	S[0] = U(0, 0);
+	S[1] = U(1, 1);
+	S[2] = U(2, 2);
+	V = eigenSolver.pseudoEigenvectors();
 
-	//NOT INVERTED
-	if (determinantF > 0)
-	{
-		//Compute Stress tensor
-		PF = settings.mu * F - settings.mu * FInverseTranspose
-			+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
-
-		//Compute Strain Energy density field
-		strainEnergy = volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
-
-		return true;
-	}
-
-	//std::cout << "Reflection" << std::endl;
-
-	//INVERTED
-	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-
-	Eigen::Matrix3f S = eigenSolver.eigenvalues().asDiagonal().toDenseMatrix();
-	V = eigenSolver.eigenvectors();
-
+	//Make sure all eigenvalues are > 0
 	for (int i = 0; i < 3; ++i)
 	{
 		if (S(i, i) < 0.0f)
@@ -513,7 +480,7 @@ const PBDSolverSettings& settings)
 		}
 	}
 
-
+	//if det V is smaller than 0
 	if (V.determinant() < 0.0)
 	{
 		int pos = 0;
@@ -572,7 +539,7 @@ const PBDSolverSettings& settings)
 			{
 				for (unsigned char m = 0; m < 3; m++)
 				{
-					U(m, l) *= 1.0f / Fhat(l,l);
+					U(m, l) *= 1.0f / Fhat(l, l);
 				}
 			}
 		}
@@ -617,7 +584,6 @@ const PBDSolverSettings& settings)
 		}
 	}
 
-
 	//FInverseTranspose = Fhat.inverse().transpose();
 
 	//I1 = (Fhat).trace();
@@ -656,7 +622,7 @@ const PBDSolverSettings& settings)
 	epsDiag.row(2) = Eigen::Vector3f(0.0f, 0.0f, epsilonHatF[2]);
 
 	Eigen::Matrix3f  epsilon = U * epsDiag * V.transpose();
-	Eigen::Matrix3f  sigma = U * sigmaDiag * V.transpose();
+	PF = U * sigmaDiag * V.transpose();
 
 	float psi = 0.0f;
 	for (unsigned char j = 0; j < 3; j++)
@@ -669,26 +635,29 @@ const PBDSolverSettings& settings)
 }
 
 void
-PBDSolver::computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F,
-	const float restVolume,
-	const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy)
+PBDSolver::computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
+Eigen::Matrix3f& U, Eigen::Matrix3f& V,
+const float restVolume,
+const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy)
 {
-
-	Eigen::Matrix3f FT_F;
-	FT_F = F.transpose() * F;
-
-	// Inversion handling
-	Eigen::Matrix3f V;
+	//Compute Eigendecomposition
 	Eigen::Vector3f S;
+	
+	Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+	epsilon = eigenSolver.pseudoEigenvalueMatrix();
+	S[0] = epsilon(0, 0);
+	S[1] = epsilon(1, 1);
+	S[2] = epsilon(2, 2);
+	V = eigenSolver.pseudoEigenvectors();
 
-	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigenSolver(FT_F);
+	for (int i = 0; i < 3; ++i)
+	{
+		if (S[i] < 0.0f)
+		{
+			S[i] = 0.0f;
+		}
+	}
 
-	S = eigenSolver.eigenvalues();
-	V = eigenSolver.eigenvectors();
-
-	if (S[0] < 0.0f) S[0] = 0.0f;		// safety for sqrt
-	if (S[1] < 0.0f) S[1] = 0.0f;
-	if (S[2] < 0.0f) S[2] = 0.0f;
 
 	// Detect if V is a reflection .
 	// Make a rotation out of it by multiplying one column with -1.
@@ -732,7 +701,6 @@ PBDSolver::computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F,
 		}
 	}
 
-	Eigen::Matrix3f U;
 	if (chk > 0)
 	{
 		if (chk > 1)
@@ -880,27 +848,3 @@ PBDSolver::computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
 	psi = mu*psi + 0.5f*lambda * trace*trace;
 	energy = restVolume * psi;
 }
-
-
-
-void
-PBDSolver::computeGradCGreen(float restVolume, const Eigen::Matrix3f &invRestMat, const Eigen::Matrix3f &sigma, Eigen::MatrixXf& J)
-{
-	Eigen::Matrix3f H;
-	Eigen::Matrix3f T;
-	T = invRestMat.transpose();
-	H = sigma * T * restVolume;
-
-	J(0,0) = H(0, 0);
-	J(1,0) = H(0, 1);
-	J(2,0) = H(0, 2);
-	J(0,1) = H(1, 0);
-	J(1,1) = H(1, 1);
-	J(2,1) = H(1, 2);
-	J(0,2) = H(2, 0);
-	J(1,2) = H(2, 1);
-	J(2,2) = H(2, 2);
-
-	J.col(3) = -J.col(0) - J.col(1) - J.col(2);
-}
-

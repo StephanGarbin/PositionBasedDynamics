@@ -12,6 +12,7 @@
 #include "PBDSolverSettings.h"
 
 #include "GLUTHelper.h"
+#include "AntTweakBar.h"
 
 
 std::vector<PBDTetrahedra3d> tetrahedra;
@@ -28,11 +29,92 @@ double sumExecutionTime;
 int timingPrintInterval = 100;
 int currentFrame = 1;
 
-void mainLoopGLUT(void)
+float baryCentre[3];
+float radius;
+
+void mainLoop();
+
+float youngsModulus;
+float poissonRatio;
+
+float lambda;
+float mu;
+
+void calculateLambdaAndMu()
 {
+	mu = youngsModulus / (2.0 * (1.0 + poissonRatio));
+	lambda = (youngsModulus * poissonRatio) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio));
+
+	settings.lambda = lambda;
+	settings.mu = mu;
+}
+
+
+void determineLookAt()
+{
+	//1. Compute Barycentre
+	Eigen::Vector3f baryCentreTemp;
+	baryCentreTemp.setZero();
+
+	for (int i = 0; i < particles->size(); ++i)
+	{
+		baryCentreTemp += (*particles)[i].position();
+	}
+
+	baryCentreTemp /= (float)particles->size();
+	baryCentre[0] = baryCentreTemp[0];
+	baryCentre[1] = baryCentreTemp[1];
+	baryCentre[2] = baryCentreTemp[2];
+
+	//2. Compute Radius
+	float radiusTemp = 0;
+	for (int i = 0; i < particles->size(); ++i)
+	{
+		Eigen::Vector3f distanceVector = (*particles)[i].position() - baryCentreTemp;
+		if (distanceVector.squaredNorm() > radiusTemp)
+		{
+			radiusTemp = distanceVector.squaredNorm();
+		}
+	}
+
+	radius = radiusTemp / 13;
+
+	std::cout << "Barycentre: " << std::endl;
+	std::cout << baryCentreTemp << std::endl;
+	std::cout << "Radius: " << std::endl;
+	std::cout << radius << std::endl << std::endl;
+}
+
+void LookAtMesh()
+{
+	//gluLookAt(5, 5, 5, 0.0, 0.0, 0.0, 0, 1, 0);
+	//glTranslatef(0, 0.6f, -1);
+
+	//gluLookAt(baryCentre[0] + radius, baryCentre[1] + radius, baryCentre[2] - radius,
+	//	baryCentre[0], baryCentre[1], baryCentre[2], 0.0, 1.0, 0.0);
+
+}
+
+
+void idleLoopGlut(void)
+{
+	mainLoop();
+}
+
+void mainLoopGlut(void)
+{
+	mainLoop();
+}
+
+void mainLoop()
+{
+	calculateLambdaAndMu();
+
 	//glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//Render Tets
 	for (int t = 0; t < tetrahedra.size(); ++t)
@@ -60,48 +142,34 @@ void mainLoopGLUT(void)
 	{
 		std::cout << "Average simulation Time: " << sumExecutionTime / currentFrame << "s." << std::endl;
 	}
+
+	TwDraw();
 	glutSwapBuffers();
-	++currentFrame;
 }
 
-void idleLoopGLUT(void)
+// Callback function called by GLUT when window size changes
+void Reshape(int width, int height)
 {
-	//glEnable(GL_DEPTH_TEST);
+	// Set OpenGL viewport and camera
+	//glViewport(0, 0, width, height);
+	//glMatrixMode(GL_PROJECTION);
+	//glLoadIdentity();
+	//gluPerspective(40, (double)width / height, 1, 10);
+	//glMatrixMode(GL_MODELVIEW);
+	//glLoadIdentity();
+	//gluLookAt(0, 0, 5, 0, 0, 0, 0, 1, 0);
+	//glTranslatef(0, 0.6f, -1);
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
-
-	//Render Tets
-	for (int t = 0; t < tetrahedra.size(); ++t)
-	{
-		tetrahedra[t].glRender(0.5, 0.5, 0.5);
-	}
-
-	glEnable(GL_POLYGON_OFFSET_LINE);
-	glPolygonOffset(-1, -1);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	for (int t = 0; t < tetrahedra.size(); ++t)
-	{
-		tetrahedra[t].glRender(1.0, 1.0, 1.0);
-	}
-	glDisable(GL_POLYGON_OFFSET_LINE);
-
-
-	//Advance Solver
-	tbb::tick_count start = tbb::tick_count::now();
-	solver.advanceSystem(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
-	tbb::tick_count end = tbb::tick_count::now();
-	sumExecutionTime += (end - start).seconds();
-	if (currentFrame % timingPrintInterval == 0)
-	{
-		std::cout << "Average simulation Time: " << sumExecutionTime / currentFrame << "s." << std::endl;
-	}
-	glutSwapBuffers();
-	++currentFrame;
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(numMilliseconds));
+	// Send the new window size to AntTweakBar
+	TwWindowSize(width, height);
 }
+
+// Function called at exit
+void TerminateAll(void)
+{
+	TwTerminate();
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -141,8 +209,10 @@ int main(int argc, char* argv[])
 	Eigen::Vector3f initialVelocity;
 	initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
 
-	float mu = k / (2 * (1 + v));
-	float lambda = (k * v) / ((1 + v) * (1 - 2 * v));
+	calculateLambdaAndMu();
+
+	youngsModulus = 1.0;
+	poissonRatio = 0.3;
 
 	settings.deltaT = 0.005;
 	settings.gravity = -9.8;
@@ -183,20 +253,67 @@ int main(int argc, char* argv[])
 	numConstraintInfluences.resize(particles->size());
 	temporaryPositions.resize(particles->size());
 
-	GLUTSettings glutSsettings;
-	glutSsettings.height = 1024;
-	glutSsettings.width = 1024;
-	glutSsettings.windowName = "PBD Test 1";
-	glutSsettings.GLVersionMajor = 3;
-	glutSsettings.GLVersionMinor = 0;
-	glutSsettings.positionX = 100;
-	glutSsettings.positionY = 100;
+	GLUTSettings glutSettings;
+	glutSettings.height = 500;
+	glutSettings.width = 500;
+	glutSettings.windowName = "PBD FEM";
+	glutSettings.GLVersionMajor = 3;
+	glutSettings.GLVersionMinor = 0;
+	glutSettings.positionX = 100;
+	glutSettings.positionY = 100;
 
 	GLUTHelper helper;
-	helper.initWindow(argc, argv, glutSsettings);
-	helper.initCamera(10, 10, 10, 0, -6, 0);
+	helper.initWindow(argc, argv, glutSettings);
+	helper.setIdleFunc(idleLoopGlut);
 
-	helper.setIdleFunc(&idleLoopGLUT);
+	determineLookAt();
+	helper.initCamera(-(baryCentre[0] + radius), baryCentre[1] + radius, -(baryCentre[2] + radius),
+		baryCentre[0], baryCentre[1], baryCentre[2]);
 
-	helper.enterDisplayLoop(&mainLoopGLUT);
+	//TweakBar Interface
+	TwInit(TW_OPENGL, NULL);
+	TwWindowSize(glutSettings.height, glutSettings.width);
+	TwBar* solverSettings;
+	solverSettings = TwNewBar("Solver Settings");
+
+	TwDefine(" GLOBAL help='FEM based PBD Solver Demo.' ");
+	TwAddVarRW(solverSettings, "stepSize", TW_TYPE_FLOAT, &settings.deltaT,
+		" label='Step Size' min=0.0001 max=10 step=0.01 keyIncr=s keyDecr=S help='Internal Solver Step Size (0.005 is stable)' ");
+
+	TwAddVarRW(solverSettings, "constraintIts", TW_TYPE_INT32, &settings.numConstraintIts,
+		" label='Constraint Iterations' min=1 max=100 step=1 keyIncr=s keyDecr=S help='Internal Solver Constraint Iterations (5 is stable)' ");
+
+
+	TwBar* materialSettings;
+	materialSettings = TwNewBar("Material Settings");
+
+	TwAddVarRW(materialSettings, "YoungsModulus", TW_TYPE_FLOAT, &youngsModulus,
+		" label='Youngs Modulus' min=0.0 max=100.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
+
+	TwAddVarRW(materialSettings, "PoissonRatio", TW_TYPE_FLOAT, &poissonRatio,
+		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");
+
+
+	// Set GLUT callbacks
+	glutReshapeFunc(Reshape);
+	atexit(TerminateAll);  // Called after glutMainLoop ends
+
+	// Set GLUT event callbacks
+	// - Directly redirect GLUT mouse button events to AntTweakBar
+	glutMouseFunc((GLUTmousebuttonfun)TwEventMouseButtonGLUT);
+	// - Directly redirect GLUT mouse motion events to AntTweakBar
+	glutMotionFunc((GLUTmousemotionfun)TwEventMouseMotionGLUT);
+	// - Directly redirect GLUT mouse "passive" motion events to AntTweakBar (same as MouseMotion)
+	glutPassiveMotionFunc((GLUTmousemotionfun)TwEventMouseMotionGLUT);
+	// - Directly redirect GLUT key events to AntTweakBar
+	glutKeyboardFunc((GLUTkeyboardfun)TwEventKeyboardGLUT);
+	// - Directly redirect GLUT special key events to AntTweakBar
+	glutSpecialFunc((GLUTspecialfun)TwEventSpecialGLUT);
+	// - Send 'glutGetModifers' function pointer to AntTweakBar;
+	//   required because the GLUT key event functions do not report key modifiers states.
+	TwGLUTModifiersFunc(glutGetModifiers);
+
+	helper.enterDisplayLoop(mainLoopGlut);
+
+	return 0;
 }

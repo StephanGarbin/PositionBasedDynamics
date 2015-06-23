@@ -47,16 +47,14 @@ private:
 		float& strainEnergy, float volume,
 		const PBDSolverSettings& settings);
 
-	void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f &F,
+	void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
+		Eigen::Matrix3f& U, Eigen::Matrix3f& V,
 		const float restVolume,
 		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
 
 	void computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
 		const float restVolume,
 		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
-
-	void computeGradCGreen(float restVolume, const Eigen::Matrix3f &invRestMat, const Eigen::Matrix3f &sigma, Eigen::MatrixXf& J);
-
 };
 
 
