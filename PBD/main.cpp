@@ -31,6 +31,8 @@ int currentFrame = 1;
 
 float baryCentre[3];
 float radius;
+float rotation[3];
+float zoom;
 
 void mainLoop();
 
@@ -49,6 +51,34 @@ void calculateLambdaAndMu()
 	settings.mu = mu;
 }
 
+void setCamera()
+{
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity;
+
+	gluPerspective( /* field of view in degree */ 90.0,
+		/* aspect ratio */ 1.0,
+		/* Z near */ 1.0, /* Z far */ 500000.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity;
+
+	gluLookAt(-(baryCentre[0] + radius * zoom), baryCentre[1] + radius * zoom, -(baryCentre[2] + radius * zoom),  /* eye is at (0,0,5) */
+		baryCentre[0], baryCentre[1], baryCentre[2],      /* center is at (0,0,0) */
+		0.0, 1.0, 0.0);      /* up is in positive Y direction */
+
+	glTranslated(baryCentre[0], baryCentre[1], baryCentre[2]);
+	glRotated(rotation[0], 1.0, 0.0, 0.0);
+	glRotated(rotation[1], 0.0, 1.0, 0.0);
+	glRotated(rotation[2], 0.0, 0.0, 1.0);
+	glTranslated(-baryCentre[0], -baryCentre[1], -baryCentre[2]);
+}
 
 void determineLookAt()
 {
@@ -77,12 +107,12 @@ void determineLookAt()
 		}
 	}
 
-	radius = radiusTemp / 13;
+	radius = radiusTemp / 2.0f;
 
-	std::cout << "Barycentre: " << std::endl;
-	std::cout << baryCentreTemp << std::endl;
-	std::cout << "Radius: " << std::endl;
-	std::cout << radius << std::endl << std::endl;
+	//std::cout << "Barycentre: " << std::endl;
+	//std::cout << baryCentreTemp << std::endl;
+	//std::cout << "Radius: " << std::endl;
+	//std::cout << radius << std::endl << std::endl;
 }
 
 void LookAtMesh()
@@ -94,7 +124,6 @@ void LookAtMesh()
 	//	baryCentre[0], baryCentre[1], baryCentre[2], 0.0, 1.0, 0.0);
 
 }
-
 
 void idleLoopGlut(void)
 {
@@ -110,11 +139,9 @@ void mainLoop()
 {
 	calculateLambdaAndMu();
 
-	//glEnable(GL_DEPTH_TEST);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	setCamera();
 
 	//Render Tets
 	for (int t = 0; t < tetrahedra.size(); ++t)
@@ -143,6 +170,11 @@ void mainLoop()
 		std::cout << "Average simulation Time: " << sumExecutionTime / currentFrame << "s." << std::endl;
 	}
 
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+
 	TwDraw();
 	glutSwapBuffers();
 }
@@ -151,7 +183,7 @@ void mainLoop()
 void Reshape(int width, int height)
 {
 	// Set OpenGL viewport and camera
-	//glViewport(0, 0, width, height);
+	glViewport(0, 0, width, height);
 	//glMatrixMode(GL_PROJECTION);
 	//glLoadIdentity();
 	//gluPerspective(40, (double)width / height, 1, 10);
@@ -267,8 +299,13 @@ int main(int argc, char* argv[])
 	helper.setIdleFunc(idleLoopGlut);
 
 	determineLookAt();
-	helper.initCamera(-(baryCentre[0] + radius), baryCentre[1] + radius, -(baryCentre[2] + radius),
-		baryCentre[0], baryCentre[1], baryCentre[2]);
+	rotation[0] = 0.0;
+	rotation[1] = 100.0;
+	rotation[2] = 0.0;
+	zoom = 1.0 / 12.0f;
+	/*helper.initCamera(-(baryCentre[0] + radius), baryCentre[1] + radius, -(baryCentre[2] + radius),
+		baryCentre[0], baryCentre[1], baryCentre[2]);*/
+	//setCamera();
 
 	//TweakBar Interface
 	TwInit(TW_OPENGL, NULL);
@@ -284,14 +321,24 @@ int main(int argc, char* argv[])
 		" label='Constraint Iterations' min=1 max=100 step=1 keyIncr=s keyDecr=S help='Internal Solver Constraint Iterations (5 is stable)' ");
 
 
-	TwBar* materialSettings;
-	materialSettings = TwNewBar("Material Settings");
+	//TwBar* materialSettings;
+	//materialSettings = TwNewBar("Material Settings");
 
-	TwAddVarRW(materialSettings, "YoungsModulus", TW_TYPE_FLOAT, &youngsModulus,
+	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &youngsModulus,
 		" label='Youngs Modulus' min=0.0 max=100.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
 
-	TwAddVarRW(materialSettings, "PoissonRatio", TW_TYPE_FLOAT, &poissonRatio,
+	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &poissonRatio,
 		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");
+
+	TwAddVarRW(solverSettings, "rotationX", TW_TYPE_FLOAT, &rotation[0],
+		" label='Cam Rotation X' min=0.0 max=360.0 step=1 keyIncr=s keyDecr=S help='Rotation about X' ");
+	TwAddVarRW(solverSettings, "rotationY", TW_TYPE_FLOAT, &rotation[1],
+		" label='Cam Rotation Y' min=0.0 max=360.0 step=1 keyIncr=s keyDecr=S help='Rotation about X' ");
+	TwAddVarRW(solverSettings, "rotationZ", TW_TYPE_FLOAT, &rotation[2],
+		" label='Cam Rotation Z' min=0.0 max=360.0 step=1 keyIncr=s keyDecr=S help='Rotation about X' ");
+
+	TwAddVarRW(solverSettings, "zoom", TW_TYPE_FLOAT, &zoom,
+		" label='Cam Zoom' min=0.0 max=100 step=0.001 keyIncr=s keyDecr=S help='Zoom' ");
 
 
 	// Set GLUT callbacks
