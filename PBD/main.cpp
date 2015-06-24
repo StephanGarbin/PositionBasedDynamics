@@ -3,6 +3,7 @@
 #include <thread>
 
 #include <tbb\tick_count.h>
+#include <sstream>
 
 #include "TetGenIO.h"
 
@@ -13,6 +14,8 @@
 
 #include "GLUTHelper.h"
 #include "AntTweakBar.h"
+
+#include "lodepng.h"
 
 
 std::vector<PBDTetrahedra3d> tetrahedra;
@@ -29,6 +32,9 @@ double sumExecutionTime;
 int timingPrintInterval = 100;
 int currentFrame = 1;
 
+int globalHeight;
+int globalWidth;
+
 float baryCentre[3];
 float radius;
 float rotation[3];
@@ -41,6 +47,39 @@ float poissonRatio;
 
 float lambda;
 float mu;
+
+void saveFrameBufferAsPng()
+{
+	unsigned width = globalWidth;
+	unsigned height = globalHeight;
+	
+
+	std::stringstream ss;
+	ss << "images/solverOutput_" << currentFrame << ".png";
+	
+	std::vector<double> RawImage;
+	RawImage.resize(globalWidth * globalHeight * 4);
+
+	glReadPixels(0, 0, width, height, GL_RGBA, GL_DOUBLE, &RawImage[0]);
+
+
+	std::vector<unsigned char> image;
+	image.resize(globalWidth * globalHeight * 4);
+	for (int i = 0; i < globalHeight * globalWidth * 4; ++i)
+	{
+		image[i] = (unsigned char)(RawImage[i] * 255.0f);
+	}
+
+	std::vector<unsigned char> png;
+
+	unsigned error = lodepng::encode(png, image, width, height);
+	if (!error) lodepng::save_file(png, ss.str().c_str());
+
+	//if there's an error, display it
+	if (error) std::cout << "encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+
+	ss.clear();
+}
 
 void calculateLambdaAndMu()
 {
@@ -178,8 +217,10 @@ void mainLoop()
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 
+	saveFrameBufferAsPng();
 	TwDraw();
 	glutSwapBuffers();
+	++currentFrame;
 }
 
 // Callback function called by GLUT when window size changes
@@ -197,6 +238,8 @@ void Reshape(int width, int height)
 
 	// Send the new window size to AntTweakBar
 	TwWindowSize(width, height);
+	globalHeight = height;
+	globalWidth = width;
 }
 
 // Function called at exit
@@ -249,7 +292,7 @@ int main(int argc, char* argv[])
 
 	calculateLambdaAndMu();
 
-	settings.deltaT = 0.005;
+	settings.deltaT = 0.049;
 	settings.gravity = -9.8;
 	settings.lambda = lambda;
 	settings.mu = mu;

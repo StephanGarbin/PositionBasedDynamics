@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PBDTetrahedra3d.cpp" />
     <ClCompile Include="PBDParticle.cpp" />
@@ -161,6 +162,7 @@
     <ClInclude Include="dVector.h" />
     <ClInclude Include="EnergyConstraint.h" />
     <ClInclude Include="GLUTHelper.h" />
+    <ClInclude Include="lodepng.h" />
     <ClInclude Include="PBDSolverSettings.h" />
     <ClInclude Include="PBDTetrahedra3d.h" />
     <ClInclude Include="PBDParticle.h" />
