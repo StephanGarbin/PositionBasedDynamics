@@ -30,6 +30,9 @@ private:
 	void projectConstraints(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 
+	void projectConstraintsOLD(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+
 	void projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
 		std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences);
@@ -47,11 +50,6 @@ private:
 		float& strainEnergy, float volume,
 		const PBDSolverSettings& settings);
 
-	void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
-		Eigen::Matrix3f& U, Eigen::Matrix3f& V,
-		const float restVolume,
-		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
-
 	void computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
 		const float restVolume,
 		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
@@ -67,4 +65,9 @@ void projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra
 	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
 	std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
 	int start, int end);
+
+void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
+	Eigen::Matrix3f& U, Eigen::Matrix3f& V,
+	const float restVolume,
+	const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
 

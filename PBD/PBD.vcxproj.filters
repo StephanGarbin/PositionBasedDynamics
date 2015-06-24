@@ -30,9 +30,6 @@
     <ClCompile Include="TetGenIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AlembicWriter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dVector.h">
@@ -57,9 +54,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TetGenIO.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AlembicWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

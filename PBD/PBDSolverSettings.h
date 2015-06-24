@@ -14,4 +14,10 @@ struct PBDSolverSettings
 	//Lame coefficients
 	float mu;
 	float lambda;
+
+	float youngsModulus;
+	float poissonRatio;
+
+	//For SOR
+	float w;
 };

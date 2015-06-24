@@ -33,6 +33,7 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 
 	//Project Constraints
 	projectConstraints(tetrahedra, particles, settings);
+	//projectConstraintsOLD(tetrahedra, particles, settings);
 	//projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 
 	//Update Velocities
@@ -130,7 +131,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//{
 			//	continue;
 			//}
-
+			//correctInversion(F, FTransposeF, FInverseTranspose, PF, U, V, I1, 0.0, logI3, strainEnergy, Volume, settings);
 			//if (F.determinant() < 1.0e-04f || tetrahedra[t].getVolume() < 0.00001)
 			//if (F.determinant() < 0.0f)
 			{
@@ -138,7 +139,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			}
 			//else
 			{
-				//computeGreenStrainAndPiolaStress(F, Volume, settings.mu, settings.lambda, sigma, epsilon, strainEnergy);
+				//computeGreenStrainAndPiolaStress(F, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy);
 			}
 
 			//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
@@ -147,22 +148,20 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//	std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
 			//}
 
+			//if (strainEnergy > 0.01)
+			//{
+			//	std::cout << strainEnergy << std::endl;
+			//}
+
 			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
 			gradient.col(0) = gradientTemp.col(0);
 			gradient.col(1) = gradientTemp.col(1);
 			gradient.col(2) = gradientTemp.col(2);
 			gradient.col(3) = -gradientTemp.rowwise().sum();
 
-			//gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
-			//gradient.col(0) = gradientTemp.col(0);
-			//gradient.col(1) = gradientTemp.col(1);
-			//gradient.col(2) = gradientTemp.col(2);
-			//gradient.col(3) = -gradientTemp.rowwise().sum();
-
 			//std::cout << "Strain Energy: " << strainEnergy << std::endl;
 
 			//Compute Lagrange Multiplier
-
 			float denominator = 0.0;
 
 			for (int cI = 0; cI < 4; ++cI)
@@ -173,6 +172,9 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 							* gradient.col(cI).squaredNorm();
 				}
 			}
+
+			//if (denominator < 1.0e-9f)
+			//	continue;
 
 			//if (std::fabs(denominator) < 1.0e-6f)
 			//{
@@ -196,6 +198,172 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				}
 			}
 			
+		}
+	}
+}
+
+void
+PBDSolver::projectConstraintsOLD(std::vector<PBDTetrahedra3d>& tetrahedra,
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+{
+	Eigen::Matrix3f F;
+	Eigen::Matrix3f FInverseTranspose;
+	Eigen::Matrix3f FTransposeF;
+
+	Eigen::Matrix3f PF;
+	Eigen::Matrix3f gradientTemp;
+	Eigen::MatrixXf gradient; gradient.resize(3, 4);
+
+	Eigen::Matrix3f U;
+	Eigen::Matrix3f V;
+	bool isInverted;
+
+	Eigen::Vector3f deltaX;
+
+	for (int it = 0; it < settings.numConstraintIts; ++it)
+	{
+		for (int t = 0; t < settings.numTetrahedra; ++t)
+		{
+			float lagrangeM;
+
+			//Get deformation gradient
+			F = tetrahedra[t].getDeformationGradient();
+
+			if (F.isIdentity())
+			{
+				continue;
+			}
+
+			//isInverted = F.determinant() < 0.0;
+
+			////check for inversion
+			//if (isInverted)
+			//{
+			//	Eigen::JacobiSVD<Eigen::Matrix3f> svd(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+			//	U = svd.matrixU();
+			//	V = svd.matrixV();
+
+			//	F = svd.singularValues().asDiagonal().toDenseMatrix();
+
+			//	F(2, 2) *= -1;
+			//	V.col(2) *= -1;
+
+			//	std::cout << "Handling Inversion! " << std::endl;
+			//}
+
+
+
+			FInverseTranspose = F.inverse().transpose();
+			FTransposeF = F.transpose() * F;
+
+			//Compute Isotropic Invariants
+			float I1 = (FTransposeF).trace();
+			float I3 = (FTransposeF).determinant();
+
+			float logI3 = log(I3);
+
+			//Compute Stress tensor
+			PF = settings.mu * F - settings.mu * FInverseTranspose
+				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+
+
+			//if (isInverted)
+			//{
+			//	PF = U * PF * V;
+			//}
+
+			//Compute volume
+			float Volume = tetrahedra[t].getUndeformedVolume();
+
+
+			//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
+			if (tetrahedra[t].getVolume() < 0.00001)
+			{
+				std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
+			}
+
+			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
+			gradient.col(0) = gradientTemp.col(0);
+			gradient.col(1) = gradientTemp.col(1);
+			gradient.col(2) = gradientTemp.col(2);
+			gradient.col(3) = -gradientTemp.rowwise().sum();
+
+			//Compute Strain Energy density field
+			float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+
+
+			//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+
+			//Compute Lagrange Multiplier
+
+			float denominator = 0.0;
+
+			for (int cI = 0; cI < 4; ++cI)
+			{
+				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+				{
+					denominator += tetrahedra[t].get_x(cI).inverseMass()
+						* gradient.col(cI).lpNorm<2>();
+
+					//if (std::fabs(denominator) > 1e-06)
+					//{
+					//	std::cout << "Condition met!" << std::endl;
+					//}
+
+				}
+			}
+
+			//if (std::fabs(denominator) < 1e-06)
+			//{
+			//	//std::cout << "Skipping!" << std::endl;
+			//	continue;
+			//}
+			//else
+			{
+				lagrangeM = -(strainEnergy / denominator);
+			}
+
+			if (std::isnan(lagrangeM))
+			{
+				std::cout << "NAN!" << std::endl;
+				//std::cout << "Deformation Gradient" << std::endl;
+				//std::cout << F << std::endl;
+				//std::cout << "Inverse of deformation gradient:" << std::endl;
+				//std::cout << F.inverse().transpose() << std::endl;
+				//std::cout << "Stress Tensor" << std::endl;
+				//std::cout << PF << std::endl;
+				//std::cout << "Tensor Gradient " << std::endl;
+				//std::cout << gradient << std::endl;
+				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+				//std::cout << "Lagrange Multiplier: " << lagrangeM << std::endl;
+				////std::cout << "Inverse Mass: " << tetrahedra[t].get_x(c).inverseMass() << std::endl;
+				//std::cout << "Undeformed Volume: " << V << std::endl;
+				//
+				//std::cout << "STEPS: " << std::endl;
+
+				//std::cout << (settings.mu * F) << std::endl;
+				//std::cout << settings.mu * F.inverse().transpose() << std::endl;
+				//std::cout << log(I3) << std::endl;
+				//std::cout << F.inverse().transpose() << std::endl;
+
+				lagrangeM = 0.0;
+			}
+
+			for (int cI = 0; cI <4; ++cI)
+			{
+				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+				{
+					deltaX = (tetrahedra[t].get_x(cI).inverseMass()
+						* lagrangeM) * gradient.col(cI);
+
+					tetrahedra[t].get_x(cI).position() += deltaX;
+
+					//std::cout << "[ " << cI << "] : " << std::endl;
+					//std::cout << deltaX << std::endl;
+				}
+			}
+
 		}
 	}
 }
@@ -230,7 +398,7 @@ PBDSolver::projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 			boost::thread_group threads;
 
-			int numThreads = 1;
+			int numThreads = 4;
 
 			int stepSize = settings.numTetrahedra / numThreads;
 
@@ -266,7 +434,7 @@ PBDSolver::projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 					{
 						if (numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]] != 0)
 						{
-							tetrahedra[t].get_x(cI).position() += temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] / numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]];
+							tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] * settings.w) / numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]];
 							//std::cout << temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] << std::endl;
 						}
 					}
@@ -292,6 +460,7 @@ projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& 
 
 	Eigen::Matrix3f U;
 	Eigen::Matrix3f V;
+	Eigen::Matrix3f epsilon;
 	bool isInverted;
 
 	Eigen::Vector3f deltaX;
@@ -308,49 +477,6 @@ projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& 
 			continue;
 		}
 
-		isInverted = F.determinant() < 0.0;
-
-		if (F.isZero())
-		{
-			continue;
-			std::cout << "Zero F" << std::endl;
-		}
-
-		//check for inversion
-		if (isInverted)
-		{
-			std::cout << "Inverted" << std::endl;
-			//std::cout << F << std::endl;
-
-			Eigen::JacobiSVD<Eigen::Matrix3f> svd(F, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-			U = svd.matrixU();
-			V = svd.matrixV();
-
-			F = svd.singularValues().asDiagonal().toDenseMatrix();
-
-			/*std::cout << "F before: " << std::endl << F << std::endl;*/
-			//std::cout << U << std::endl;
-			//std::cout << V << std::endl;
-			F(2, 2) *= -1.0;
-			//std::cout << "U before: " << std::endl << U << std::endl;
-			V.col(2) *= -1.0;
-			//std::cout << "U after: " << std::endl << U << std::endl;
-
-			//std::cout << "det U: " << U.determinant() << std::endl;
-			//std::cout << "det V: " << V.determinant() << std::endl;
-
-			//if (V.determinant() < 0.0)
-			//{
-			//	V.col(0) *= -1;
-			//}
-
-			//F = U * F * V;
-			continue;
-		}
-
-
-
 		FInverseTranspose = F.inverse().transpose();
 		FTransposeF = F.transpose() * F;
 
@@ -360,41 +486,18 @@ projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& 
 
 		float logI3 = log(I3);
 
-		//Compute Stress tensor
-		PF = settings.mu * F - settings.mu * FInverseTranspose
-			+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
-
-		//std::cout << PF << std::endl;
-
-		if (isInverted)
-		{
-			for (int row = 0; row < 3; ++row)
-			{
-				for (int col = 0; col < 3; ++col)
-				{
-					//if (std::abs(PF(row, col)) > 0.0001)
-					//{
-					//	if (PF(row, col) > 0)
-					//	{
-					//		PF(row, col) = 0.0001;
-					//	}
-					//	else
-					//	{
-					//		PF(row, col) = -0.0001;
-					//	}
-					//}
-					if (PF(row, col) < -0.0001)
-					{
-						PF(row, col) = -0.0001;
-					}
-				}
-			}
-			PF = V * PF * U;
-			//std::cout << PF << std::endl;
-		}
-
 		//Compute volume
 		float Volume = tetrahedra[t].getUndeformedVolume();
+
+		float strainEnergy = 0;
+
+
+		//Compute Stress tensor
+		//PF = settings.mu * F - settings.mu * FInverseTranspose
+		//	+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+		computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy);
+
+		
 
 
 		//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
@@ -410,7 +513,7 @@ projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& 
 		gradient.col(3) = -gradientTemp.rowwise().sum();
 
 		//Compute Strain Energy density field
-		float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+		//float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
 
 		//Compute Lagrange Multiplier
 		float denominator = 0.0;
@@ -635,7 +738,7 @@ const PBDSolverSettings& settings)
 }
 
 void
-PBDSolver::computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
+computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
 Eigen::Matrix3f& U, Eigen::Matrix3f& V,
 const float restVolume,
 const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy)
@@ -657,6 +760,11 @@ const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &s
 			S[i] = 0.0f;
 		}
 	}
+
+	//if (S[0] / S[2] > 100.0f)
+	//{
+	//	std::cout << "Problem!" << std::endl;
+	//}
 
 
 	// Detect if V is a reflection .
@@ -809,10 +917,34 @@ const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &s
 
 	float psi = 0.0f;
 	for (unsigned char j = 0; j < 3; j++)
-	for (unsigned char k = 0; k < 3; k++)
-		psi += epsilon(j, k) * epsilon(j, k);
+	{
+		for (unsigned char k = 0; k < 3; k++)
+		{
+			psi += epsilon(j, k) * epsilon(j, k);
+		}
+	}
+
 	psi = mu*psi + 0.5f*lambda * trace*trace;
+
+	//if (psi < 0.0001f)
+	//std::cout << psi << std::endl;
+
+	//if (psi > 1.0e+6f)
+	//{
+	//	std::cout << "Mu: " << mu << "; Psi: " << psi << "; lambda: " << lambda << "; trace^2 " << trace << std::endl;
+	//	std::cout << hatF << std::endl;
+	//	std::cout << "F" << std::endl;
+	//	std::cout << F << std::endl;
+	//	std::cout << "epsilon" << std::endl;
+	//	std::cout << epsilon << std::endl;
+	//	psi = 1e-6f;
+	//}
 	energy = restVolume*psi;
+
+	//if (energy < -1.0e-5f)
+	//{
+	//	energy = -1.0e-5f;
+	//}
 }
 
 void

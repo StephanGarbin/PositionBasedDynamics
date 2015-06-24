@@ -49,6 +49,9 @@ void calculateLambdaAndMu()
 
 	settings.lambda = lambda;
 	settings.mu = mu;
+
+	settings.youngsModulus = youngsModulus;
+	settings.poissonRatio = poissonRatio;
 }
 
 void setCamera()
@@ -107,7 +110,7 @@ void determineLookAt()
 		}
 	}
 
-	radius = radiusTemp / 2.0f;
+	radius = radiusTemp / 3.0f;
 
 	//std::cout << "Barycentre: " << std::endl;
 	//std::cout << baryCentreTemp << std::endl;
@@ -228,6 +231,9 @@ int main(int argc, char* argv[])
 		numConstraintIts = std::stoi(std::string(argv[3]));
 
 		invM = std::stof(std::string(argv[4]));
+
+		youngsModulus = k;
+		poissonRatio = v;
 	}
 	else
 	{
@@ -243,14 +249,12 @@ int main(int argc, char* argv[])
 
 	calculateLambdaAndMu();
 
-	youngsModulus = 1.0;
-	poissonRatio = 0.3;
-
 	settings.deltaT = 0.005;
 	settings.gravity = -9.8;
 	settings.lambda = lambda;
 	settings.mu = mu;
 	settings.numConstraintIts = numConstraintIts;
+	settings.w = 2.0;
 
 
 	//Test mesh
@@ -315,7 +319,7 @@ int main(int argc, char* argv[])
 
 	TwDefine(" GLOBAL help='FEM based PBD Solver Demo.' ");
 	TwAddVarRW(solverSettings, "stepSize", TW_TYPE_FLOAT, &settings.deltaT,
-		" label='Step Size' min=0.0001 max=10 step=0.01 keyIncr=s keyDecr=S help='Internal Solver Step Size (0.005 is stable)' ");
+		" label='Step Size' min=0.0001 max=10 step=0.001 keyIncr=s keyDecr=S help='Internal Solver Step Size (0.005 is stable)' ");
 
 	TwAddVarRW(solverSettings, "constraintIts", TW_TYPE_INT32, &settings.numConstraintIts,
 		" label='Constraint Iterations' min=1 max=100 step=1 keyIncr=s keyDecr=S help='Internal Solver Constraint Iterations (5 is stable)' ");
