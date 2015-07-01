@@ -27,6 +27,10 @@ TetGenIO::readNodes(const std::string& fileName, std::vector<PBDParticle>& parti
 		std::cout << "ERROR: Could not open file " << fileName << std::endl;
 		return false;
 	}
+	else
+	{
+		std::cout << "READING FILE: " << fileName << std::endl;
+	}
 
 	std::string currentLine;
 
@@ -38,6 +42,12 @@ TetGenIO::readNodes(const std::string& fileName, std::vector<PBDParticle>& parti
 	while (std::getline(file, currentLine))
 	{
 		removeUnnecessarySpaces(currentLine);
+		if (currentLine[0] == '#')
+		{
+			std::cout << "Ignored Comment: " << currentLine << std::endl;
+			continue;
+		}
+
 		std::vector<std::string> inputs;
 
 		boost::split(inputs, currentLine, boost::is_any_of(" "));
@@ -49,6 +59,7 @@ TetGenIO::readNodes(const std::string& fileName, std::vector<PBDParticle>& parti
 		particles.emplace_back(position, velocity, inverseMass);
 	}
 
+	std::cout << "Read " << particles.size() << " nodes." << std::endl;
 	return true;
 }
 
@@ -64,6 +75,10 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 		std::cout << "ERROR: Could not open file " << fileName << std::endl;
 		return false;
 	}
+	else
+	{
+		std::cout << "READING FILE: " << fileName << std::endl;
+	}
 
 	std::string currentLine;
 
@@ -73,20 +88,39 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 
 	while (std::getline(file, currentLine))
 	{
+		//std::cout << currentLine << std::endl;
+
 		removeUnnecessarySpaces(currentLine);
+		if (currentLine[0] == '#')
+		{
+			std::cout << "Ignored Comment: " << currentLine << std::endl;
+			continue;
+		}
+
 		std::vector<int> vertexIndices(4);
 
 		std::vector<std::string> inputs;
 		boost::split(inputs, currentLine, boost::is_any_of(" "));
+
+		//std::cout << inputs.size() << std::endl;
+
+		//for (int r = 0; r < inputs.size(); ++r)
+		//{
+		//	std::cout << inputs[r] << std::endl;
+		//}
 
 		vertexIndices[0] = std::stoi(inputs[1]) - 1;
 		vertexIndices[1] = std::stoi(inputs[4]) - 1;
 		vertexIndices[2] = std::stoi(inputs[2]) - 1;
 		vertexIndices[3] = std::stoi(inputs[3]) - 1;
 
+		//std::cout << "Converted Indices" << std::endl;
+
 		tetrahedra.emplace_back(std::move(vertexIndices), particles);
+		//std::cout << "done: " << currentLine << std::endl;
 	}
 
+	std::cout << "Read " << tetrahedra.size() << " tets. " << std::endl;
 	return true;
 }	
 

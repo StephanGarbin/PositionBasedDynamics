@@ -1,6 +1,7 @@
 #include "PBDSolver.h"
 
 #include <iostream>
+#include <fstream>
 
 #include <tbb\parallel_for.h>
 #include <tbb\mutex.h>
@@ -13,6 +14,7 @@
 
 PBDSolver::PBDSolver()
 {
+	m_currentFrame = 0;
 }
 
 
@@ -31,10 +33,18 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//Advance Positions
 	advancePositions(tetrahedra, particles, settings);
 
+
 	//Project Constraints
-	projectConstraints(tetrahedra, particles, settings);
+	if (!settings.useSOR)
+	{
+		projectConstraints(tetrahedra, particles, settings);
+	}
+	else
+	{
+		projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
+	}
 	//projectConstraintsOLD(tetrahedra, particles, settings);
-	//projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
+	
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -44,6 +54,8 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	{
 		p.swapStates();
 	}
+
+	++m_currentFrame;
 }
 
 
@@ -80,6 +92,87 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 	}
 }
 
+float
+PBDSolver::calculateTotalStrainEnergy(std::vector<PBDTetrahedra3d>& tetrahedra,
+	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings, int it,
+	std::ofstream& file)
+{
+	Eigen::Matrix3f F;
+	Eigen::Matrix3f FInverseTranspose;
+	Eigen::Matrix3f FTransposeF;
+
+	Eigen::Matrix3f PF;
+	Eigen::Matrix3f gradientTemp;
+	Eigen::MatrixXf gradient; gradient.resize(3, 4);
+
+	Eigen::Matrix3f U;
+	Eigen::Matrix3f V;
+
+	Eigen::Matrix3f sigma;
+	Eigen::Matrix3f epsilon;
+
+	Eigen::Vector3f deltaX;
+
+	float strainEnergyTotal = 0.0;
+
+	for (int t = 0; t < settings.numTetrahedra; ++t)
+	{
+		float lagrangeM;
+		float strainEnergy;
+
+		//Compute volume
+		float Volume = tetrahedra[t].getUndeformedVolume();
+
+		//Get deformation gradient
+		F = tetrahedra[t].getDeformationGradient();
+
+		FInverseTranspose = F.inverse().transpose();
+		FTransposeF = F.transpose() * F;
+
+		//Compute Isotropic Invariants
+		float I1 = (FTransposeF).trace();
+		float I3 = (FTransposeF).determinant();
+
+		float logI3 = log(I3);
+
+		if (F.isIdentity())
+		{
+			continue;
+		}
+
+		computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy, 100);
+
+		strainEnergyTotal += strainEnergy;
+	}
+
+	if (settings.printStrainEnergy)
+	{
+		if (it < 10)
+		{
+			std::cout << "Strain Energy Before [  " << it << "]: "
+				<< strainEnergyTotal << std::endl;
+		}
+		else if (it < 100)
+		{
+			std::cout << "Strain Energy Before [ " << it << "]: "
+				<< strainEnergyTotal << std::endl;
+		}
+		else if (it < 1000)
+		{
+			std::cout << "Strain Energy Before [" << it << "]: "
+				<< strainEnergyTotal << std::endl;
+		}
+	}
+
+	if (settings.printStrainEnergyToFile)
+	{
+		file << strainEnergyTotal << std::endl;
+	}
+
+	return strainEnergyTotal;
+}
+
+
 void
 PBDSolver::projectConstraints(std::vector<PBDTetrahedra3d>& tetrahedra,
 std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
@@ -100,12 +193,29 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 	Eigen::Vector3f deltaX;
 
+	std::ofstream strainEnergyfile;
+
+	if (settings.printStrainEnergyToFile)
+	{
+		std::stringstream ss;
+		ss << "C:/Users/Stephan/Documents/MATLAB/dissertation/pbd/strainEnergyDebug/strainEnergy_" << m_currentFrame << ".txt";
+		strainEnergyfile.open(ss.str());
+		ss.clear();
+	}
+
+	if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+	{
+		calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
+	}
+
 	for (int it = 0; it < settings.numConstraintIts; ++it)
 	{
-		for (int t = 0; t < settings.numTetrahedra; ++t)
+		//for (int t = 0; t < settings.numTetrahedra; ++t)
+		for (int t = settings.numTetrahedra - 1; t >= 0; --t)
 		{
 			float lagrangeM;
 			float strainEnergy;
+			bool repeatIteration = false;
 
 			//Compute volume
 			float Volume = tetrahedra[t].getUndeformedVolume();
@@ -135,7 +245,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//if (F.determinant() < 1.0e-04f || tetrahedra[t].getVolume() < 0.00001)
 			//if (F.determinant() < 0.0f)
 			{
-				computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy);
+				computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy, it);
 			}
 			//else
 			{
@@ -152,6 +262,12 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//{
 			//	std::cout << strainEnergy << std::endl;
 			//}
+
+			if (strainEnergy > 1.0e-3f)
+			{
+				strainEnergy /= 50.0f;
+				repeatIteration = true;
+			}
 
 			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
 			gradient.col(0) = gradientTemp.col(0);
@@ -185,8 +301,6 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				lagrangeM = - (strainEnergy / denominator);
 			}
 
-
-
 			for (int cI = 0; cI < 4; ++cI)
 			{
 				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
@@ -197,8 +311,22 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 					tetrahedra[t].get_x(cI).position() += deltaX;
 				}
 			}
-			
+
+			if (repeatIteration)
+			{
+				--t;
+			}
 		}
+
+		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+		{
+			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
+		}
+	}
+
+	if (settings.printStrainEnergyToFile)
+	{
+		strainEnergyfile.close();
 	}
 }
 
@@ -387,6 +515,21 @@ PBDSolver::projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 		Eigen::Vector3f deltaX;
 
+		std::ofstream strainEnergyfile;
+
+		if (settings.printStrainEnergyToFile)
+		{
+			std::stringstream ss;
+			ss << "C:/Users/Stephan/Documents/MATLAB/dissertation/pbd/strainEnergyDebug/strainEnergySOR_" << m_currentFrame << ".txt";
+			strainEnergyfile.open(ss.str());
+			ss.clear();
+		}
+
+		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+		{
+			calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
+		}
+
 		for (int it = 0; it < settings.numConstraintIts; ++it)
 		{
 			//reset the accmulator arrays
@@ -434,12 +577,23 @@ PBDSolver::projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 					{
 						if (numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]] != 0)
 						{
-							tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] * settings.w) / numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]];
+							//tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] * settings.w) / (numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]] / 4.0f); 
+							tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]]);
 							//std::cout << temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] << std::endl;
 						}
 					}
 				}
 			}
+
+			if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+			{
+				calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
+			}
+		}
+
+		if (settings.printStrainEnergyToFile)
+		{
+			strainEnergyfile.close();
 		}
 	}
 
@@ -492,10 +646,16 @@ projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& 
 		float strainEnergy = 0;
 
 
+		if (F.isIdentity())
+		{
+			continue;
+		}
+
+
 		//Compute Stress tensor
 		//PF = settings.mu * F - settings.mu * FInverseTranspose
 		//	+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
-		computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy);
+		computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy, -1);
 
 		
 
@@ -741,7 +901,7 @@ void
 computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
 Eigen::Matrix3f& U, Eigen::Matrix3f& V,
 const float restVolume,
-const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy)
+const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy, int it)
 {
 	//Compute Eigendecomposition
 	Eigen::Vector3f S;
@@ -941,9 +1101,17 @@ const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &s
 	//}
 	energy = restVolume*psi;
 
-	//if (energy < -1.0e-5f)
+	//if (it < 5)
 	//{
-	//	energy = -1.0e-5f;
+	//	if (energy < -1.0e-6f)
+	//	{
+	//		energy = -1.0e-6f;
+	//	}
+
+	//	if (energy > 1.0e-6f)
+	//	{
+	//		energy = 1.0e-6f;
+	//	}
 	//}
 }
 

@@ -3,6 +3,9 @@
 #include <vector>
 #include <memory>
 
+#include <iostream>
+#include <fstream>
+
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
 #include "PBDSolverSettings.h"
@@ -40,6 +43,10 @@ private:
 	void updateVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 
+	float calculateTotalStrainEnergy(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings, int it,
+		std::ofstream& file);
+
 
 private:
 	bool correctInversion(Eigen::Matrix3f& F, 
@@ -53,6 +60,8 @@ private:
 	void computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
 		const float restVolume,
 		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
+
+	int m_currentFrame;
 };
 
 
@@ -69,5 +78,5 @@ void projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra
 void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
 	Eigen::Matrix3f& U, Eigen::Matrix3f& V,
 	const float restVolume,
-	const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
+	const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy, int it);
 

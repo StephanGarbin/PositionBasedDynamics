@@ -217,7 +217,7 @@ void mainLoop()
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 
-	saveFrameBufferAsPng();
+	//saveFrameBufferAsPng();
 	TwDraw();
 	glutSwapBuffers();
 	++currentFrame;
@@ -263,6 +263,10 @@ int main(int argc, char* argv[])
 	//Inverse Mass
 	float invM;
 
+	bool useSOR;
+
+	float timeStep;
+
 	if (argc > 1)
 	{
 		//Young's modulus
@@ -275,6 +279,10 @@ int main(int argc, char* argv[])
 
 		invM = std::stof(std::string(argv[4]));
 
+		timeStep = std::stof(std::string(argv[5]));
+
+		useSOR = std::string(argv[6]) == "USE_SOR";
+
 		youngsModulus = k;
 		poissonRatio = v;
 	}
@@ -284,21 +292,30 @@ int main(int argc, char* argv[])
 		v = 0.4333;
 		numConstraintIts = 5;
 		invM = 1;
+		useSOR = false;
+		timeStep = 0.005;
 	}
 
+	if (useSOR)
+	{
+		std::cout << "Using SOR Solver..." << std::endl;
+	}
 
 	Eigen::Vector3f initialVelocity;
 	initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
 
 	calculateLambdaAndMu();
 
-	settings.deltaT = 0.049;
+	settings.deltaT = timeStep;
 	settings.gravity = -9.8;
 	settings.lambda = lambda;
 	settings.mu = mu;
 	settings.numConstraintIts = numConstraintIts;
-	settings.w = 2.0;
-
+	settings.w = 1.0;
+	settings.printStrainEnergy = false;
+	settings.printStrainEnergyToFile = false;
+	settings.useSOR = useSOR;
+	settings.print();
 
 	//Test mesh
 
