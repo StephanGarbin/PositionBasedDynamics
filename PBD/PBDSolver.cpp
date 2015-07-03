@@ -263,9 +263,9 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//	std::cout << strainEnergy << std::endl;
 			//}
 
-			if (strainEnergy > 1.0e-3f)
+			if (std::abs(strainEnergy) > 1.0e-5f)
 			{
-				strainEnergy /= 50.0f;
+				strainEnergy /= 20.0f;
 				repeatIteration = true;
 			}
 
@@ -314,7 +314,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 			if (repeatIteration)
 			{
-				--t;
+				++t;
 			}
 		}
 
