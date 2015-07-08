@@ -152,6 +152,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ConstraintsIO.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PBDTetrahedra3d.cpp" />
@@ -160,6 +161,7 @@
     <ClCompile Include="TetGenIO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="dVector.h" />
     <ClInclude Include="EnergyConstraint.h" />
     <ClInclude Include="GLUTHelper.h" />

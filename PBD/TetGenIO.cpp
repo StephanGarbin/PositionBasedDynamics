@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <string>
 
 #include <boost/algorithm/string.hpp>
 
@@ -51,10 +52,13 @@ TetGenIO::readNodes(const std::string& fileName, std::vector<PBDParticle>& parti
 		std::vector<std::string> inputs;
 
 		boost::split(inputs, currentLine, boost::is_any_of(" "));
+		//std::cout << inputs[1] << "; " << inputs[2] << "; " << inputs[3] << std::endl;
 
-		position.x() = std::stod(inputs[1]);
-		position.y() = std::stod(inputs[2]);
-		position.z() = std::stod(inputs[3]);
+		int add = 1;
+
+		position.x() = std::stod(inputs[1 + add]);
+		position.y() = std::stod(inputs[2 + add]);
+		position.z() = std::stod(inputs[3 + add]);
 
 		particles.emplace_back(position, velocity, inverseMass);
 	}
@@ -97,7 +101,7 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 			continue;
 		}
 
-		std::vector<int> vertexIndices(4);
+		std::vector<int> vertexIndices(5);
 
 		std::vector<std::string> inputs;
 		boost::split(inputs, currentLine, boost::is_any_of(" "));
@@ -109,10 +113,14 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 		//	std::cout << inputs[r] << std::endl;
 		//}
 
-		vertexIndices[0] = std::stoi(inputs[1]) - 1;
-		vertexIndices[1] = std::stoi(inputs[4]) - 1;
-		vertexIndices[2] = std::stoi(inputs[2]) - 1;
-		vertexIndices[3] = std::stoi(inputs[3]) - 1;
+		int add = 1;
+
+		vertexIndices[0] = std::stoi(inputs[1 + add]);
+		vertexIndices[1] = std::stoi(inputs[4 + add]);
+		vertexIndices[2] = std::stoi(inputs[2 + add]);
+		vertexIndices[3] = std::stoi(inputs[3 + add]);
+
+		//std::cout << inputs[1] << "; " << inputs[2] << "; " << inputs[3] << "; " << inputs[4] << std::endl;
 
 		//std::cout << "Converted Indices" << std::endl;
 

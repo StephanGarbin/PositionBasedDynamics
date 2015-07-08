@@ -23,6 +23,10 @@ struct PBDSolverSettings
 
 	bool useSOR;
 
+
+	bool useGeometricConstraintLimits;
+	bool correctStrongForcesWithSubteps;
+
 	//debug print
 	bool printStrainEnergy;
 	bool printStrainEnergyToFile;
@@ -40,5 +44,15 @@ struct PBDSolverSettings
 
 		std::cout << "Young's Modulus: " << youngsModulus << std::endl;
 		std::cout << "Poisson Ratio: " << poissonRatio << std::endl;
+	}
+
+	float calculateLambda(float youngsModulus, float poissonRatio) const
+	{
+		return (youngsModulus * poissonRatio) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio));
+	}
+
+	float calculateMu(float youngsModulus, float poissonRatio) const
+	{
+		return youngsModulus / (2.0 * (1.0 + poissonRatio));
 	}
 };

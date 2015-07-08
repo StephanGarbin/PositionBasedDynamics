@@ -193,6 +193,8 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 	Eigen::Vector3f deltaX;
 
+	Eigen::Vector3f deltaXGeometric;
+
 	std::ofstream strainEnergyfile;
 
 	if (settings.printStrainEnergyToFile)
@@ -208,119 +210,180 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 		calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
 	}
 
-	for (int it = 0; it < settings.numConstraintIts; ++it)
+	float local_lambda = settings.lambda;
+	float local_mu = settings.mu;
+	float currentYM = settings.youngsModulus;
+
+	bool increasingYM = false;
+
+	//if (settings.youngsModulus > 2.0f)
+	//{
+	//	increasingYM = true;
+	//	currentYM = 2.0f;
+	//}
+
+	//int numIncreaseIts = settings.youngsModulus / 2;
+
+	//for (int increaseIt = 1; increaseIt <= numIncreaseIts; ++increaseIt)
 	{
-		//for (int t = 0; t < settings.numTetrahedra; ++t)
-		for (int t = settings.numTetrahedra - 1; t >= 0; --t)
+		//currentYM = (settings.youngsModulus / numIncreaseIts) * increaseIt;
+
+		for (int it = 0; it < settings.numConstraintIts; ++it)
 		{
-			float lagrangeM;
-			float strainEnergy;
-			bool repeatIteration = false;
-
-			//Compute volume
-			float Volume = tetrahedra[t].getUndeformedVolume();
-
-			//Get deformation gradient
-			F = tetrahedra[t].getDeformationGradient();
-
-			FInverseTranspose = F.inverse().transpose();
-			FTransposeF = F.transpose() * F;
-
-			//Compute Isotropic Invariants
-			float I1 = (FTransposeF).trace();
-			float I3 = (FTransposeF).determinant();
-
-			float logI3 = log(I3);
-
-			if (F.isIdentity())
+			//for (int t = 0; t < settings.numTetrahedra; ++t)
+			for (int t = settings.numTetrahedra - 1; t >= 0; --t)
 			{
-				continue;
-			}
+				local_lambda = settings.calculateLambda(currentYM, settings.poissonRatio);
+				local_mu = settings.calculateMu(currentYM, settings.poissonRatio);
 
-			//if (!correctInversion(F, FTransposeF, FInverseTranspose, PF, U, V, I1, 0.0, logI3, strainEnergy, Volume, settings))
-			//{
-			//	continue;
-			//}
-			//correctInversion(F, FTransposeF, FInverseTranspose, PF, U, V, I1, 0.0, logI3, strainEnergy, Volume, settings);
-			//if (F.determinant() < 1.0e-04f || tetrahedra[t].getVolume() < 0.00001)
-			//if (F.determinant() < 0.0f)
-			{
-				computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy, it);
-			}
-			//else
-			{
-				//computeGreenStrainAndPiolaStress(F, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy);
-			}
+				float lagrangeM;
+				float strainEnergy;
+				bool repeatIteration = false;
 
-			//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
-			//if (tetrahedra[t].getVolume() < 0.00001)
-			//{
-			//	std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
-			//}
+				//Compute volume
+				float Volume = tetrahedra[t].getUndeformedVolume();
 
-			//if (strainEnergy > 0.01)
-			//{
-			//	std::cout << strainEnergy << std::endl;
-			//}
+				//Get deformation gradient
+				F = tetrahedra[t].getDeformationGradient();
 
-			if (std::abs(strainEnergy) > 1.0e-5f)
-			{
-				strainEnergy /= 20.0f;
-				repeatIteration = true;
-			}
+				FInverseTranspose = F.inverse().transpose();
+				FTransposeF = F.transpose() * F;
 
-			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
-			gradient.col(0) = gradientTemp.col(0);
-			gradient.col(1) = gradientTemp.col(1);
-			gradient.col(2) = gradientTemp.col(2);
-			gradient.col(3) = -gradientTemp.rowwise().sum();
+				//Compute Isotropic Invariants
+				float I1 = (FTransposeF).trace();
+				float I3 = (FTransposeF).determinant();
 
-			//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+				float logI3 = log(I3);
 
-			//Compute Lagrange Multiplier
-			float denominator = 0.0;
-
-			for (int cI = 0; cI < 4; ++cI)
-			{
-				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+				if (F.isIdentity())
 				{
+					continue;
+				}
+
+				//if (!correctInversion(F, FTransposeF, FInverseTranspose, PF, U, V, I1, 0.0, logI3, strainEnergy, Volume, settings))
+				//{
+				//	continue;
+				//}
+				//correctInversion(F, FTransposeF, FInverseTranspose, PF, U, V, I1, 0.0, logI3, strainEnergy, Volume, settings);
+				//if (F.determinant() < 1.0e-04f || tetrahedra[t].getVolume() < 0.00001)
+				//if (F.determinant() < 0.0f)
+				{
+					computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, local_mu, local_lambda, PF, epsilon, strainEnergy, it);
+				}
+				//else
+				{
+					//computeGreenStrainAndPiolaStress(F, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy);
+				}
+
+				//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
+				//if (tetrahedra[t].getVolume() < 0.00001)
+				//{
+				//	std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
+				//}
+
+				//if (strainEnergy > 0.01)
+				//{
+				//	std::cout << strainEnergy << std::endl;
+				//}
+
+				if (settings.correctStrongForcesWithSubteps)
+				{
+					if (std::abs(strainEnergy) > 1.0e-4f)
+					{
+						strainEnergy /= strainEnergy / 1.0e-4f;
+						repeatIteration = true;
+					}
+				}
+
+				gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
+				gradient.col(0) = gradientTemp.col(0);
+				gradient.col(1) = gradientTemp.col(1);
+				gradient.col(2) = gradientTemp.col(2);
+				gradient.col(3) = -gradientTemp.rowwise().sum();
+
+				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+
+				//Compute Lagrange Multiplier
+				float denominator = 0.0;
+
+				for (int cI = 0; cI < 4; ++cI)
+				{
+					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+					{
 						denominator += tetrahedra[t].get_x(cI).inverseMass()
 							* gradient.col(cI).squaredNorm();
+					}
 				}
-			}
 
-			//if (denominator < 1.0e-9f)
-			//	continue;
 
-			//if (std::fabs(denominator) < 1.0e-6f)
-			//{
-			//	continue;
-			//}
-			//else
-			{
-				lagrangeM = - (strainEnergy / denominator);
-			}
+				//if (denominator < 1.0e-9f)
+				//	continue;
 
-			for (int cI = 0; cI < 4; ++cI)
-			{
-				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+				//if (std::fabs(denominator) < 1.0e-6f)
+				//{
+				//	continue;
+				//}
+				//else
 				{
-					deltaX = (tetrahedra[t].get_x(cI).inverseMass()
-						* lagrangeM) * gradient.col(cI);
+					lagrangeM = -(strainEnergy / denominator);
+				}
 
-					tetrahedra[t].get_x(cI).position() += deltaX;
+				for (int cI = 0; cI < 4; ++cI)
+				{
+					//float w1;
+					//float w2;
+					//Eigen::Vector3f x1;
+					//Eigen::Vector3f x2;
+
+					//if (settings.useGeometricConstraintLimits)
+					//{
+					//	switch (cI)
+					//	{
+					//	case 0:
+					//		break;
+					//	case 1:
+					//		break;
+					//	case 2:
+					//		break;
+					//	case 3:
+					//		break;
+					//	default:
+
+					//	}
+					//}
+
+					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+					{
+						deltaX = (tetrahedra[t].get_x(cI).inverseMass()
+							* lagrangeM) * gradient.col(cI);
+
+						tetrahedra[t].get_x(cI).position() += deltaX;
+					}
+				}
+
+				if (repeatIteration)
+				{
+					++t;
 				}
 			}
 
-			if (repeatIteration)
+			if (increasingYM)
 			{
-				++t;
+				if (currentYM >= settings.youngsModulus)
+				{
+					currentYM = settings.youngsModulus;
+					increasingYM = false;
+				}
+				else
+				{
+					currentYM += 0.15;
+				}
 			}
-		}
 
-		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
-		{
-			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
+			if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+			{
+				calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
+			}
 		}
 	}
 
@@ -1042,12 +1105,6 @@ const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &s
 
 	// Clamp small singular values
 	const float minXVal = 0.577f;
-
-	for (unsigned char j = 0; j < 3; j++)
-	{
-		if (hatF[j] < minXVal)
-			hatF[j] = minXVal;
-	}
 
 	// epsilon for hatF
 	Eigen::Vector3f epsilonHatF(0.5f*(hatF[0] * hatF[0] - 1.0f), 0.5f*(hatF[1] * hatF[1] - 1.0f), 0.5f*(hatF[2] * hatF[2] - 1.0f));

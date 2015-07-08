@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "TetGenIO.h"
+#include "ConstraintsIO.h"
 
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
@@ -149,7 +150,7 @@ void determineLookAt()
 		}
 	}
 
-	radius = radiusTemp / 3.0f;
+	radius = radiusTemp;
 
 	//std::cout << "Barycentre: " << std::endl;
 	//std::cout << baryCentreTemp << std::endl;
@@ -315,20 +316,8 @@ int main(int argc, char* argv[])
 	settings.printStrainEnergy = false;
 	settings.printStrainEnergyToFile = false;
 	settings.useSOR = useSOR;
+	settings.correctStrongForcesWithSubteps = false;
 	settings.print();
-
-	//Test mesh
-
-	//particles->emplace_back(Eigen::Vector3d(0.029, 5.173, -0.061), Eigen::Vector3d(0.0, 0.0, 0.0), 0);
-	//particles->emplace_back(Eigen::Vector3d(-0.739, 3.002, 1.269), Eigen::Vector3d(0.0, 0.0, 0.0), invM);
-	//particles->emplace_back(Eigen::Vector3d(1.564, 3.002, -0.061), Eigen::Vector3d(0.0, 0.0, 0.0), invM);
-	//particles->emplace_back(Eigen::Vector3d(-0.739, 3.002, -1.390), Eigen::Vector3d(0.0, 0.0, 0.0), invM);
-	//particles->emplace_back(Eigen::Vector3d(0.029, 0.826, -0.061), Eigen::Vector3d(0.0, 0.0, 0.0), invM);
-
-	//std::vector<int> temp = { 1, 0, 2, 3 };
-	//tetrahedra.emplace_back(std::move(temp), particles);
-	//std::vector<int> temp2 = { 4, 3, 2, 1 };
-	//tetrahedra.emplace_back(std::move(temp2), particles);
 	
 	std::string nodes("barout.node");
 	std::string tets("barout.ele");
@@ -338,9 +327,12 @@ int main(int argc, char* argv[])
 
 	settings.numTetrahedra = tetrahedra.size();
 
-	for (int i = 0; i < 4; ++i)
+	std::vector<int> vertexConstraintIndices;
+	ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, "barLowVertexConstraints.txt");
+
+	for (int i = 0; i < vertexConstraintIndices.size(); ++i)
 	{
-		(*particles)[i].inverseMass() = 0;
+		(*particles)[vertexConstraintIndices[i]].inverseMass() = 0;
 	}
 
 	std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
@@ -367,9 +359,6 @@ int main(int argc, char* argv[])
 	rotation[1] = 100.0;
 	rotation[2] = 0.0;
 	zoom = 1.0 / 12.0f;
-	/*helper.initCamera(-(baryCentre[0] + radius), baryCentre[1] + radius, -(baryCentre[2] + radius),
-		baryCentre[0], baryCentre[1], baryCentre[2]);*/
-	//setCamera();
 
 	//TweakBar Interface
 	TwInit(TW_OPENGL, NULL);
