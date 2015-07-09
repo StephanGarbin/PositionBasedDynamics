@@ -18,12 +18,14 @@
 
 #include "lodepng.h"
 
+#include "FEMSimulator.h"
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
 std::vector<Eigen::Vector3f> temporaryPositions;
 std::vector<int> numConstraintInfluences;
 PBDSolver solver;
+FEMSimulator FEMsolver;
 
 PBDSolverSettings settings;
 
@@ -48,6 +50,18 @@ float poissonRatio;
 
 float lambda;
 float mu;
+
+bool useFEMSolver;
+
+void applyFEMDisplacementsToParticles()
+{
+	std::vector<double>& displacements = FEMsolver.getCurrentDisplacements();
+
+	for (int i = 0; i < displacements.size(); ++i)
+	{
+
+	}
+}
 
 void saveFrameBufferAsPng()
 {
@@ -317,6 +331,7 @@ int main(int argc, char* argv[])
 	settings.printStrainEnergyToFile = false;
 	settings.useSOR = useSOR;
 	settings.correctStrongForcesWithSubteps = false;
+	settings.numTetrahedraIterations = 1;
 	settings.print();
 	
 	std::string nodes("barout.node");

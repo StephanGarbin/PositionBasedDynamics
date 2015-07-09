@@ -9,6 +9,8 @@ struct PBDSolverSettings
 
 	int numConstraintIts;
 
+	int numTetrahedraIterations;
+
 	int numTetrahedra;
 
 	//Lame coefficients

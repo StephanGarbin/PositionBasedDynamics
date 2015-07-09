@@ -36,6 +36,12 @@
     <ClCompile Include="ConstraintsIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="VegaIO.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FEMSimulator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dVector.h">
@@ -66,6 +72,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ConstraintsIO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VegaIO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FEMSimulator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
