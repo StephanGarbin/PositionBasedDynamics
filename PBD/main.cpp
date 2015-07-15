@@ -9,6 +9,9 @@
 #include "ConstraintsIO.h"
 #include "VegaIO.h"
 
+#include "AbcWriter.h"
+#include "SurfaceMeshHandler.h"
+
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
 #include "PBDSolver.h"
@@ -23,12 +26,14 @@
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
-std::vector<Eigen::Vector3f> temporaryPositions;
+std::vector<Eigen::Vector3f> currentPositions;
 std::vector<Eigen::Vector3f> initialPositions;
 
 std::vector<int> numConstraintInfluences;
 PBDSolver solver;
 FEMSimulator FEMsolver;
+
+SurfaceMeshHandler smHandler("tttt");
 
 PBDSolverSettings settings;
 
@@ -54,7 +59,8 @@ float poissonRatio;
 float lambda;
 float mu;
 
-bool useFEMSolver = true;
+bool useFEMSolver = false;
+bool writeToAlembic = false;
 
 void applyFEMDisplacementsToParticles()
 {
@@ -75,10 +81,23 @@ void applyFEMDisplacementsToParticles()
 
 void setInitialPositionsFromParticles()
 {
-	initialPositions.resize((*particles).size());
-	for (int i = 0; i < (*particles).size(); ++i)
+	initialPositions.resize(particles->size());
+	for (int i = 0; i < particles->size(); ++i)
 	{
 		initialPositions[i] = (*particles)[i].position();
+	}
+}
+
+void getCurrentPositionFromParticles()
+{
+	if (currentPositions.size() == 0)
+	{
+		currentPositions.resize(particles->size());
+	}
+
+	for (int i = 0; i < (*particles).size(); ++i)
+	{
+		currentPositions[i] = (*particles)[i].position();
 	}
 }
 
@@ -240,7 +259,7 @@ void mainLoop()
 	tbb::tick_count start = tbb::tick_count::now();
 	if (!useFEMSolver)
 	{
-		solver.advanceSystem(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
+		solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences);
 	}
 	else
 	{
@@ -390,7 +409,7 @@ int main(int argc, char* argv[])
 	std::cout << "Num Tets: " << tetrahedra.size() << "; Num Nodes: " << particles->size() << std::endl;
 
 	numConstraintInfluences.resize(particles->size());
-	temporaryPositions.resize(particles->size());
+	currentPositions.resize(particles->size());
 
 	GLUTSettings glutSettings;
 	glutSettings.height = 500;
@@ -407,7 +426,7 @@ int main(int argc, char* argv[])
 
 	determineLookAt();
 	rotation[0] = 0.0;
-	rotation[1] = 100.0;
+	rotation[1] = 128.0;
 	rotation[2] = 0.0;
 	zoom = 1.0 / 12.0f;
 

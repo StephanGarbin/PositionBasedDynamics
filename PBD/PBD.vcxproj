@@ -143,7 +143,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\TOOLS\VEGAFEM\include;C:\Program Files\GLFW\include;C:\TOOLS\AntTweakBar\include;C:\TOOLS\boost\boost_1_57_0\;C:\TOOLS\FREEGLUT\freeglut-2.8.1\include;C:\TOOLS\GLEW\glew-1.10.0\include\;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;C:\TOOLS\ALEMBIC\win64_2013\include;C:\TOOLS\VEGAFEM\include;C:\Program Files\GLFW\include;C:\TOOLS\AntTweakBar\include;C:\TOOLS\boost\boost_1_57_0\;C:\TOOLS\FREEGLUT\freeglut-2.8.1\include;C:\TOOLS\GLEW\glew-1.10.0\include\;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <Optimization>Disabled</Optimization>
@@ -154,11 +154,12 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>C:\TOOLS\VEGAFEM\lib\x64;C:\Program Files\GLFW\lib;C:\TOOLS\AntTweakBar\lib;C:\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\intl-vc12-win-15.0\rls\adrs-mdl-64\archt-x86\lnk-sttc\thrd-mlt;C:\TOOLS\TETGEN\x64\Release;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\GLEW\glew-1.10.0\lib\Release\x64;C:\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>camera.lib;clothBW.lib;configFile.lib;corotationalLinearFEM.lib;elasticForceModel.lib;forceModel.lib;getopts.lib;glslPhong.lib;graph.lib;hashTable.lib;imageIO.lib;insertRows.lib;integrator.lib;integratorDense.lib;integratorSparse.lib;isotropicHyperelasticFEM.lib;lighting.lib;loadlist.lib;massSpringSystem.lib;matrix.lib;matrixIO.lib;minivector.lib;modalMatrix.lib;objMesh.lib;objMeshGPUDeformer.lib;openGLHelper.lib;performanceCounter.lib;polarDecomposition.lib;quaternion.lib;reducedElasticForceModel.lib;reducedForceModel.lib;reducedStvk.lib;renderVolumetricMesh.lib;rigidBodyDynamics.lib;sceneObjectReduced.lib;sparseMatrix.lib;sparseSolver.lib;stvk.lib;uniqueIntegerID.lib;volumetricMesh.lib;glfw3.lib;AntTweakBar64.lib;tet.lib;opengl32.lib;glut32.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboost_thread-iw-mt-1_57.lib;libboost_timer-iw-mt-1_57.lib;libboost_system-iw-mt-1_57.lib;libboost_date_time-iw-mt-1_57.lib;libboost_chrono-iw-mt-1_57.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\TOOLS\ALEMBIC\ilmbase\lib\x64\Release;C:\TOOLS\ALEMBIC\win64_2013\Release;C:\TOOLS\VEGAFEM\lib\x64;C:\Program Files\GLFW\lib;C:\TOOLS\AntTweakBar\lib;C:\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\intl-vc12-win-15.0\rls\adrs-mdl-64\archt-x86\lnk-sttc\thrd-mlt;C:\TOOLS\TETGEN\x64\Release;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\GLEW\glew-1.10.0\lib\Release\x64;C:\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Half.lib;Iex.lib;IlmThread.lib;Imath.lib;AlembicAbcCoreHDF5.lib;AlembicAbcCoreOgawa.lib;AlembicAbcOpenGL.lib;AlembicAbcMaterial.lib;AlembicOgawa.lib;AlembicZLIB.lib;AlembicIlmBase.lib;AlembicAbc.lib;AlembicAbcGeom.lib;AlembicUtil.lib;AlembicAbcCoreAbstract.lib;AlembicAbcCollection.lib;camera.lib;clothBW.lib;configFile.lib;corotationalLinearFEM.lib;elasticForceModel.lib;forceModel.lib;getopts.lib;glslPhong.lib;graph.lib;hashTable.lib;imageIO.lib;insertRows.lib;integrator.lib;integratorDense.lib;integratorSparse.lib;isotropicHyperelasticFEM.lib;lighting.lib;loadlist.lib;massSpringSystem.lib;matrix.lib;matrixIO.lib;minivector.lib;modalMatrix.lib;objMesh.lib;objMeshGPUDeformer.lib;openGLHelper.lib;performanceCounter.lib;polarDecomposition.lib;quaternion.lib;reducedElasticForceModel.lib;reducedForceModel.lib;reducedStvk.lib;renderVolumetricMesh.lib;rigidBodyDynamics.lib;sceneObjectReduced.lib;sparseMatrix.lib;sparseSolver.lib;stvk.lib;uniqueIntegerID.lib;volumetricMesh.lib;glfw3.lib;AntTweakBar64.lib;tet.lib;opengl32.lib;glut32.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboost_thread-iw-mt-1_57.lib;libboost_timer-iw-mt-1_57.lib;libboost_system-iw-mt-1_57.lib;libboost_date_time-iw-mt-1_57.lib;libboost_chrono-iw-mt-1_57.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AbcWriter.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
     <ClCompile Include="FEMSimulator.cpp" />
     <ClCompile Include="lodepng.cpp" />
@@ -166,10 +167,12 @@
     <ClCompile Include="PBDTetrahedra3d.cpp" />
     <ClCompile Include="PBDParticle.cpp" />
     <ClCompile Include="PBDSolver.cpp" />
+    <ClCompile Include="SurfaceMeshHandler.cpp" />
     <ClCompile Include="TetGenIO.cpp" />
     <ClCompile Include="VegaIO.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AbcWriter.h" />
     <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="dVector.h" />
     <ClInclude Include="EnergyConstraint.h" />
@@ -180,6 +183,7 @@
     <ClInclude Include="PBDTetrahedra3d.h" />
     <ClInclude Include="PBDParticle.h" />
     <ClInclude Include="PBDSolver.h" />
+    <ClInclude Include="SurfaceMeshHandler.h" />
     <ClInclude Include="TetGenIO.h" />
     <ClInclude Include="VegaIO.h" />
   </ItemGroup>
