@@ -23,6 +23,8 @@ public:
 
 	int howManyTimeSteps() { return m_numIts; }
 
+	void setExternalForcesToGravity();
+
 private:
 	std::string m_meshfileName;
 	FEMSimulatorData* m_data;

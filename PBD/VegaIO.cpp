@@ -35,15 +35,16 @@ const std::shared_ptr<std::vector<PBDParticle>> particles, const std::string& fi
 	}
 
 	//2. Write Tetrahedra
+	file << std::endl;
 	file << "*ELEMENTS" << std::endl;
 	file << "TETS" << std::endl;
 	file << tetrahedra.size() << " 4" << std::endl;
 	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
-		file << i << " " << tetrahedra[i].getVertexIndices()[0]
-			<< " " << tetrahedra[i].getVertexIndices()[1]
-			<< " " << tetrahedra[i].getVertexIndices()[2]
-			<< " " << tetrahedra[i].getVertexIndices()[3] << std::endl;
+		file << i << " " << tetrahedra[i].getVertexIndices()[0] + 0
+			<< " " << tetrahedra[i].getVertexIndices()[1] + 0
+			<< " " << tetrahedra[i].getVertexIndices()[2] + 0
+			<< " " << tetrahedra[i].getVertexIndices()[3] + 0<< std::endl;
 	}
 
 	file.close();

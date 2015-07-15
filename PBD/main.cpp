@@ -7,6 +7,7 @@
 
 #include "TetGenIO.h"
 #include "ConstraintsIO.h"
+#include "VegaIO.h"
 
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
@@ -23,13 +24,15 @@
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
 std::vector<Eigen::Vector3f> temporaryPositions;
+std::vector<Eigen::Vector3f> initialPositions;
+
 std::vector<int> numConstraintInfluences;
 PBDSolver solver;
 FEMSimulator FEMsolver;
 
 PBDSolverSettings settings;
 
-int numMilliseconds = 0;
+int numMilliseconds = 1000;
 
 double sumExecutionTime;
 int timingPrintInterval = 100;
@@ -51,15 +54,31 @@ float poissonRatio;
 float lambda;
 float mu;
 
-bool useFEMSolver;
+bool useFEMSolver = true;
 
 void applyFEMDisplacementsToParticles()
 {
 	std::vector<double>& displacements = FEMsolver.getCurrentDisplacements();
 
-	for (int i = 0; i < displacements.size(); ++i)
+	for (int i = 0; i < displacements.size(); i += 3)
 	{
+		(*particles)[i / 3].position()[0] = initialPositions[i / 3][0] + displacements[i];
+		(*particles)[i / 3].position()[1] = initialPositions[i / 3][1] + displacements[i + 1];
+		(*particles)[i / 3].position()[2] = initialPositions[i / 3][2] + displacements[i + 2];
 
+		//std::cout << (*particles)[i / 3].position() << std::endl;
+		displacements[i] = 0;
+		displacements[i + 1] = 0;
+		displacements[i + 2] = 0;
+	}
+}
+
+void setInitialPositionsFromParticles()
+{
+	initialPositions.resize((*particles).size());
+	for (int i = 0; i < (*particles).size(); ++i)
+	{
+		initialPositions[i] = (*particles)[i].position();
 	}
 }
 
@@ -219,7 +238,22 @@ void mainLoop()
 
 	//Advance Solver
 	tbb::tick_count start = tbb::tick_count::now();
-	solver.advanceSystem(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
+	if (!useFEMSolver)
+	{
+		solver.advanceSystem(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
+	}
+	else
+	{
+		//std::cout << "Solver" << std::endl;
+
+		FEMsolver.doTimeStep(true);
+
+		//std::cout << "Application" << std::endl;
+
+		applyFEMDisplacementsToParticles();
+
+		//std::cout << "Rendering" << std::endl;
+	}
 	tbb::tick_count end = tbb::tick_count::now();
 	sumExecutionTime += (end - start).seconds();
 	if (currentFrame % timingPrintInterval == 0)
@@ -321,6 +355,8 @@ int main(int argc, char* argv[])
 
 	calculateLambdaAndMu();
 
+	settings.youngsModulus = youngsModulus;
+	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
 	settings.gravity = -9.8;
 	settings.lambda = lambda;
@@ -347,7 +383,7 @@ int main(int argc, char* argv[])
 
 	for (int i = 0; i < vertexConstraintIndices.size(); ++i)
 	{
-		(*particles)[vertexConstraintIndices[i]].inverseMass() = 0;
+		(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
 	}
 
 	std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
@@ -374,6 +410,22 @@ int main(int argc, char* argv[])
 	rotation[1] = 100.0;
 	rotation[2] = 0.0;
 	zoom = 1.0 / 12.0f;
+
+	if (useFEMSolver)
+	{
+		std::cout << "Writing .veg file..." << std::endl;
+		VegaIO::writeVegFile(tetrahedra, particles, "FEMMesh.veg");
+
+		std::cout << "Setting initial node positions..." << std::endl;
+		setInitialPositionsFromParticles();
+
+		std::cout << "Initialising FEM solver..." << std::endl;
+		FEMsolver.initSolver("FEMMesh.veg", vertexConstraintIndices, settings.youngsModulus, settings.poissonRatio,
+			settings.deltaT);
+
+		std::cout << "Entering simulation loop..." << std::endl;
+	}
+
 
 	//TweakBar Interface
 	TwInit(TW_OPENGL, NULL);

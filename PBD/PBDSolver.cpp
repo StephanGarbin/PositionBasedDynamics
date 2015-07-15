@@ -35,15 +35,15 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 
 
 	//Project Constraints
-	if (!settings.useSOR)
-	{
-		projectConstraints(tetrahedra, particles, settings);
-	}
-	else
-	{
-		projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
-	}
-	//projectConstraintsOLD(tetrahedra, particles, settings);
+	//if (!settings.useSOR)
+	//{
+	//	projectConstraints(tetrahedra, particles, settings);
+	//}
+	//else
+	//{
+	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
+	//}
+	projectConstraintsOLD(tetrahedra, particles, settings);
 	
 
 	//Update Velocities
@@ -244,7 +244,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 					bool repeatIteration = false;
 
 					//Compute volume
-					float Volume = tetrahedra[t].getUndeformedVolume();
+					float Volume = std::abs(tetrahedra[t].getUndeformedVolume());
 
 					//Get deformation gradient
 					F = tetrahedra[t].getDeformationGradient();
@@ -430,23 +430,23 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				continue;
 			}
 
-			//isInverted = F.determinant() < 0.0;
+			isInverted = F.determinant() < 0.0;
 
-			////check for inversion
-			//if (isInverted)
-			//{
-			//	Eigen::JacobiSVD<Eigen::Matrix3f> svd(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
+			//check for inversion
+			if (isInverted)
+			{
+				Eigen::JacobiSVD<Eigen::Matrix3f> svd(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
 
-			//	U = svd.matrixU();
-			//	V = svd.matrixV();
+				U = svd.matrixU();
+				V = svd.matrixV();
 
-			//	F = svd.singularValues().asDiagonal().toDenseMatrix();
+				F = svd.singularValues().asDiagonal().toDenseMatrix();
 
-			//	F(2, 2) *= -1;
-			//	V.col(2) *= -1;
+				F(2, 2) *= -1;
+				V.col(2) *= -1;
 
-			//	std::cout << "Handling Inversion! " << std::endl;
-			//}
+				std::cout << "Handling Inversion! " << std::endl;
+			}
 
 
 
