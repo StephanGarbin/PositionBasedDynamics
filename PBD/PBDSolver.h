@@ -47,6 +47,8 @@ private:
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings, int it,
 		std::ofstream& file);
 
+	void projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 
 private:
 	bool correctInversion(Eigen::Matrix3f& F, 
@@ -60,6 +62,9 @@ private:
 	void computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
 		const float restVolume,
 		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
+
+	void computeDeltaXPositionConstraint(float w1, float w2, float restDistance,
+		const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& deltaX);
 
 	int m_currentFrame;
 };

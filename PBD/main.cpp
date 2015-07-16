@@ -358,6 +358,15 @@ int main(int argc, char* argv[])
 
 		useFEM = std::string(argv[6]) == "USE_FEM";
 
+		if (argc > 7)
+		{
+			if (std::string(argv[7]) == "SAVE_MESH")
+			{
+				writeToAlembic = true;
+				std::cout << "Saving output mesh..." << std::endl;
+			}
+		}
+
 		youngsModulus = k;
 		poissonRatio = v;
 	}

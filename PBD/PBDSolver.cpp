@@ -43,8 +43,8 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//{
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
-	projectConstraintsOLD(tetrahedra, particles, settings);
-	
+	//projectConstraintsOLD(tetrahedra, particles, settings);
+	projectConstraintsDistance(tetrahedra, particles, settings);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -666,7 +666,6 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 			if (std::isnan(lagrangeM))
 			{
-				lagrangeM = 0;
 				//if (isInverted)
 				//{
 				//	std::cout << "NAN! ";
@@ -1378,4 +1377,102 @@ PBDSolver::computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
 		psi += epsilon(j, k) * epsilon(j, k);
 	psi = mu*psi + 0.5f*lambda * trace*trace;
 	energy = restVolume * psi;
+}
+
+
+void
+PBDSolver::projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
+	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+{
+	float w1;
+	float w2;
+	float restDistance;
+
+	Eigen::Vector3f x1;
+	Eigen::Vector3f x2;
+
+	Eigen::Vector3f deltaX;
+
+	for (int it = 0; it < settings.numConstraintIts; ++it)
+	{
+		for (int t = 0; t < settings.numTetrahedra; ++t)
+		{
+			w1 = tetrahedra[t].get_x(0).inverseMass();
+			x1 = tetrahedra[t].get_x(0).position();
+
+			w2 = tetrahedra[t].get_x(2).inverseMass();
+			x2 = tetrahedra[t].get_x(2).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(0),
+				x1, x2, deltaX);
+			tetrahedra[t].get_x(0).position() += -deltaX * w1;
+			tetrahedra[t].get_x(2).position() += deltaX * w2;
+
+			w2 = tetrahedra[t].get_x(3).inverseMass();
+			x2 = tetrahedra[t].get_x(3).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(1),
+				x1, x2, deltaX);
+			tetrahedra[t].get_x(0).position() += -deltaX * w1;
+			tetrahedra[t].get_x(3).position() += deltaX * w2;
+
+			w2 = tetrahedra[t].get_x(1).inverseMass();
+			x2 = tetrahedra[t].get_x(1).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(2),
+				x1, x2, deltaX);
+			tetrahedra[t].get_x(0).position() += -deltaX * w1;
+			tetrahedra[t].get_x(1).position() += deltaX * w2;
+
+			//---------------------------------------------------
+
+			w1 = tetrahedra[t].get_x(2).inverseMass();
+			x1 = tetrahedra[t].get_x(2).position();
+
+			w2 = tetrahedra[t].get_x(3).inverseMass();
+			x2 = tetrahedra[t].get_x(3).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(3),
+				x1, x2, deltaX);
+			tetrahedra[t].get_x(2).position() += -deltaX * w1;
+			tetrahedra[t].get_x(3).position() += deltaX * w2;
+
+
+			w2 = tetrahedra[t].get_x(1).inverseMass();
+			x2 = tetrahedra[t].get_x(1).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(4),
+				x1, x2, deltaX);
+			tetrahedra[t].get_x(2).position() += -deltaX * w1;
+			tetrahedra[t].get_x(1).position() += deltaX * w2;
+
+			//---------------------------------------------------
+
+			w1 = tetrahedra[t].get_x(3).inverseMass();
+			x1 = tetrahedra[t].get_x(3).position();
+
+			w2 = tetrahedra[t].get_x(1).inverseMass();
+			x2 = tetrahedra[t].get_x(1).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(5),
+				x1, x2, deltaX);
+			tetrahedra[t].get_x(3).position() += -deltaX * w1;
+			tetrahedra[t].get_x(1).position() += deltaX * w2;
+		}
+	}
+
+}
+
+
+
+void
+PBDSolver::computeDeltaXPositionConstraint(float w1, float w2, float restDistance,
+const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& deltaX)
+{
+	float squaredNorm = (x1 - x2).squaredNorm();
+
+	if (w1 + w2 == 0.0f || squaredNorm == 0.0f)
+	{
+		deltaX.setZero();
+	}
+	else
+	{
+		deltaX = (squaredNorm - restDistance) * (x1 - x2).normalized() / (w1 + w2);
+	}
+
+	//std::cout << deltaX << std::endl;
 }

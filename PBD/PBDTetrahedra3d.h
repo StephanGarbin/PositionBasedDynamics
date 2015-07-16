@@ -25,6 +25,8 @@ public:
 	float getVolume();
 	float getUndeformedVolume();
 
+	float getUndeformedSideLength(int idx);
+
 	PBDParticle& get_x(int index);
 	PBDParticle& get_X(int index);
 
@@ -35,6 +37,8 @@ private:
 	void calculateReferenceShapeMatrixInverseTranspose();
 	void calculateDeformedShapeMatrix();
 
+	void calculateUndeformedSideLengths();
+
 	Eigen::Matrix3f m_referenceShapeMatrix;
 	Eigen::Matrix3f m_referenceShapeMatrixInverseTranspose;
 	Eigen::Matrix3f m_referenceShapeMatrixInverse;
@@ -43,5 +47,7 @@ private:
 	std::vector<int> m_vertexIndices;
 	std::shared_ptr<std::vector<PBDParticle>> m_particles;
 	float m_undeformedVolume;
+
+	std::vector<float> m_undeformedSideLengths;
 };
 

@@ -32,6 +32,7 @@ PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>&& vertexIndices, const std::sh
 	calculateReferenceShapeMatrix();
 	calculateReferenceShapeMatrixInverseTranspose();
 	calculateUndeformedVolume();
+	calculateUndeformedSideLengths();
 }
 
 PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles)
@@ -41,6 +42,7 @@ PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>& vertexIndices, const std::sha
 	calculateReferenceShapeMatrix();
 	calculateReferenceShapeMatrixInverseTranspose();
 	calculateUndeformedVolume();
+	calculateUndeformedSideLengths();
 }
 
 
@@ -224,7 +226,21 @@ PBDTetrahedra3d::glRender(double r, double g, double b)
 		glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
 		glVertex3d(pbdx4.x(), pbdx4.y(), pbdx4.z());
 	glEnd();
+}
 
+void
+PBDTetrahedra3d::calculateUndeformedSideLengths()
+{
+	m_undeformedSideLengths.push_back((pbdX1 - pbdX3).squaredNorm());
+	m_undeformedSideLengths.push_back((pbdX1 - pbdX4).squaredNorm());
+	m_undeformedSideLengths.push_back((pbdX1 - pbdX2).squaredNorm());
+	m_undeformedSideLengths.push_back((pbdX3 - pbdX4).squaredNorm());
+	m_undeformedSideLengths.push_back((pbdX3 - pbdX2).squaredNorm());
+	m_undeformedSideLengths.push_back((pbdX4 - pbdX2).squaredNorm());
+}
 
-
+float
+PBDTetrahedra3d::getUndeformedSideLength(int idx)
+{
+	return m_undeformedSideLengths[idx];
 }
