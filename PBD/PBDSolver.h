@@ -48,6 +48,9 @@ private:
 		std::ofstream& file);
 
 	void projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations);
+
+	void projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 
 private:
@@ -63,11 +66,29 @@ private:
 		const float restVolume,
 		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
 
-	void computeDeltaXPositionConstraint(float w1, float w2, float restDistance,
-		const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& deltaX);
+	inline void computeDeltaXPositionConstraint(float w1, float w2, float restDistance,
+		const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& temp, Eigen::Vector3f& deltaX);
 
 	int m_currentFrame;
 };
+
+void
+PBDSolver::computeDeltaXPositionConstraint(float w1, float w2, float restDistance,
+const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& temp, Eigen::Vector3f& deltaX)
+{
+	temp = x1 - x2;
+
+	float squaredNorm = temp.squaredNorm();
+
+	if (w1 + w2 == 0.0f || squaredNorm == 0.0f)
+	{
+		deltaX.setZero();
+	}
+	else
+	{
+		deltaX = (squaredNorm - restDistance) * (temp.normalized()) / (w1 + w2);
+	}
+}
 
 
 struct mutexStruct
