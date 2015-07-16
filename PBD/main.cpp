@@ -33,7 +33,7 @@ std::vector<int> numConstraintInfluences;
 PBDSolver solver;
 FEMSimulator FEMsolver;
 
-SurfaceMeshHandler smHandler("tttt");
+std::shared_ptr<SurfaceMeshHandler> smHandler;
 
 PBDSolverSettings settings;
 
@@ -42,6 +42,7 @@ int numMilliseconds = 1000;
 double sumExecutionTime;
 int timingPrintInterval = 100;
 int currentFrame = 1;
+int maxFrames = 600;
 
 int globalHeight;
 int globalWidth;
@@ -263,15 +264,8 @@ void mainLoop()
 	}
 	else
 	{
-		//std::cout << "Solver" << std::endl;
-
 		FEMsolver.doTimeStep(true);
-
-		//std::cout << "Application" << std::endl;
-
 		applyFEMDisplacementsToParticles();
-
-		//std::cout << "Rendering" << std::endl;
 	}
 	tbb::tick_count end = tbb::tick_count::now();
 	sumExecutionTime += (end - start).seconds();
@@ -285,10 +279,21 @@ void mainLoop()
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 
-	//saveFrameBufferAsPng();
 	TwDraw();
 	glutSwapBuffers();
 	++currentFrame;
+
+	if (writeToAlembic)
+	{
+		getCurrentPositionFromParticles();
+		smHandler->setSample(currentPositions);
+	}
+
+	if (maxFrames <= currentFrame)
+	{
+		std::cout << "Leaving Glut Main Loop..." << std::endl;
+		glutLeaveMainLoop();
+	}
 }
 
 // Callback function called by GLUT when window size changes
@@ -331,7 +336,8 @@ int main(int argc, char* argv[])
 	//Inverse Mass
 	float invM;
 
-	bool useSOR;
+	bool useFEM;
+	bool useSOR = false;
 
 	float timeStep;
 
@@ -349,7 +355,7 @@ int main(int argc, char* argv[])
 
 		timeStep = std::stof(std::string(argv[5]));
 
-		useSOR = std::string(argv[6]) == "USE_SOR";
+		useFEM = std::string(argv[6]) == "USE_FEM";
 
 		youngsModulus = k;
 		poissonRatio = v;
@@ -367,6 +373,16 @@ int main(int argc, char* argv[])
 	if (useSOR)
 	{
 		std::cout << "Using SOR Solver..." << std::endl;
+	}
+
+	if (useFEM)
+	{
+		useFEMSolver = true;
+		smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMeshFEM.abc");
+	}
+	else
+	{
+		smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMesh.abc");
 	}
 
 	Eigen::Vector3f initialVelocity;
@@ -445,6 +461,11 @@ int main(int argc, char* argv[])
 		std::cout << "Entering simulation loop..." << std::endl;
 	}
 
+	if (writeToAlembic)
+	{
+		smHandler->initTopology(*particles, tetrahedra);
+		std::cout << "Initialised Topology for Alembic Output!" << std::endl;
+	}
 
 	//TweakBar Interface
 	TwInit(TW_OPENGL, NULL);

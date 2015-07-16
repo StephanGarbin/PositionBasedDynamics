@@ -444,8 +444,6 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 				F(2, 2) *= -1;
 				V.col(2) *= -1;
-
-				std::cout << "Handling Inversion! " << std::endl;
 			}
 
 
@@ -522,7 +520,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 			if (std::isnan(lagrangeM))
 			{
-				std::cout << "NAN!" << std::endl;
+				std::cout << "NAN! ";
 				//std::cout << "Deformation Gradient" << std::endl;
 				//std::cout << F << std::endl;
 				//std::cout << "Inverse of deformation gradient:" << std::endl;
