@@ -42,7 +42,7 @@ int numMilliseconds = 1000;
 double sumExecutionTime;
 int timingPrintInterval = 100;
 int currentFrame = 1;
-int maxFrames = 600;
+int maxFrames = 12000;
 
 int globalHeight;
 int globalWidth;
@@ -61,7 +61,8 @@ float lambda;
 float mu;
 
 bool useFEMSolver = false;
-bool writeToAlembic = false;
+bool writeToAlembic = true;
+bool printStrainEnergyToFile = false;
 
 void applyFEMDisplacementsToParticles()
 {
@@ -399,7 +400,7 @@ int main(int argc, char* argv[])
 	settings.numConstraintIts = numConstraintIts;
 	settings.w = 1.0;
 	settings.printStrainEnergy = false;
-	settings.printStrainEnergyToFile = false;
+	settings.printStrainEnergyToFile = printStrainEnergyToFile;
 	settings.useSOR = useSOR;
 	settings.correctStrongForcesWithSubteps = false;
 	settings.numTetrahedraIterations = 1;
@@ -485,7 +486,7 @@ int main(int argc, char* argv[])
 	//materialSettings = TwNewBar("Material Settings");
 
 	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &youngsModulus,
-		" label='Youngs Modulus' min=0.0 max=100.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
+		" label='Youngs Modulus' min=0.0 max=1000.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
 
 	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &poissonRatio,
 		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");

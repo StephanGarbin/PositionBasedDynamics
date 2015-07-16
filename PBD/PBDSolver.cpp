@@ -414,7 +414,26 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 	Eigen::Matrix3f V;
 	bool isInverted;
 
+	Eigen::Matrix3f S;
+	Eigen::Matrix3f Fhat;
+
 	Eigen::Vector3f deltaX;
+
+	std::ofstream strainEnergyfile;
+
+	if (settings.printStrainEnergyToFile)
+	{
+		std::stringstream ss;
+		ss << "C:/Users/Stephan/Documents/MATLAB/dissertation/pbd/strainEnergyDebug/strainEnergy_" << m_currentFrame << ".txt";
+		strainEnergyfile.open(ss.str());
+		ss.clear();
+	}
+
+	if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+	{
+		calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
+	}
+	bool inversionHandled = false;
 
 	for (int it = 0; it < settings.numConstraintIts; ++it)
 	{
@@ -435,18 +454,132 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//check for inversion
 			if (isInverted)
 			{
-				Eigen::JacobiSVD<Eigen::Matrix3f> svd(F, Eigen::ComputeFullU | Eigen::ComputeFullV);
+				inversionHandled = true;
+				//1. Compute Eigendecomposition
+				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				S = eigenSolver.pseudoEigenvalueMatrix();
+				V = eigenSolver.pseudoEigenvectors();
+				for (int i = 0; i < 3; ++i)
+				{
+					if (S(i, i) < 0.0f)
+					{
+						S(i, i) = 0.0f;
+					}
+				}
 
-				U = svd.matrixU();
-				V = svd.matrixV();
+				//2.  Detect if V is a reflection .
+				//    Make a rotation out of it by multiplying one column with -1.
+				const float detV = V.determinant();
+				if (detV < 0.0)
+				{
+					float minLambda = FLT_MAX;
+					unsigned char pos = 0;
+					for (unsigned char l = 0; l < 3; l++)
+					{
+						if (S(l,l) < minLambda)
+						{
+							pos = l;
+							minLambda = S(l, l);
+						}
+					}
+					V(0, pos) = -V(0, pos);
+					V(1, pos) = -V(1, pos);
+					V(2, pos) = -V(2, pos);
+				}
 
-				F = svd.singularValues().asDiagonal().toDenseMatrix();
+				//3. Compute Fhat
+				Fhat.setZero();
+				Fhat(0, 0) = sqrtf(S(0, 0));
+				Fhat(1, 1) = sqrtf(S(1, 1));
+				Fhat(2, 2) = sqrtf(S(2, 2));
 
-				F(2, 2) *= -1;
-				V.col(2) *= -1;
+				//4. Compute U
+				U = F * V * Fhat.inverse();
+
+				//CORRECT U
+				//
+				// Check for values of hatF near zero
+				//
+				unsigned char chk = 0;
+				unsigned char pos = 0;
+				for (unsigned char l = 0; l < 3; l++)
+				{
+					if (fabs(Fhat(l, l)) < 1.0e-4f)
+					{
+						pos = l;
+						chk++;
+					}
+				}
+
+				if (chk > 0)
+				{
+					if (chk > 1)
+					{
+						U.setIdentity();
+					}
+					else
+					{
+						U = F * V;
+						for (unsigned char l = 0; l < 3; l++)
+						{
+							if (l != pos)
+							{
+								for (unsigned char m = 0; m < 3; m++)
+								{
+									U(m, l) *= 1.0f / Fhat(l, l);
+								}
+							}
+						}
+
+						Eigen::Vector3f v[2];
+						unsigned char index = 0;
+						for (unsigned char l = 0; l < 3; l++)
+						{
+							if (l != pos)
+							{
+								v[index++] = Eigen::Vector3f(U(0, l), U(1, l), U(2, l));
+							}
+						}
+						Eigen::Vector3f vec = v[0].cross(v[1]);
+						vec.normalize();
+						U(0, pos) = vec[0];
+						U(1, pos) = vec[1];
+						U(2, pos) = vec[2];
+					}
+				}
+				else
+				{
+					Eigen::Vector3f hatFInv(1.0f / Fhat(0, 0), 1.0f / Fhat(1, 1), 1.0f / Fhat(2, 2));
+					U = F * V;
+					for (unsigned char l = 0; l < 3; l++)
+					{
+						for (unsigned char m = 0; m < 3; m++)
+						{
+							U(m, l) *= hatFInv[l];
+						}
+					}
+				}
+
+				//5. Check if U is also a rotation and correct
+				if (U.determinant() < 0)
+				{
+					//find minimal element of U
+					int minElementFhat = 0;
+					float minElementFhatValue = Fhat(0, 0);
+					for (int e = 0; e < 3; ++e)
+					{
+						if (Fhat(e, e) < minElementFhatValue)
+						{
+							minElementFhat = e;
+							minElementFhatValue = Fhat(e, e);
+						}
+					}
+
+					Fhat(minElementFhat, minElementFhat) *= -1.0;
+					U.col(minElementFhat) *= -1.0;
+				}
+
 			}
-
-
 
 			FInverseTranspose = F.inverse().transpose();
 			FTransposeF = F.transpose() * F;
@@ -458,14 +591,23 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			float logI3 = log(I3);
 
 			//Compute Stress tensor
-			PF = settings.mu * F - settings.mu * FInverseTranspose
-				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+			if (isInverted)
+			{
+				PF = settings.mu * Fhat - settings.mu * Fhat.inverse().transpose()
+					+ ((settings.lambda * logI3) / 2.0) * Fhat.inverse().transpose();
 
+				PF = U * PF * V;
 
-			//if (isInverted)
-			//{
-			//	PF = U * PF * V;
-			//}
+				I1 = (Fhat.transpose() * Fhat).trace();
+				I3 = (Fhat.transpose() * Fhat).determinant();
+
+				logI3 = log(I3);
+			}
+			else
+			{
+				PF = settings.mu * F - settings.mu * FInverseTranspose
+					+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+			}
 
 			//Compute volume
 			float Volume = tetrahedra[t].getUndeformedVolume();
@@ -486,6 +628,10 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//Compute Strain Energy density field
 			float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
 
+			//if (strainEnergy < -1e-5f)
+			//{
+			//	strainEnergy = -1e-5f;
+			//}
 
 			//std::cout << "Strain Energy: " << strainEnergy << std::endl;
 
@@ -520,7 +666,16 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 			if (std::isnan(lagrangeM))
 			{
-				std::cout << "NAN! ";
+				lagrangeM = 0;
+				//if (isInverted)
+				//{
+				//	std::cout << "NAN! ";
+				//}
+				//else
+				//{
+				//	std::cout << "NON-INV NAN! ";
+				//}
+				//
 				//std::cout << "Deformation Gradient" << std::endl;
 				//std::cout << F << std::endl;
 				//std::cout << "Inverse of deformation gradient:" << std::endl;
@@ -530,6 +685,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				//std::cout << "Tensor Gradient " << std::endl;
 				//std::cout << gradient << std::endl;
 				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+				//std::cout << "Denominator: " << denominator << std::endl;
 				//std::cout << "Lagrange Multiplier: " << lagrangeM << std::endl;
 				////std::cout << "Inverse Mass: " << tetrahedra[t].get_x(c).inverseMass() << std::endl;
 				//std::cout << "Undeformed Volume: " << V << std::endl;
@@ -559,6 +715,23 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			}
 
 		}
+
+
+		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+		{
+			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
+		}
+
+	}
+
+	if (settings.printStrainEnergyToFile)
+	{
+		strainEnergyfile.close();
+	}
+
+	if (inversionHandled)
+	{
+		std::cout << "Inversion handled successfully!" << std::endl;
 	}
 }
 
