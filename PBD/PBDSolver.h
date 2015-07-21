@@ -48,9 +48,12 @@ private:
 		std::ofstream& file);
 
 	void projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
-		std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations);
+		std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k);
 
 	void projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+
+	void projectConstraintsMooneyRivlin(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 
 private:
