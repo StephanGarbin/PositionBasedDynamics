@@ -4,8 +4,9 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <vector>
 #include <iostream>
+
+#include "CUDA_WRAPPER.h"
 
 const int NUM_THREADS_PER_BLOCK_SINGLE = 8;
 const int NUM_THREADS_PER_BLOCK = NUM_THREADS_PER_BLOCK_SINGLE * NUM_THREADS_PER_BLOCK_SINGLE;
@@ -359,9 +360,14 @@ __device__ void getMasses(int idx, float* masses)
 }
 
 __global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
-	float lambda, float mu)
+	float lambda, float mu, int trueNumConstraints)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (idx > trueNumConstraints)
+	{
+		return;
+	}
 
 	getIndices(idx, indices);
 	getMasses(idx, inverseMass);
@@ -449,124 +455,47 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("\n \n");
 
 	//7. Calculate Lagrange Multiplier
-	float lagrangeMultiplier = - (strainEnergy / calculateLagrangeMultiplierDenominator(idx, inverseMass));
+	float denominator = calculateLagrangeMultiplierDenominator(idx, inverseMass);
+
+	if (denominator == 0.0f)
+	{
+		return;
+	}
+
+	float lagrangeMultiplier = -(strainEnergy / denominator);
 
 	//printf("lagrangeMultiplier = %4.8f \n", lagrangeMultiplier);
+
+	
 
 	//8. Update Positions
 	updatePositions(idx, lagrangeMultiplier, positions, inverseMass);
 }
 
 
-
 cudaError_t projectConstraints(std::vector<int>& indices,
-	std::vector<float>& originalPositions,
 	std::vector<float>& positions,
 	std::vector<float>& inverseMasses,
 	std::vector<float>& refShapeMatrixInverses,
 	std::vector<float>& volumes,
 	std::vector<float>& positions_result,
-	float lambda, float mu);
+	const CUDAPBD_SolverSettings& settings);
 
-void projectConstraintsHOST(std::vector<int>& indices,
-	std::vector<float>& originalPositions,
-	std::vector<float>& positions,
-	std::vector<float>& inverseMasses,
-	std::vector<float>& refShapeMatrixInverses,
-	std::vector<float>& volumes,
-	std::vector<float>& positions_result,
-	float lambda, float mu);
-
-
-void setUpSystem(std::vector<int>& indices, std::vector<float>& originalPositions,
-	std::vector<float>& positions,
-	std::vector<float>& inverseMasses,
-	std::vector<float>& refShapeMatrixInverses,
-	std::vector<float>& volumes,
-	float gravity, float deltaT)
+int CUDA_projectConstraints(std::vector<int> indices,
+	std::vector<float> positions,
+	std::vector<float> inverseMasses,
+	std::vector<float> refShapeMatrixInverses,
+	std::vector<float> volumes,
+	const CUDAPBD_SolverSettings& settings)
 {
-	originalPositions.push_back(0.0f); originalPositions.push_back(0.0f); originalPositions.push_back(0.0f);
-	originalPositions.push_back(-0.946f); originalPositions.push_back(0.0f); originalPositions.push_back(-1.114f);
-	originalPositions.push_back(0.689f); originalPositions.push_back(0.515f); originalPositions.push_back(-1.114f);
-	originalPositions.push_back(0.689f); originalPositions.push_back(-0.757f); originalPositions.push_back(-1.114f);
-	originalPositions.push_back(0.0f); originalPositions.push_back(0.0f); originalPositions.push_back(-2.576f);
-
-	indices.push_back(3); indices.push_back(0); indices.push_back(2); indices.push_back(1);
-	indices.push_back(3); indices.push_back(4); indices.push_back(1); indices.push_back(2);
-
-	for (int i = 0; i < 5; ++i)
-	{
-		inverseMasses.push_back(1.0f);
-	}
-	inverseMasses[0] = 0.0f;
-
-	for (int i = 0; i < originalPositions.size(); ++i)
-	{
-		positions.push_back(originalPositions[i]);
-	}
-
-	//apply one time step of deformations
-	for (int i = 0; i < 5; ++i)
-	{
-		positions[i * 3 + 1] += inverseMasses[i] * gravity * deltaT;
-	}
-
-	//FROM MATLAB
-	volumes.push_back(0.38613f);
-	volumes.push_back(0.50676f);
-
-	refShapeMatrixInverses.push_back(0.2476294885850020f);
-	refShapeMatrixInverses.push_back(-0.786163522012579f);
-	refShapeMatrixInverses.push_back(-0.210285005566797f);
-	refShapeMatrixInverses.push_back(0.0000000000000000f);
-	refShapeMatrixInverses.push_back(0.0000000000000000f);
-	refShapeMatrixInverses.push_back(0.8976660682226210f);
-	refShapeMatrixInverses.push_back(0.3639913065220320f);
-	refShapeMatrixInverses.push_back(0.7861635220125790f);
-	refShapeMatrixInverses.push_back(-0.309098542163233f);
-	refShapeMatrixInverses.push_back(0.0000000000000000f);
-	refShapeMatrixInverses.push_back(0.2476294885850020f);
-	refShapeMatrixInverses.push_back(-0.786163522012579f);
-	refShapeMatrixInverses.push_back(0.1602308455550010f);
-	refShapeMatrixInverses.push_back(0.0000000000000000f);
-	refShapeMatrixInverses.push_back(0.0000000000000000f);
-	refShapeMatrixInverses.push_back(-0.683994528043776f);
-	refShapeMatrixInverses.push_back(-0.611620795107034f);
-	refShapeMatrixInverses.push_back(0.0000000000000000f);
-	refShapeMatrixInverses.push_back(0.2882398959156950f);
-
-
-}
-
-
-int main()
-{
-	std::vector<int> indices;
-	std::vector<float> originalPositions;
-	std::vector<float> positions;
-	std::vector<float> inverseMasses;
-	std::vector<float> refShapeMatrixInverses;
-	std::vector<float> volumes;
 
 
 	float deltaT = 0.5f;
 	float gravity = -9.8f;
 
-	float mu = 0.769231f;
-	float lambda = 1.15385f;
-	
-	setUpSystem(indices, originalPositions, positions, inverseMasses, refShapeMatrixInverses, volumes, gravity, deltaT);
-
-	std::vector<float> positionsResultDevice(positions.size());
-	std::vector<float> positionsResultHost(positions.size());
-
-	//CPU
-	projectConstraintsHOST(indices, originalPositions, positions,
-		inverseMasses, refShapeMatrixInverses, volumes, positionsResultHost, lambda, mu);
-	
 	//GPU
-	cudaError_t cudaStatus = projectConstraints(indices, originalPositions, positions,
-		inverseMasses, refShapeMatrixInverses, volumes, positionsResultDevice, lambda, mu);
+	cudaError_t cudaStatus = projectConstraints(indices, positions,
+		inverseMasses, refShapeMatrixInverses, volumes, positions, settings);
 
 	if (cudaStatus != cudaSuccess) {
 		fprintf(stderr, "Critical Error, aborting...");
@@ -581,40 +510,6 @@ int main()
 		return 1;
 	}
 
-	//Print Some Results
-
-	std::cout << "INPUT POSITIONS: " << std::endl;
-	for (int row = 0; row < 5; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			std::cout << positions[row * 3 + col] << ", ";
-		}
-		std::cout << std::endl;
-	}
-	std::cout << std::endl << std::endl;
-
-	std::cout << "AFTER PROJECION HOST: " << std::endl;
-	for (int row = 0; row < 5; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			std::cout << positionsResultHost[row * 3 + col] << ", ";
-		}
-		std::cout << std::endl;
-	}
-	std::cout << std::endl << std::endl;
-
-	std::cout << "AFTER PROJECION DEVICE: " << std::endl;
-	for (int row = 0; row < 5; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			std::cout << positionsResultDevice[row * 3 + col] << ", ";
-		}
-		std::cout << std::endl;
-	}
-	std::cout << std::endl << std::endl;
 
 	return 0;
 }
@@ -642,13 +537,13 @@ void getCudaDeviceProperties(int device)
 	std::cout << "	Mem per SM   : " << properties.sharedMemPerMultiprocessor << std::endl;
 }
 
-cudaError_t projectConstraints(std::vector<int>& indices, std::vector<float>& originalPositions,
+cudaError_t projectConstraints(std::vector<int>& indices,
 	std::vector<float>& positions,
 	std::vector<float>& inverseMasses,
 	std::vector<float>& refShapeMatrixInverses,
 	std::vector<float>& volumes,
 	std::vector<float>& positions_result,
-	float lambda, float mu)
+	const CUDAPBD_SolverSettings& settings)
 {
 	float* dev_positions;
 	float* dev_inverseMasses;
@@ -681,7 +576,13 @@ cudaError_t projectConstraints(std::vector<int>& indices, std::vector<float>& or
 	deviceStatus = cudaErrorWrapper(cudaMemcpy(dev_volumes, &volumes[0], volumes.size() * sizeof(float), cudaMemcpyHostToDevice));
 
 	//Execute Kernel
-	solveFEMConstraint<<<1, 1>>>(dev_positions, dev_indices, dev_inverseMasses, dev_volumes, dev_refShapeMatrixInverses, lambda, mu);
+	for (int it = 0; it < settings.numIterations; ++it)
+	{
+		solveFEMConstraint <<<settings.numBlocks, settings.numThreadsPerBlock>>>(
+			dev_positions, dev_indices, dev_inverseMasses,
+			dev_volumes, dev_refShapeMatrixInverses,
+			settings.lambda, settings.mu, settings.trueNumberOfConstraints);
+	}
 
 	cudaDeviceSynchronize();
 
@@ -696,32 +597,4 @@ cudaError_t projectConstraints(std::vector<int>& indices, std::vector<float>& or
 	cudaFree(dev_refShapeMatrixInverses);
 	cudaFree(dev_volumes);
 	return deviceStatus;
-}
-
-
-void projectConstraintsHOST(std::vector<int>& indices,
-	std::vector<float>& originalPositions,
-	std::vector<float>& positions,
-	std::vector<float>& inverseMasses,
-	std::vector<float>& refShapeMatrixInverses,
-	std::vector<float>& volumes,
-	std::vector<float>& positions_result,
-	float lambda, float mu)
-{
-	positions_result.clear();
-	positions_result.push_back(0.000000000000000000f);
-	positions_result.push_back(0.000000000000000000f);
-	positions_result.push_back(0.000000000000000000f);
-	positions_result.push_back(-0.86112528478748700f);
-	positions_result.push_back(-4.37303501877824000f);
-	positions_result.push_back(-1.16888554066580000f);
-	positions_result.push_back(0.645803837424706000f);
-	positions_result.push_back(-4.08169452857322000f);
-	positions_result.push_back(-1.97921356664365000f);
-	positions_result.push_back(0.656806413004164000f);
-	positions_result.push_back(-5.20915823509948000f);
-	positions_result.push_back(-0.28630813323995600f);
-	positions_result.push_back(-0.00948496564138351f);
-	positions_result.push_back(-4.91178046790357000f);
-	positions_result.push_back(-2.48359275945060000f);
 }

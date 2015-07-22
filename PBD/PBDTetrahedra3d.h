@@ -23,7 +23,11 @@ public:
 	Eigen::Matrix3f getDeformationGradient();
 
 	float getVolume();
-	float getUndeformedVolume();
+
+	float getUndeformedVolume()
+	{
+		return m_undeformedVolume;
+	}
 
 	float getUndeformedSideLength(int idx);
 

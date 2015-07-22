@@ -124,11 +124,11 @@ PBDTetrahedra3d::getVolume()
 	return (1.0 / 6.0) * std::abs(temp.determinant());
 }
 
-float
-PBDTetrahedra3d::getUndeformedVolume()
-{
-	return m_undeformedVolume;
-}
+//float
+//PBDTetrahedra3d::getUndeformedVolume()
+//{
+//	return m_undeformedVolume;
+//}
 
 void
 PBDTetrahedra3d::calculateUndeformedVolume()
