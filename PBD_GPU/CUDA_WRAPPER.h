@@ -8,3 +8,5 @@ int CUDA_projectConstraints(std::vector<int> indices,
 	std::vector<float> refShapeMatrixInverses,
 	std::vector<float> volumes,
 	const CUDAPBD_SolverSettings& settings);
+
+void queryCUDADevices();

@@ -31,6 +31,7 @@ private:
 	int CUDA_NUM_BLOCKS;
 	int CUDA_NUM_THREADS_PER_BLOCK;
 	int CUDA_NUM_PARTICLES;
+	int CUDA_TRUE_NUM_CONSTRAINTS;
 
 	void determineCUDALaunchParameters(int numParticles);
 

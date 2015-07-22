@@ -17,6 +17,8 @@
 #include "PBDSolver.h"
 #include "PBDSolverSettings.h"
 
+#include "GPUPBD_Solver.h"
+
 #include "GLUTHelper.h"
 #include "AntTweakBar.h"
 
@@ -31,6 +33,7 @@ std::vector<Eigen::Vector3f> initialPositions;
 
 std::vector<int> numConstraintInfluences;
 PBDSolver solver;
+GPUPBD_Solver GPUsolver;
 FEMSimulator FEMsolver;
 
 std::shared_ptr<SurfaceMeshHandler> smHandler;
@@ -60,6 +63,7 @@ float poissonRatio;
 float lambda;
 float mu;
 
+bool useGPUSolver = true;
 bool useFEMSolver = false;
 bool writeToAlembic = true;
 bool printStrainEnergyToFile = false;
@@ -261,7 +265,14 @@ void mainLoop()
 	tbb::tick_count start = tbb::tick_count::now();
 	if (!useFEMSolver)
 	{
-		solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences);
+		if (!useGPUSolver)
+		{
+			solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences);
+		}
+		else
+		{
+			GPUsolver.advanceSystem(particles, settings);
+		}
 	}
 	else
 	{
@@ -342,17 +353,29 @@ int main(int argc, char* argv[])
 
 	float timeStep;
 
+	if (argc == 1)
+	{
+		std::cout << "Please provide the following: " << std::endl;
+		std::cout << "	- Youngs Modulus" << std::endl;
+		std::cout << "	- Poisson Ratio" << std::endl;
+		std::cout << "	- Inverse Mass" << std::endl;
+		std::cout << "	- Num Constraint Its" << std::endl;
+		std::cout << "	- Time Step Size" << std::endl;
+		std::cout << "	- USE_FEM" << std::endl;
+		std::cout << "	- SAVE_MESH" << std::endl;
+		return 0;
+	}
+
 	if (argc > 1)
 	{
 		//Young's modulus
 		k = std::stof(std::string(argv[1]));
-
 		//Poisson ratio
 		v = std::stof(std::string(argv[2]));
+		//Inverse Mass
+		invM = std::stof(std::string(argv[3]));
 
-		numConstraintIts = std::stoi(std::string(argv[3]));
-
-		invM = std::stof(std::string(argv[4]));
+		numConstraintIts = std::stoi(std::string(argv[4]));
 
 		timeStep = std::stof(std::string(argv[5]));
 
@@ -469,6 +492,13 @@ int main(int argc, char* argv[])
 			settings.deltaT);
 
 		std::cout << "Entering simulation loop..." << std::endl;
+	}
+
+	if (useGPUSolver)
+	{
+		std::cout << "Setting up GPU Solver..." << std::endl;
+		GPUsolver.setup(tetrahedra, particles);
+		std::cout << "Initialised GPU Solver..." << std::endl;
 	}
 
 	if (writeToAlembic)

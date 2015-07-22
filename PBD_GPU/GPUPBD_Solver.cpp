@@ -1,6 +1,8 @@
 #include "GPUPBD_Solver.h"
 
 #include <iostream>
+#include <memory>
+#include <vector>
 
 #include "CUDAPBD_SolverSettings.h"
 #include "CUDA_WRAPPER.h"
@@ -19,15 +21,17 @@ GPUPBD_Solver::~GPUPBD_Solver()
 void
 GPUPBD_Solver::determineCUDALaunchParameters(int numParticles)
 {
+	CUDA_TRUE_NUM_CONSTRAINTS = numParticles;
+
 	CUDA_NUM_THREADS_PER_BLOCK = 64;
 
-	CUDA_NUM_BLOCKS = (numParticles / CUDA_NUM_BLOCKS) + 1;
+	CUDA_NUM_BLOCKS = (numParticles / CUDA_NUM_THREADS_PER_BLOCK) + 1;
 
 	CUDA_NUM_PARTICLES = CUDA_NUM_BLOCKS * CUDA_NUM_THREADS_PER_BLOCK;
 
-	std::cout << "Determined (from " << numParticles << " tendered particles:" << std::endl;
+	std::cout << "Determined (from " << numParticles << " tendered tetrahedra:" << std::endl;
 	std::cout << "	NUM_BLOCKS           : " << CUDA_NUM_BLOCKS << std::endl;
-	std::cout << "	NUM_THREADS_PER_BLOCK: " << CUDA_NUM_BLOCKS << std::endl;
+	std::cout << "	NUM_THREADS_PER_BLOCK: " << CUDA_NUM_THREADS_PER_BLOCK << std::endl;
 	std::cout << "	This adds " << CUDA_NUM_PARTICLES - numParticles << " to the solver." << std::endl;
 }
 
@@ -36,13 +40,14 @@ GPUPBD_Solver::setup(std::vector<PBDTetrahedra3d>& tetrahedra,
 	std::shared_ptr<std::vector<PBDParticle>>& particles)
 {
 	//0. Determine CUDA Launch parameters
-	determineCUDALaunchParameters(particles->size());
+	determineCUDALaunchParameters(tetrahedra.size());
 
 	//1. Inverse masses
 	for (int i = 0; i < particles->size(); ++i)
 	{
 		m_inverseMasses.push_back((*particles)[i].inverseMass());
 	}
+
 
 	//2. Indices
 	for (int i = 0; i < tetrahedra.size(); ++i)
@@ -53,6 +58,7 @@ GPUPBD_Solver::setup(std::vector<PBDTetrahedra3d>& tetrahedra,
 		}
 	}
 
+	
 	//3. Undeformed Volume
 	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
@@ -71,7 +77,9 @@ GPUPBD_Solver::setup(std::vector<PBDTetrahedra3d>& tetrahedra,
 		}
 	}
 
-	m_positions.resize(m_indices.size() * 3);
+	m_positions.resize(m_inverseMasses.size());
+
+	queryCUDADevices();
 
 	std::cout << "CUDA Solver successfully initialised..." << std::endl;
 	m_isSetup = true;
@@ -103,7 +111,7 @@ GPUPBD_Solver::advanceSystem(std::shared_ptr<std::vector<PBDParticle>>& particle
 	solverSettings.numBlocks = CUDA_NUM_BLOCKS;
 	solverSettings.numThreadsPerBlock = CUDA_NUM_THREADS_PER_BLOCK;
 	solverSettings.numIterations = settings.numConstraintIts;
-	solverSettings.trueNumberOfConstraints = CUDA_NUM_PARTICLES;
+	solverSettings.trueNumberOfConstraints = CUDA_TRUE_NUM_CONSTRAINTS;
 
 	//3. Advance System
 	std::cout << "Solving System with CUDA..." << std::endl;
