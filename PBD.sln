@@ -10,6 +10,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PBD", "PBD\PBD.vcxproj", "{
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PBD_GPU", "PBD_GPU\PBD_GPU.vcxproj", "{C667BBBA-33FE-48E5-A0FC-9E26FC52094C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CompareAnimations", "AlembicTools\CompareAnimations\CompareAnimations.vcxproj", "{CB6231B2-3353-4DEB-8973-ACF4779833A0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -33,7 +35,14 @@ Global
 		{C667BBBA-33FE-48E5-A0FC-9E26FC52094C}.Release|Win32.ActiveCfg = Release|Win32
 		{C667BBBA-33FE-48E5-A0FC-9E26FC52094C}.Release|Win32.Build.0 = Release|Win32
 		{C667BBBA-33FE-48E5-A0FC-9E26FC52094C}.Release|x64.ActiveCfg = Release|x64
-		{C667BBBA-33FE-48E5-A0FC-9E26FC52094C}.Release|x64.Build.0 = Release|x64
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Debug|Win32.Build.0 = Debug|Win32
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Debug|x64.ActiveCfg = Debug|x64
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Debug|x64.Build.0 = Debug|x64
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Release|Win32.ActiveCfg = Release|Win32
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Release|Win32.Build.0 = Release|Win32
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Release|x64.ActiveCfg = Release|x64
+		{CB6231B2-3353-4DEB-8973-ACF4779833A0}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
