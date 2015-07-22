@@ -52,11 +52,11 @@ struct PBDSolverSettings
 
 	float calculateLambda(float youngsModulus, float poissonRatio) const
 	{
-		return (youngsModulus * poissonRatio) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio));
+		return (youngsModulus * poissonRatio) / ((1.0f + poissonRatio) * (1.0f - 2.0f * poissonRatio));
 	}
 
 	float calculateMu(float youngsModulus, float poissonRatio) const
 	{
-		return youngsModulus / (2.0 * (1.0 + poissonRatio));
+		return youngsModulus / (2.0f * (1.0f + poissonRatio));
 	}
 };

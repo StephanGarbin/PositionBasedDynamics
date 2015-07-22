@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "PBDParticle.h";
-#include "PBDTetrahedra3d.h";
+#include "PBDParticle.h"
+#include "PBDTetrahedra3d.h"
 #include "PBDSolverSettings.h"
 
 class GPUPBD_Solver
