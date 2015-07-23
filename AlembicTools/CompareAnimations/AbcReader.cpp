@@ -49,6 +49,8 @@ AbcReader::openArchive(const std::string& file)
 
 	std::cout << "Num Poly Mesh Schema Samples Read From file: " << schema.getNumSamples() << std::endl;
 	m_data->numSamples = schema.getNumSamples();
+	sampleSpecific(0);
+
 
 	return true;
 }
@@ -94,25 +96,49 @@ AbcReader::readCurrentSampleIntoMemory()
 	//}
 }
 
-void
+bool
 AbcReader::sampleForward()
 {
-	m_data->currentSample += 1;
-	readCurrentSampleIntoMemory();
+	if (m_data->currentSample < m_data->numSamples)
+	{
+		m_data->currentSample += 1;
+		readCurrentSampleIntoMemory();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
-void
+bool
 AbcReader::sampleBackward()
 {
-	m_data->currentSample -= 1;
-	readCurrentSampleIntoMemory();
+	if (m_data->currentSample >= 0)
+	{
+		m_data->currentSample -= 1;
+		readCurrentSampleIntoMemory();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
-void
+bool
 AbcReader::sampleSpecific(int sample)
 {
-	m_data->currentSample = sample;
-	readCurrentSampleIntoMemory();
+	if (sample >= 0 && sample < m_data->numSamples)
+	{
+		m_data->currentSample = sample;
+		readCurrentSampleIntoMemory();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 int

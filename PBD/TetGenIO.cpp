@@ -48,13 +48,14 @@ TetGenIO::readNodes(const std::string& fileName, std::vector<PBDParticle>& parti
 			std::cout << "Ignored Comment: " << currentLine << std::endl;
 			continue;
 		}
+		removeWhiteSpaceAtBeginning(currentLine);
 
 		std::vector<std::string> inputs;
 
+		int add = 0;
+
 		boost::split(inputs, currentLine, boost::is_any_of(" "));
 		//std::cout << inputs[1] << "; " << inputs[2] << "; " << inputs[3] << std::endl;
-
-		int add = 1;
 
 		position.x() = std::stod(inputs[1 + add]);
 		position.y() = std::stod(inputs[2 + add]);
@@ -101,6 +102,8 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 			continue;
 		}
 
+		removeWhiteSpaceAtBeginning(currentLine);
+
 		std::vector<int> vertexIndices(5);
 
 		std::vector<std::string> inputs;
@@ -113,7 +116,7 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 		//	std::cout << inputs[r] << std::endl;
 		//}
 
-		int add = 1;
+		int add = 0;
 
 		vertexIndices[0] = std::stoi(inputs[1 + add]);
 		vertexIndices[1] = std::stoi(inputs[4 + add]);
@@ -151,5 +154,14 @@ TetGenIO::removeUnnecessarySpaces(std::string& input)
 		{
 			previous = input;
 		}
+	}
+}
+
+void
+TetGenIO::removeWhiteSpaceAtBeginning(std::string& input)
+{
+	while (input[0] == ' ')
+	{
+		input.erase(input.begin());
 	}
 }

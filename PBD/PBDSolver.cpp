@@ -44,9 +44,9 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
 	//projectConstraintsOLD(tetrahedra, particles, settings);
-	projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
+	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
-	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, 1.0);
+	projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, 1.0);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -1521,7 +1521,7 @@ PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tet
 	}
 	bool inversionHandled = false;
 
-	projectConstraintsDistance(tetrahedra, particles, 10, 1);
+	//projectConstraintsDistance(tetrahedra, particles, 10, 1);
 
 	for (int it = 0; it < settings.numConstraintIts; ++it)
 	{

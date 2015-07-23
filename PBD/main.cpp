@@ -45,7 +45,7 @@ int numMilliseconds = 1000;
 double sumExecutionTime;
 int timingPrintInterval = 100;
 int currentFrame = 1;
-int maxFrames = 12000;
+int maxFrames = 2000;
 
 int globalHeight;
 int globalWidth;
@@ -67,6 +67,20 @@ bool useGPUSolver = true;
 bool useFEMSolver = false;
 bool writeToAlembic = true;
 bool printStrainEnergyToFile = false;
+
+
+std::string nodes("barout.node");
+std::string tets("barout.ele");
+std::string constraints1("barLowVertexConstraints.txt");
+
+//std::string nodes("liver_processed.1.node");
+//std::string tets("liver_processed.1.ele");
+//std::string constraints1("pigLiver2VertexConstraints.txt");
+
+//std::string nodes("liver_processedD.1.node");
+//std::string tets("liver_processedD.1.ele");
+//std::string constraints1("pigLiver4VertexConstraints.txt");
+
 
 void applyFEMDisplacementsToParticles()
 {
@@ -306,6 +320,8 @@ void mainLoop()
 		std::cout << "Leaving Glut Main Loop..." << std::endl;
 		glutLeaveMainLoop();
 	}
+
+	std::cout << "Current Frame: " << currentFrame << std::endl;
 }
 
 // Callback function called by GLUT when window size changes
@@ -438,8 +454,6 @@ int main(int argc, char* argv[])
 	settings.numTetrahedraIterations = 1;
 	settings.print();
 	
-	std::string nodes("barout.node");
-	std::string tets("barout.ele");
 	TetGenIO::readNodes(nodes, *particles, invM, initialVelocity);
 	TetGenIO::readTetrahedra(tets, tetrahedra, particles);
 
@@ -447,7 +461,7 @@ int main(int argc, char* argv[])
 	settings.numTetrahedra = tetrahedra.size();
 
 	std::vector<int> vertexConstraintIndices;
-	ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, "barLowVertexConstraints.txt");
+	ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, constraints1);
 
 	for (int i = 0; i < vertexConstraintIndices.size(); ++i)
 	{

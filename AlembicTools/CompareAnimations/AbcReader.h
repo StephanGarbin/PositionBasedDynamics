@@ -17,9 +17,9 @@ public:
 
 	bool openArchive(const std::string& file);
 
-	void sampleForward();
-	void sampleBackward();
-	void sampleSpecific(int sample);
+	bool sampleForward();
+	bool sampleBackward();
+	bool sampleSpecific(int sample);
 
 	int getNumSamples();
 

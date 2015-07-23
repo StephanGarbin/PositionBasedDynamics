@@ -20,6 +20,7 @@ public:
 private:
 
 	static void removeUnnecessarySpaces(std::string& input);
+	static void removeWhiteSpaceAtBeginning(std::string& input);
 
 	TetGenIO();
 	~TetGenIO();

@@ -364,7 +364,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (idx > 10)
+	if (!idx < trueNumConstraints)
 	{
 		return;
 	}
@@ -618,15 +618,15 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 
 	//Execute Kernel
 	std::cout << "Executing Kernel..." << std::endl;
-	//for (int it = 0; it < settings.numIterations; ++it)
-	//{
-	//	solveFEMConstraint <<<settings.numBlocks, settings.numThreadsPerBlock>>>(
-	//		dev_positions, dev_indices, dev_inverseMasses,
-	//		dev_volumes, dev_refShapeMatrixInverses,
-	//		settings.lambda, settings.mu, settings.trueNumberOfConstraints);
+	for (int it = 0; it < settings.numIterations; ++it)
+	{
+		solveFEMConstraint <<<settings.numBlocks, settings.numThreadsPerBlock>>>(
+			dev_positions, dev_indices, dev_inverseMasses,
+			dev_volumes, dev_refShapeMatrixInverses,
+			settings.lambda, settings.mu, settings.trueNumberOfConstraints);
 
-	//	cudaErrorWrapper(cudaDeviceSynchronize());
-	//}
+		cudaErrorWrapper(cudaDeviceSynchronize());
+	}
 	std::cout << "Done..." << std::endl;
 
 	deviceStatus = cudaGetLastError();
