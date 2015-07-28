@@ -35,6 +35,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <UseIntelTBB>true</UseIntelTBB>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -52,7 +53,7 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseIntelTBB>true</UseIntelTBB>
-    <UseIntelMKL>Sequential</UseIntelMKL>
+    <UseIntelMKL>No</UseIntelMKL>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -103,15 +104,15 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\TOOLS\boost\boost_1_57_0\;C:\TOOLS\TETGEN\include;C:\TOOLS\FREEGLUT\freeglut-2.8.1\include;C:\TOOLS\GLEW\glew-1.10.0\include\;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;C:\TOOLS\ALEMBIC\win64_2013\include;C:\TOOLS\VEGAFEM\include;C:\Program Files\GLFW\include;C:\TOOLS\AntTweakBar\include;C:\TOOLS\boost\boost_1_57_0\;C:\TOOLS\FREEGLUT\freeglut-2.8.1\include;C:\TOOLS\GLEW\include;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\TOOLS\TETGEN\x64\Debug;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\GLEW\glew-1.10.0\lib\Release\x64;C:\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>tet.lib;glut32.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\TOOLS\VEGAFEM\lib\x64\Debug;C:\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\vc\vc9\IlmBase\x64\Debug;C:\TOOLS\ALEMBIC\win64_2013\Debug;C:\TOOLS\HDF5\x64\Debug;C:\TOOLS\AntTweakBar\lib\debug;C:\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\msvc-12.0\debug\address-model-64\link-static\threading-multi;C:\TOOLS\TETGEN\x64\Debug;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\GLEW\lib\Debug\x64;C:\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cudart.lib;libhdf5_hl_D.lib;libhdf5_tools_D.lib;libhdf5_D.lib;AlembicAbcCoreHDF5.lib;AlembicAbcCoreOgawa.lib;AlembicAbcOpenGL.lib;AlembicAbcMaterial.lib;AlembicOgawa.lib;AlembicZLIB.lib;AlembicIlmBase.lib;AlembicAbc.lib;AlembicAbcGeom.lib;AlembicUtil.lib;AlembicAbcCoreAbstract.lib;AlembicAbcCollection.lib;camera.lib;clothBW.lib;configFile.lib;corotationalLinearFEM.lib;elasticForceModel.lib;forceModel.lib;getopts.lib;graph.lib;hashTable.lib;imageIO.lib;insertRows.lib;integrator.lib;integratorDense.lib;integratorSparse.lib;isotropicHyperelasticFEM.lib;lighting.lib;loadlist.lib;massSpringSystem.lib;matrix.lib;matrixIO.lib;minivector.lib;modalMatrix.lib;objMesh.lib;openGLHelper.lib;performanceCounter.lib;polarDecomposition.lib;quaternion.lib;reducedElasticForceModel.lib;reducedForceModel.lib;reducedStvk.lib;renderVolumetricMesh.lib;rigidBodyDynamics.lib;sceneObjectReduced.lib;sparseMatrix.lib;sparseSolver.lib;stvk.lib;uniqueIntegerID.lib;volumetricMesh.lib;AntTweakBar64.lib;tet.lib;opengl32.lib;glut32.lib;glew32d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboost_thread-vc120-mt-gd-1_57.lib;libboost_timer-vc120-mt-gd-1_57.lib;libboost_system-vc120-mt-gd-1_57.lib;libboost_date_time-vc120-mt-gd-1_57.lib;libboost_chrono-vc120-mt-gd-1_57.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
@@ -144,26 +145,34 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;C:\TOOLS\ALEMBIC\win64_2013\include;C:\TOOLS\VEGAFEM\include;C:\Program Files\GLFW\include;C:\TOOLS\AntTweakBar\include;C:\TOOLS\boost\boost_1_57_0\;C:\TOOLS\FREEGLUT\freeglut-2.8.1\include;C:\TOOLS\GLEW\glew-1.10.0\include\;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;C:\TOOLS\ALEMBIC\win64_2013\include;C:\TOOLS\VEGAFEM\include;C:\Program Files\GLFW\include;C:\TOOLS\AntTweakBar\include;C:\TOOLS\boost\boost_1_57_0\;C:\TOOLS\FREEGLUT\freeglut-2.8.1\include;C:\TOOLS\GLEW\include;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <Optimization>Disabled</Optimization>
       <BufferSecurityCheck>true</BufferSecurityCheck>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\Composer XE 2015\compiler\lib\intel64;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\x64\Release\;C:\TOOLS\HDF5\x64\Release;C:\TOOLS\ALEMBIC\ilmbase\lib\x64\Release;C:\TOOLS\ALEMBIC\win64_2013\Release;C:\TOOLS\VEGAFEM\VS\lib\x64;C:\Program Files\GLFW\lib;C:\TOOLS\AntTweakBar\lib;C:\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\msvc-12.0\release\address-model-64\link-static\threading-multi\;C:\TOOLS\TETGEN\x64\Release;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\GLEW\glew-1.10.0\lib\Release\x64;C:\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <EnableCOMDATFolding>false</EnableCOMDATFolding>
+      <OptimizeReferences>false</OptimizeReferences>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\Composer XE 2015\compiler\lib\intel64;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\x64\Release\;C:\TOOLS\HDF5\x64\Release;C:\TOOLS\ALEMBIC\ilmbase\lib\x64\Release;C:\TOOLS\ALEMBIC\win64_2013\Release;C:\TOOLS\VEGAFEM\VS\lib\x64;C:\Program Files\GLFW\lib;C:\TOOLS\AntTweakBar\lib;C:\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\msvc-12.0\release\address-model-64\link-static\threading-multi\;C:\TOOLS\TETGEN\x64\Release;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\GLEW\lib\Release\x64;C:\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>cudart.lib;libmmdd.lib;libhdf5_hl.lib;libhdf5_tools.lib;libhdf5.lib;AlembicAbcCoreHDF5.lib;AlembicAbcCoreOgawa.lib;AlembicAbcOpenGL.lib;AlembicAbcMaterial.lib;AlembicOgawa.lib;AlembicZLIB.lib;AlembicIlmBase.lib;AlembicAbc.lib;AlembicAbcGeom.lib;AlembicUtil.lib;AlembicAbcCoreAbstract.lib;AlembicAbcCollection.lib;camera.lib;clothBW.lib;configFile.lib;corotationalLinearFEM.lib;elasticForceModel.lib;forceModel.lib;getopts.lib;glslPhong.lib;graph.lib;hashTable.lib;imageIO.lib;insertRows.lib;integrator.lib;integratorDense.lib;integratorSparse.lib;isotropicHyperelasticFEM.lib;lighting.lib;loadlist.lib;massSpringSystem.lib;matrix.lib;matrixIO.lib;minivector.lib;modalMatrix.lib;objMesh.lib;openGLHelper.lib;performanceCounter.lib;polarDecomposition.lib;quaternion.lib;reducedElasticForceModel.lib;reducedForceModel.lib;reducedStvk.lib;renderVolumetricMesh.lib;rigidBodyDynamics.lib;sceneObjectReduced.lib;sparseMatrix.lib;sparseSolver.lib;stvk.lib;uniqueIntegerID.lib;volumetricMesh.lib;glfw3.lib;AntTweakBar64.lib;tet.lib;opengl32.lib;glut32.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboost_thread-vc120-mt-1_57.lib;libboost_timer-vc120-mt-1_57.lib;libboost_system-vc120-mt-1_57.lib;libboost_date_time-vc120-mt-1_57.lib;libboost_chrono-vc120-mt-1_57.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
+      <Optimization>Od</Optimization>
+      <Runtime>MD</Runtime>
+      <RuntimeChecks>RTC1</RuntimeChecks>
+      <TypeInfo>false</TypeInfo>
+      <Warning>W4</Warning>
+      <GPUDebugInfo>true</GPUDebugInfo>
+      <GenerateLineInfo>true</GenerateLineInfo>
+      <PtxAsOptionV>true</PtxAsOptionV>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -174,9 +183,11 @@
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="main2.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="PBDTetrahedra3d.cpp" />
     <ClCompile Include="PBDParticle.cpp" />

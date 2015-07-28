@@ -16,9 +16,9 @@ int main()
 	CUDAPBD_SolverSettings settings;
 	settings.lambda = 11;
 	settings.mu = 13;
-	settings.numBlocks = 7;
+	settings.numBlocks = 65;
 	settings.numThreadsPerBlock = 64;
-	settings.trueNumberOfConstraints = 12;
+	settings.trueNumberOfConstraints = 1065;
 
 	queryCUDADevices();
 

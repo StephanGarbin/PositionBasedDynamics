@@ -337,6 +337,7 @@ __device__ void updatePositions(int idx, float lagrangeMultiplier, float* positi
 		for (int j = 0; j < 3; ++j)
 		{
 			atomicAdd(&positions[LocalIndices[idx][i] * 3 + j], LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
+			//atomicAdd(&positions[LocalIndices[idx][i] * 3 + j], 0.5f);
 			//printf("Position Update %4.8f \n", LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
 		}
 		printf("\n");
@@ -347,7 +348,7 @@ __device__ void getIndices(int idx, int* indices)
 {
 	for (int i = 0; i < 4; ++i)
 	{
-		LocalIndices[idx][i] = indices[idx * 4 + i];
+		LocalIndices[threadIdx.x][i] = indices[idx * 4 + i];
 	}
 }
 
@@ -355,7 +356,7 @@ __device__ void getMasses(int idx, float* masses)
 {
 	for (int i = 0; i < 4; ++i)
 	{
-		LocalMasses[idx][i] = masses[LocalIndices[idx][i]];
+		LocalMasses[threadIdx.x][i] = masses[LocalIndices[idx][i]];
 	}
 }
 
@@ -364,16 +365,18 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (idx > 10)
+	if (idx >= trueNumConstraints)
 	{
 		return;
 	}
+
+	//printf("blockIdx: %d, blockDim: %d, threadIdx: %d, idx: %d; ", blockIdx.x, blockDim.x, threadIdx.x, idx);
 
 	getIndices(idx, indices);
 	getMasses(idx, inverseMass);
 
 	//1. Calculate Deformation Gradient F
-	calculateF(idx, positions, refShapeMatrixInverse);
+	calculateF(threadIdx.x, positions, refShapeMatrixInverse);
 
 	//printf("F: \n");
 	//for (int row = 0; row < 3; ++row)
@@ -387,7 +390,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("\n \n");
 
 	//2. Compute Cauchy Tensors
-	calculateFInverseTranspose(idx);
+	calculateFInverseTranspose(threadIdx.x);
 
 	//printf("FInverseTranspose: \n");
 	//for (int row = 0; row < 3; ++row)
@@ -401,7 +404,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("\n \n");
 
 
-	calculateFTransposeF(idx);
+	calculateFTransposeF(threadIdx.x);
 
 	//printf("FTransposeF: \n");
 	//for (int row = 0; row < 3; ++row)
@@ -415,14 +418,14 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("\n \n");
 
 	//3. Compute Invariants
-	float I1 = traceFTransposeF(idx);
-	float I3 = determinantFTransposeF(idx);
+	float I1 = traceFTransposeF(threadIdx.x);
+	float I3 = determinantFTransposeF(threadIdx.x);
 
 	//printf("I1 = %4.8f \n", I1);
 	//printf("I3 = %4.8f \n", I3);
 
 	//4. Calculate First Piola-Kirchoff Stress Tensor
-	calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(idx, mu, lambda, I3);
+	calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(threadIdx.x, mu, lambda, I3);
 
 	//printf("PF: \n");
 	//for (int row = 0; row < 3; ++row)
@@ -441,7 +444,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("StrainEnergy = %4.8f \n", strainEnergy);
 
 	//6. Calculate Strain Energy Gradient
-	calculateStrainEnergyGradient_NEO_HOOKEAN(idx, volume[idx], refShapeMatrixInverse);
+	calculateStrainEnergyGradient_NEO_HOOKEAN(threadIdx.x, volume[idx], refShapeMatrixInverse);
 
 	//printf("Strain Energy Gradient: \n");
 	//for (int row = 0; row < 3; ++row)
@@ -455,7 +458,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("\n \n");
 
 	//7. Calculate Lagrange Multiplier
-	float denominator = calculateLagrangeMultiplierDenominator(idx, inverseMass);
+	float denominator = calculateLagrangeMultiplierDenominator(threadIdx.x, inverseMass);
 
 	if (denominator == 0.0f)
 	{
@@ -466,10 +469,14 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	//printf("lagrangeMultiplier = %4.8f \n", lagrangeMultiplier);
 
-	
+	if (isnan(lagrangeMultiplier))
+	{
+		return;
+	}
+
 
 	//8. Update Positions
-	updatePositions(idx, lagrangeMultiplier, positions, inverseMass);
+	updatePositions(threadIdx.x, lagrangeMultiplier, positions, inverseMass);
 }
 
 
@@ -481,11 +488,11 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	std::vector<float>& positions_result,
 	const CUDAPBD_SolverSettings& settings);
 
-int CUDA_projectConstraints(std::vector<int> indices,
-	std::vector<float> positions,
-	std::vector<float> inverseMasses,
-	std::vector<float> refShapeMatrixInverses,
-	std::vector<float> volumes,
+int CUDA_projectConstraints(std::vector<int>& indices,
+	std::vector<float>& positions,
+	std::vector<float>& inverseMasses,
+	std::vector<float>& refShapeMatrixInverses,
+	std::vector<float>& volumes,
 	const CUDAPBD_SolverSettings& settings)
 {
 	//GPU
@@ -544,15 +551,15 @@ void getCudaDeviceProperties(int device)
 
 void queryCUDADevices()
 {
-	cudaError_t deviceStatus;
+	//cudaError_t deviceStatus;
 
-	int deviceCount = 0;
-	deviceStatus = cudaGetDeviceCount(&deviceCount);
+	//int deviceCount = 0;
+	//deviceStatus = cudaGetDeviceCount(&deviceCount);
 
-	std::cout << "Num CUDA Devices Found: " << deviceCount << std::endl;
-	deviceStatus = cudaErrorWrapper(cudaSetDevice(0));
-	checkCudaErrorStatus(deviceStatus);
-	getCudaDeviceProperties(0);
+	//std::cout << "Num CUDA Devices Found: " << deviceCount << std::endl;
+	//deviceStatus = cudaErrorWrapper(cudaSetDevice(0));
+	//checkCudaErrorStatus(deviceStatus);
+	//getCudaDeviceProperties(0);
 }
 
 cudaError_t projectConstraints(std::vector<int>& indices,
@@ -569,13 +576,9 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	float* dev_refShapeMatrixInverses = 0;
 	float* dev_volumes = 0;
 
+	std::vector<float> initialPositions = positions;
+
 	cudaError_t deviceStatus;
-
-	//Allocate memory
-	deviceStatus = cudaSetDevice(0);
-	checkCudaErrorStatus(deviceStatus);
-
-	std::cout << "Allocating Memory..." << std::endl;
 
 	std::cout << "Indices  : " << indices.size() << std::endl;
 	std::cout << "Position : " << positions.size() << std::endl;
@@ -583,26 +586,29 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	std::cout << "RefShapes: " << refShapeMatrixInverses.size() << std::endl;
 	std::cout << "Volumes  : " << volumes.size() << std::endl;
 
-	std::cout << "Allocating Memory" << std::endl;
 
-	deviceStatus = cudaGetLastError();
-	checkCudaErrorStatus(deviceStatus);
+	//Allocate memory
+	//deviceStatus = cudaSetDevice(0);
+	//deviceStatus = cudaGetLastError();
+	//checkCudaErrorStatus(deviceStatus);
+
+	std::cout << "Allocating Memory" << std::endl;
 
 	deviceStatus = cudaMalloc((void**)&dev_indices, indices.size() * sizeof(int));
 	checkCudaErrorStatus(deviceStatus);
-	std::cout << "1 Memory..." << std::endl;
+	//std::cout << "1 Memory..." << std::endl;
 	deviceStatus = cudaMalloc((void**)&dev_positions, positions.size() * sizeof(float));
 	checkCudaErrorStatus(deviceStatus);
-	std::cout << "2 Memory..." << std::endl;
+	//std::cout << "2 Memory..." << std::endl;
 	deviceStatus = cudaMalloc((void**)&dev_inverseMasses, inverseMasses.size() * sizeof(float));
 	checkCudaErrorStatus(deviceStatus);
-	std::cout << "3 Memory..." << std::endl;
+	//std::cout << "3 Memory..." << std::endl;
 	deviceStatus = cudaMalloc((void**)&dev_refShapeMatrixInverses, refShapeMatrixInverses.size() * sizeof(float));
 	checkCudaErrorStatus(deviceStatus);
-	std::cout << "4 Memory..." << std::endl;
+	//std::cout << "4 Memory..." << std::endl;
 	deviceStatus = cudaMalloc((void**)&dev_volumes, volumes.size() * sizeof(float));
 	checkCudaErrorStatus(deviceStatus);
-	std::cout << "5 Memory..." << std::endl;
+	//std::cout << "5 Memory..." << std::endl;
 	std::cout << "Copying Memory..." << std::endl;
 
 	//Cpy memory
@@ -617,23 +623,43 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	deviceStatus = cudaMemcpy(dev_volumes, &volumes[0], volumes.size() * sizeof(float), cudaMemcpyHostToDevice);
 
 	//Execute Kernel
-	std::cout << "Executing Kernel..." << std::endl;
-	//for (int it = 0; it < settings.numIterations; ++it)
-	//{
-	//	solveFEMConstraint <<<settings.numBlocks, settings.numThreadsPerBlock>>>(
-	//		dev_positions, dev_indices, dev_inverseMasses,
-	//		dev_volumes, dev_refShapeMatrixInverses,
-	//		settings.lambda, settings.mu, settings.trueNumberOfConstraints);
+	std::cout << "Executing Kernel..." << settings.numIterations << std::endl;
+	std::cout << settings.numBlocks * settings.numThreadsPerBlock << "threads..." << std::endl;
+	std::cout << settings.trueNumberOfConstraints << "true num of constraints..." << std::endl;
 
-	//	cudaErrorWrapper(cudaDeviceSynchronize());
+	dim3 numBlocks;
+	dim3 numThreads;
+	numBlocks.x = settings.numBlocks;
+	numBlocks.y = 1;
+	numBlocks.z = 1;
+
+	numThreads.x = settings.numThreadsPerBlock;
+	numThreads.y = 1;
+	numThreads.z = 1;
+
+	for (int it = 0; it < settings.numIterations; ++it)
+	{
+		solveFEMConstraint << <numBlocks, numThreads >> >(
+			dev_positions, dev_indices, dev_inverseMasses,
+			dev_volumes, dev_refShapeMatrixInverses,
+			settings.lambda, settings.mu, settings.trueNumberOfConstraints);
+	}
+
+	//for (int i = 0; i < positions.size(); ++i)
+	//{
+	//	std::cout << initialPositions[i] - positions[i] << "; ";
 	//}
+
+	//std::cout << std::endl;
+
+	cudaErrorWrapper(cudaDeviceSynchronize());
 	std::cout << "Done..." << std::endl;
 
 	deviceStatus = cudaGetLastError();
 	checkCudaErrorStatus(deviceStatus);
 
 	//Cpy memory back
-	positions_result.resize(positions.size());
+	//positions_result.resize(positions.size());
 	deviceStatus = cudaErrorWrapper(cudaMemcpy(&positions_result[0], dev_positions, positions_result.size() * sizeof(float), cudaMemcpyDeviceToHost));
 	//checkCudaErrorStatus(deviceStatus);
 
@@ -645,4 +671,32 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	cudaFree(dev_volumes);
 	return deviceStatus;
 }
+
+
+//int main()
+//{
+//	std::vector<int> indices(4260);
+//	std::vector<float> positions(426);
+//	std::vector<float> inverseMasses(426);
+//	std::vector<float> refShapeMatrixInverses(9585);
+//	std::vector<float> volumes(1065);
+//	std::vector<float> positions_result(426);
+//
+//	CUDAPBD_SolverSettings settings;
+//	settings.lambda = 11;
+//	settings.mu = 13;
+//	settings.numBlocks = 65;
+//	settings.numThreadsPerBlock = 64;
+//	settings.trueNumberOfConstraints = 1065;
+//
+//	queryCUDADevices();
+//
+//	CUDA_projectConstraints(indices, positions, inverseMasses, refShapeMatrixInverses,
+//		volumes, settings);
+//
+//	std::cout << "done!" << std::endl;
+//
+//	int _stop;
+//	std::cin >> _stop;
+//}
 

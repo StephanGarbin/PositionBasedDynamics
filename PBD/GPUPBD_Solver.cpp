@@ -29,7 +29,7 @@ GPUPBD_Solver::determineCUDALaunchParameters(int numParticles)
 
 	CUDA_NUM_PARTICLES = CUDA_NUM_BLOCKS * CUDA_NUM_THREADS_PER_BLOCK;
 
-	std::cout << "Determined (from " << numParticles << " tendered tetrahedra:" << std::endl;
+	std::cout << "Determined (from " << numParticles << " tendered tetrahedra):" << std::endl;
 	std::cout << "	NUM_BLOCKS           : " << CUDA_NUM_BLOCKS << std::endl;
 	std::cout << "	NUM_THREADS_PER_BLOCK: " << CUDA_NUM_THREADS_PER_BLOCK << std::endl;
 	std::cout << "	This adds " << CUDA_NUM_PARTICLES - numParticles << " to the solver." << std::endl;

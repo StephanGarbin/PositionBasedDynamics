@@ -29,7 +29,7 @@ GPUPBD_Solver::determineCUDALaunchParameters(int numParticles)
 
 	CUDA_NUM_PARTICLES = CUDA_NUM_BLOCKS * CUDA_NUM_THREADS_PER_BLOCK;
 
-	std::cout << "Determined (from " << numParticles << " tendered tetrahedra:" << std::endl;
+	std::cout << "Determined (from " << numParticles << " tendered tetrahedra):" << std::endl;
 	std::cout << "	NUM_BLOCKS           : " << CUDA_NUM_BLOCKS << std::endl;
 	std::cout << "	NUM_THREADS_PER_BLOCK: " << CUDA_NUM_THREADS_PER_BLOCK << std::endl;
 	std::cout << "	This adds " << CUDA_NUM_PARTICLES - numParticles << " to the solver." << std::endl;
@@ -37,7 +37,7 @@ GPUPBD_Solver::determineCUDALaunchParameters(int numParticles)
 
 void
 GPUPBD_Solver::setup(std::vector<PBDTetrahedra3d>& tetrahedra,
-	std::shared_ptr<std::vector<PBDParticle>>& particles)
+std::shared_ptr<std::vector<PBDParticle>>& particles)
 {
 	//0. Determine CUDA Launch parameters
 	determineCUDALaunchParameters(tetrahedra.size());
@@ -58,7 +58,7 @@ GPUPBD_Solver::setup(std::vector<PBDTetrahedra3d>& tetrahedra,
 		}
 	}
 
-	
+
 	//3. Undeformed Volume
 	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
@@ -87,7 +87,7 @@ GPUPBD_Solver::setup(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 void
 GPUPBD_Solver::advanceSystem(std::shared_ptr<std::vector<PBDParticle>>& particles,
-	const PBDSolverSettings& settings)
+const PBDSolverSettings& settings)
 {
 	//check that the system is set up correctly
 	if (!m_isSetup)
