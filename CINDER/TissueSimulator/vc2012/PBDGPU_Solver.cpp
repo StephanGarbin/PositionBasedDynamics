@@ -43,9 +43,12 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 	determineCUDALaunchParameters(tetrahedra.size());
 
 	//1. Inverse masses
-	for (int i = 0; i < particles->size(); ++i)
+	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
-		m_inverseMasses.push_back((*particles)[i].inverseMass());
+		for (int j = 0; j < 4; ++j)
+		{
+			m_inverseMasses.push_back((*particles)[tetrahedra[i].getVertexIndices()[j]].inverseMass());
+		}
 	}
 
 
@@ -68,16 +71,19 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 	//4. Reference Shape Matrices
 	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
+		//std::cout << "HOST RefShape [" << i << "]: " << std::endl;
+		//std::cout << tetrahedra[i].getReferenceShapeMatrixInverseTranspose() << std::endl;
 		for (int row = 0; row < 3; ++row)
 		{
 			for (int col = 0; col < 3; ++col)
 			{
-				m_referenceShapeMatrices.push_back(tetrahedra[i].getReferenceShapeMatrixInverseTranspose()(row, col));
+				//std::cout << tetrahedra[i].getReferenceShapeMatrixInverseTranspose()(row, col) << ", ";
+				m_referenceShapeMatrices.push_back(tetrahedra[i].getReferenceShapeMatrixInverseTranspose().transpose()(row, col));
 			}
 		}
 	}
 
-	m_positions.resize(m_inverseMasses.size() * 3);
+	m_positions.resize(m_inverseMasses.size());
 
 	queryCUDADevices();
 
@@ -110,12 +116,12 @@ Parameters& settings)
 	settings.trueNumberOfConstraints = CUDA_TRUE_NUM_CONSTRAINTS;
 
 	//3. Advance System
-	std::cout << "Solving System with CUDA..." << std::endl;
+	//std::cout << "Solving System with CUDA..." << std::endl;
 	CUDA_projectConstraints(m_indices, m_positions, m_inverseMasses,
 		m_referenceShapeMatrices, m_undeformedVolumes, settings);
 
 	//4. Copy Positions back
-	std::cout << "Copying Positions back to particles..." << std::endl;
+	//std::cout << "Copying Positions back to particles..." << std::endl;
 
 	for (int i = 0; i < particles->size(); ++i)
 	{
@@ -125,7 +131,7 @@ Parameters& settings)
 		}
 	}
 
-	std::cout << "...done" << std::endl;
+	//std::cout << "...done" << std::endl;
 }
 
 void

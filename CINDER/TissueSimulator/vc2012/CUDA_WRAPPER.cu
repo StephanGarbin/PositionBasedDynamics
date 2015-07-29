@@ -101,7 +101,7 @@ __device__ void calculateF(int idx, float* positions, float* refShapeMatrixInver
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += FirstPiolaKirchoffTensor[idx][row][i] * refShapeMatrixInverse[idx * 3 * 3 + i * 3 + col];
+				sum += FirstPiolaKirchoffTensor[idx][row][i] * refShapeMatrixInverse[(blockIdx.x * blockDim.x + threadIdx.x) * 3 * 3 + i * 3 + col];
 			}
 
 			F[idx][row][col] = sum;
@@ -334,13 +334,14 @@ __device__ void updatePositions(int idx, float lagrangeMultiplier, float* positi
 {
 	for (int i = 0; i < 4; ++i)
 	{
-		for (int j = 0; j < 3; ++j)
+		for (int j = 0; j < 1; ++j)
 		{
 			atomicAdd(&positions[LocalIndices[idx][i] * 3 + j], LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
-			//atomicAdd(&positions[LocalIndices[idx][i] * 3 + j], 0.5f);
+			//atomicAdd(&positions[LocalIndices[threadIdx.x][i] * 3 + j], 0.0001f);
+			//printf("%d, ", LocalIndices[threadIdx.x][i] * 3 + j);
 			//printf("Position Update %4.8f \n", LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 }
 
@@ -356,8 +357,22 @@ __device__ void getMasses(int idx, float* masses)
 {
 	for (int i = 0; i < 4; ++i)
 	{
-		LocalMasses[threadIdx.x][i] = masses[LocalIndices[idx][i]];
+		//printf("%d; ", LocalIndices[idx][i]);
+		LocalMasses[threadIdx.x][i] = masses[LocalIndices[threadIdx.x][i]];
 	}
+}
+
+__device__ bool isFIdentity()
+{
+	return(abs(F[threadIdx.x][0][0] - 1.0f) < 1e-6f
+		&& abs(F[threadIdx.x][0][1] - 0.0f) < 1e-6f
+		&& abs(F[threadIdx.x][0][2] - 0.0f) < 1e-6f
+		&& abs(F[threadIdx.x][1][0] - 0.0f) < 1e-6f
+		&& abs(F[threadIdx.x][1][1] - 1.0f) < 1e-6f
+		&& abs(F[threadIdx.x][1][2] - 0.0f) < 1e-6f
+		&& abs(F[threadIdx.x][2][0] - 0.0f) < 1e-6f
+		&& abs(F[threadIdx.x][2][1] - 0.0f) < 1e-6f
+		&& abs(F[threadIdx.x][2][2] - 1.0f) < 1e-6f);
 }
 
 __global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
@@ -373,21 +388,32 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("blockIdx: %d, blockDim: %d, threadIdx: %d, idx: %d; ", blockIdx.x, blockDim.x, threadIdx.x, idx);
 
 	getIndices(idx, indices);
+
 	getMasses(idx, inverseMass);
 
 	//1. Calculate Deformation Gradient F
 	calculateF(threadIdx.x, positions, refShapeMatrixInverse);
 
-	//printf("F: \n");
-	//for (int row = 0; row < 3; ++row)
-	//{
-	//	for (int col = 0; col < 3; ++col)
-	//	{
-	//		printf("%4.8f,", F[idx][row][col]);
-	//	}
-	//	printf("\n");
-	//}
-	//printf("\n \n");
+	if (isFIdentity())
+	{
+		return;
+	}
+
+	//printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+	//	FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+	//	FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+	//	FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+
+	//printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+	//	F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
+	//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
+	//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
+
+	/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+		refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+		refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+		refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
+
 
 	//2. Compute Cauchy Tensors
 	calculateFInverseTranspose(threadIdx.x);
@@ -460,10 +486,10 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//7. Calculate Lagrange Multiplier
 	float denominator = calculateLagrangeMultiplierDenominator(threadIdx.x, inverseMass);
 
-	if (denominator == 0.0f)
-	{
-		return;
-	}
+	//if (denominator == 0.0f)
+	//{
+	//	return;
+	//}
 
 	float lagrangeMultiplier = -(strainEnergy / denominator);
 
@@ -551,15 +577,15 @@ void getCudaDeviceProperties(int device)
 
 void queryCUDADevices()
 {
-	//cudaError_t deviceStatus;
+	cudaError_t deviceStatus;
 
-	//int deviceCount = 0;
-	//deviceStatus = cudaGetDeviceCount(&deviceCount);
+	int deviceCount = 0;
+	deviceStatus = cudaGetDeviceCount(&deviceCount);
 
-	//std::cout << "Num CUDA Devices Found: " << deviceCount << std::endl;
-	//deviceStatus = cudaErrorWrapper(cudaSetDevice(0));
-	//checkCudaErrorStatus(deviceStatus);
-	//getCudaDeviceProperties(0);
+	std::cout << "Num CUDA Devices Found: " << deviceCount << std::endl;
+	deviceStatus = cudaErrorWrapper(cudaSetDevice(0));
+	checkCudaErrorStatus(deviceStatus);
+	getCudaDeviceProperties(0);
 }
 
 cudaError_t projectConstraints(std::vector<int>& indices,
@@ -630,6 +656,7 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	dim3 numBlocks;
 	dim3 numThreads;
 	numBlocks.x = settings.numBlocks;
+	//numBlocks.x = 1;
 	numBlocks.y = 1;
 	numBlocks.z = 1;
 
@@ -643,12 +670,9 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 			dev_positions, dev_indices, dev_inverseMasses,
 			dev_volumes, dev_refShapeMatrixInverses,
 			settings.lambda, settings.mu, settings.trueNumberOfConstraints);
-	}
 
-	//for (int i = 0; i < positions.size(); ++i)
-	//{
-	//	std::cout << initialPositions[i] - positions[i] << "; ";
-	//}
+		cudaErrorWrapper(cudaDeviceSynchronize());
+	}
 
 	//std::cout << std::endl;
 
@@ -661,7 +685,12 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	//Cpy memory back
 	//positions_result.resize(positions.size());
 	deviceStatus = cudaErrorWrapper(cudaMemcpy(&positions_result[0], dev_positions, positions_result.size() * sizeof(float), cudaMemcpyDeviceToHost));
-	//checkCudaErrorStatus(deviceStatus);
+	checkCudaErrorStatus(deviceStatus);
+
+	//for (int i = 0; i < positions.size(); ++i)
+	//{
+	//	std::cout << initialPositions[i] - positions[i] << "; ";
+	//}
 
 	//Free memory
 	cudaFree(dev_positions);

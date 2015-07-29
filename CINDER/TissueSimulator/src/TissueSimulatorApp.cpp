@@ -14,6 +14,7 @@
 #include "cinder\params\Params.h"
 #include "cinder\Camera.h"
 #include "cinder\Matrix.h"
+#include "cinder\Utilities.h"
 
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
@@ -145,6 +146,9 @@ private:
 	//INTERFACE
 	params::InterfaceGlRef m_interfaceParams;
 	Parameters m_params;
+
+	//RENDERING
+	CameraPersp m_camera;
 };
 
 void TissueSimulatorApp::setup()
@@ -160,6 +164,14 @@ void TissueSimulatorApp::setup()
 
 	//2. Setup GPU Solver
 	m_solverGPU.setup(m_data.getTets(), m_data.particles);
+
+	//3. Setup Camera
+	m_camera.lookAt(Vec3f(10.0, 10.0, 10.0), Vec3f(0.0, 0.0, 0.0), Vec3f(0.0, 1.0, 0.0));
+
+
+
+	//Finally, draw one
+	draw();
 }
 
 void TissueSimulatorApp::mouseDown( MouseEvent event )
@@ -169,13 +181,25 @@ void TissueSimulatorApp::mouseDown( MouseEvent event )
 void TissueSimulatorApp::update()
 {
 	m_solverGPU.advanceSystem(m_data.particles, m_params);
+	//sleep(1000);
 }
 
 void TissueSimulatorApp::draw()
 {
+	gl::enableDepthRead();
+	gl::enableDepthWrite();
+
 	// clear out the window with black
 	gl::clear( Color( 0, 0, 0 ) ); 
 
+	gl::setMatrices(m_camera);
+
+	gl::enableWireframe();
+
+	for (int i = 0; i < m_data.getTets().size(); ++i)
+	{
+		m_data.getTets()[i].glRender(1.0, 1.0, 1.0);
+	}
 
 	m_interfaceParams->draw();
 }

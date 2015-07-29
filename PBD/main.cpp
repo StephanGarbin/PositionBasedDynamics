@@ -63,7 +63,7 @@ float poissonRatio;
 float lambda;
 float mu;
 
-bool useGPUSolver = true;
+bool useGPUSolver = false;
 bool useFEMSolver = false;
 bool writeToAlembic = true;
 bool printStrainEnergyToFile = false;
@@ -442,7 +442,7 @@ int main(int argc, char* argv[])
 	settings.youngsModulus = youngsModulus;
 	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
-	settings.gravity = -9.8;
+	settings.gravity = 0.0f;
 	settings.lambda = lambda;
 	settings.mu = mu;
 	settings.numConstraintIts = numConstraintIts;

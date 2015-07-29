@@ -33,7 +33,6 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//Advance Positions
 	advancePositions(tetrahedra, particles, settings);
 
-
 	//Project Constraints
 	//if (!settings.useSOR)
 	//{
@@ -43,10 +42,10 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//{
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
-	//projectConstraintsOLD(tetrahedra, particles, settings);
+	projectConstraintsOLD(tetrahedra, particles, settings);
 	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
-	projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, 1.0);
+	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, 1.0);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -173,7 +172,6 @@ PBDSolver::calculateTotalStrainEnergy(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 	return strainEnergyTotal;
 }
-
 
 void
 PBDSolver::projectConstraints(std::vector<PBDTetrahedra3d>& tetrahedra,
@@ -445,6 +443,11 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 			//Get deformation gradient
 			F = tetrahedra[t].getDeformationGradient();
+
+			std::cout << t << ": " << std::endl;
+			std::cout << tetrahedra[t].getDeformedShapeMatrix() << std::endl;
+			//std::cout << F << std::endl;
+			//std::cout << tetrahedra[t].getReferenceShapeMatrixInverseTranspose() << std::endl;
 
 			if (F.isIdentity())
 			{
