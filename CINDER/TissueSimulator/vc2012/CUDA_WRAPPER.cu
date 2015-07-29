@@ -486,14 +486,14 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	std::vector<float>& refShapeMatrixInverses,
 	std::vector<float>& volumes,
 	std::vector<float>& positions_result,
-	const CUDAPBD_SolverSettings& settings);
+	const Parameters& settings);
 
 int CUDA_projectConstraints(std::vector<int>& indices,
 	std::vector<float>& positions,
 	std::vector<float>& inverseMasses,
 	std::vector<float>& refShapeMatrixInverses,
 	std::vector<float>& volumes,
-	const CUDAPBD_SolverSettings& settings)
+	const Parameters& settings)
 {
 	//GPU
 	cudaError_t cudaStatus = projectConstraints(indices, positions,
@@ -568,7 +568,7 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	std::vector<float>& refShapeMatrixInverses,
 	std::vector<float>& volumes,
 	std::vector<float>& positions_result,
-	const CUDAPBD_SolverSettings& settings)
+	const Parameters& settings)
 {
 	float* dev_positions = 0;
 	float* dev_inverseMasses = 0;
@@ -596,107 +596,78 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 
 	deviceStatus = cudaMalloc((void**)&dev_indices, indices.size() * sizeof(int));
 	checkCudaErrorStatus(deviceStatus);
-	////std::cout << "1 Memory..." << std::endl;
-	//deviceStatus = cudaMalloc((void**)&dev_positions, positions.size() * sizeof(float));
-	//checkCudaErrorStatus(deviceStatus);
-	////std::cout << "2 Memory..." << std::endl;
-	//deviceStatus = cudaMalloc((void**)&dev_inverseMasses, inverseMasses.size() * sizeof(float));
-	//checkCudaErrorStatus(deviceStatus);
-	////std::cout << "3 Memory..." << std::endl;
-	//deviceStatus = cudaMalloc((void**)&dev_refShapeMatrixInverses, refShapeMatrixInverses.size() * sizeof(float));
-	//checkCudaErrorStatus(deviceStatus);
-	////std::cout << "4 Memory..." << std::endl;
-	//deviceStatus = cudaMalloc((void**)&dev_volumes, volumes.size() * sizeof(float));
-	//checkCudaErrorStatus(deviceStatus);
-	////std::cout << "5 Memory..." << std::endl;
-	//std::cout << "Copying Memory..." << std::endl;
+	//std::cout << "1 Memory..." << std::endl;
+	deviceStatus = cudaMalloc((void**)&dev_positions, positions.size() * sizeof(float));
+	checkCudaErrorStatus(deviceStatus);
+	//std::cout << "2 Memory..." << std::endl;
+	deviceStatus = cudaMalloc((void**)&dev_inverseMasses, inverseMasses.size() * sizeof(float));
+	checkCudaErrorStatus(deviceStatus);
+	//std::cout << "3 Memory..." << std::endl;
+	deviceStatus = cudaMalloc((void**)&dev_refShapeMatrixInverses, refShapeMatrixInverses.size() * sizeof(float));
+	checkCudaErrorStatus(deviceStatus);
+	//std::cout << "4 Memory..." << std::endl;
+	deviceStatus = cudaMalloc((void**)&dev_volumes, volumes.size() * sizeof(float));
+	checkCudaErrorStatus(deviceStatus);
+	//std::cout << "5 Memory..." << std::endl;
+	std::cout << "Copying Memory..." << std::endl;
 
-	////Cpy memory
-	//deviceStatus = cudaMemcpy(dev_indices, &indices[0], indices.size() * sizeof(int), cudaMemcpyHostToDevice);
-	//checkCudaErrorStatus(deviceStatus);
-	//deviceStatus = cudaMemcpy(dev_positions, &positions[0], positions.size() * sizeof(float), cudaMemcpyHostToDevice);
-	//checkCudaErrorStatus(deviceStatus);
-	//deviceStatus = cudaMemcpy(dev_inverseMasses, &inverseMasses[0], inverseMasses.size() * sizeof(float), cudaMemcpyHostToDevice);
-	//checkCudaErrorStatus(deviceStatus);
-	//deviceStatus = cudaMemcpy(dev_refShapeMatrixInverses, &refShapeMatrixInverses[0], refShapeMatrixInverses.size() * sizeof(float), cudaMemcpyHostToDevice);
-	//checkCudaErrorStatus(deviceStatus);
-	//deviceStatus = cudaMemcpy(dev_volumes, &volumes[0], volumes.size() * sizeof(float), cudaMemcpyHostToDevice);
+	//Cpy memory
+	deviceStatus = cudaMemcpy(dev_indices, &indices[0], indices.size() * sizeof(int), cudaMemcpyHostToDevice);
+	checkCudaErrorStatus(deviceStatus);
+	deviceStatus = cudaMemcpy(dev_positions, &positions[0], positions.size() * sizeof(float), cudaMemcpyHostToDevice);
+	checkCudaErrorStatus(deviceStatus);
+	deviceStatus = cudaMemcpy(dev_inverseMasses, &inverseMasses[0], inverseMasses.size() * sizeof(float), cudaMemcpyHostToDevice);
+	checkCudaErrorStatus(deviceStatus);
+	deviceStatus = cudaMemcpy(dev_refShapeMatrixInverses, &refShapeMatrixInverses[0], refShapeMatrixInverses.size() * sizeof(float), cudaMemcpyHostToDevice);
+	checkCudaErrorStatus(deviceStatus);
+	deviceStatus = cudaMemcpy(dev_volumes, &volumes[0], volumes.size() * sizeof(float), cudaMemcpyHostToDevice);
 
-	////Execute Kernel
-	//std::cout << "Executing Kernel..." << settings.numIterations << std::endl;
-	//std::cout << settings.numBlocks * settings.numThreadsPerBlock << "threads..." << std::endl;
-	//std::cout << settings.trueNumberOfConstraints << "true num of constraints..." << std::endl;
+	//Execute Kernel
+	std::cout << "Executing Kernel..." << settings.numConstraintIterations<< std::endl;
+	std::cout << settings.numBlocks * settings.numThreadsPerBlock << "threads..." << std::endl;
+	std::cout << settings.trueNumberOfConstraints << "true num of constraints..." << std::endl;
 
-	//dim3 numBlocks;
-	//dim3 numThreads;
-	//numBlocks.x = settings.numBlocks;
-	//numBlocks.y = 1;
-	//numBlocks.z = 1;
+	dim3 numBlocks;
+	dim3 numThreads;
+	numBlocks.x = settings.numBlocks;
+	numBlocks.y = 1;
+	numBlocks.z = 1;
 
-	//numThreads.x = settings.numThreadsPerBlock;
-	//numThreads.y = 1;
-	//numThreads.z = 1;
+	numThreads.x = settings.numThreadsPerBlock;
+	numThreads.y = 1;
+	numThreads.z = 1;
 
-	//for (int it = 0; it < settings.numIterations; ++it)
+	for (int it = 0; it < settings.numConstraintIterations; ++it)
+	{
+		solveFEMConstraint << <numBlocks, numThreads >> >(
+			dev_positions, dev_indices, dev_inverseMasses,
+			dev_volumes, dev_refShapeMatrixInverses,
+			settings.lambda, settings.mu, settings.trueNumberOfConstraints);
+	}
+
+	//for (int i = 0; i < positions.size(); ++i)
 	//{
-	//	solveFEMConstraint << <numBlocks, numThreads >> >(
-	//		dev_positions, dev_indices, dev_inverseMasses,
-	//		dev_volumes, dev_refShapeMatrixInverses,
-	//		settings.lambda, settings.mu, settings.trueNumberOfConstraints);
+	//	std::cout << initialPositions[i] - positions[i] << "; ";
 	//}
 
-	////for (int i = 0; i < positions.size(); ++i)
-	////{
-	////	std::cout << initialPositions[i] - positions[i] << "; ";
-	////}
+	//std::cout << std::endl;
 
-	////std::cout << std::endl;
+	cudaErrorWrapper(cudaDeviceSynchronize());
+	std::cout << "Done..." << std::endl;
 
-	//cudaErrorWrapper(cudaDeviceSynchronize());
-	//std::cout << "Done..." << std::endl;
+	deviceStatus = cudaGetLastError();
+	checkCudaErrorStatus(deviceStatus);
 
-	//deviceStatus = cudaGetLastError();
+	//Cpy memory back
+	//positions_result.resize(positions.size());
+	deviceStatus = cudaErrorWrapper(cudaMemcpy(&positions_result[0], dev_positions, positions_result.size() * sizeof(float), cudaMemcpyDeviceToHost));
 	//checkCudaErrorStatus(deviceStatus);
 
-	////Cpy memory back
-	////positions_result.resize(positions.size());
-	//deviceStatus = cudaErrorWrapper(cudaMemcpy(&positions_result[0], dev_positions, positions_result.size() * sizeof(float), cudaMemcpyDeviceToHost));
-	////checkCudaErrorStatus(deviceStatus);
-
-	////Free memory
-	//cudaFree(dev_positions);
-	//cudaFree(dev_inverseMasses);
+	//Free memory
+	cudaFree(dev_positions);
+	cudaFree(dev_inverseMasses);
 	cudaFree(dev_indices);
-	//cudaFree(dev_refShapeMatrixInverses);
-	//cudaFree(dev_volumes);
+	cudaFree(dev_refShapeMatrixInverses);
+	cudaFree(dev_volumes);
 	return deviceStatus;
 }
-
-
-//int main()
-//{
-//	std::vector<int> indices(4260);
-//	std::vector<float> positions(426);
-//	std::vector<float> inverseMasses(426);
-//	std::vector<float> refShapeMatrixInverses(9585);
-//	std::vector<float> volumes(1065);
-//	std::vector<float> positions_result(426);
-//
-//	CUDAPBD_SolverSettings settings;
-//	settings.lambda = 11;
-//	settings.mu = 13;
-//	settings.numBlocks = 65;
-//	settings.numThreadsPerBlock = 64;
-//	settings.trueNumberOfConstraints = 1065;
-//
-//	queryCUDADevices();
-//
-//	CUDA_projectConstraints(indices, positions, inverseMasses, refShapeMatrixInverses,
-//		volumes, settings);
-//
-//	std::cout << "done!" << std::endl;
-//
-//	int _stop;
-//	std::cin >> _stop;
-//}
-

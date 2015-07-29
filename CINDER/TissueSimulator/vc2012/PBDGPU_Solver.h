@@ -4,21 +4,21 @@
 
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
-#include "PBDSolverSettings.h"
+#include "Parameters.h"
 
-class GPUPBD_Solver
+class PBDGPU_Solver
 {
 public:
-	GPUPBD_Solver();
-	~GPUPBD_Solver();
+	PBDGPU_Solver();
+	~PBDGPU_Solver();
 
 	void setup(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles);
 
 	void advanceSystem(std::shared_ptr<std::vector<PBDParticle>>& particles,
-		const PBDSolverSettings& settings);
+		Parameters& settings);
 
-//private:
+	//private:
 	float m_isSetup;
 
 	std::vector<float> m_inverseMasses;
