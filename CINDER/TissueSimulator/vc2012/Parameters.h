@@ -27,7 +27,7 @@ struct Parameters
 		poissonRatio = 0.3;
 		inverseMass = 1.0f;
 		timeStep = 0.005f;
-		numConstraintIterations = 15;
+		numConstraintIterations = 300;
 
 		gravity = -9.8f;
 

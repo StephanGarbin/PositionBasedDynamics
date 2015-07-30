@@ -168,8 +168,6 @@ void TissueSimulatorApp::setup()
 	//3. Setup Camera
 	m_camera.lookAt(Vec3f(10.0, 10.0, 10.0), Vec3f(0.0, 0.0, 0.0), Vec3f(0.0, 1.0, 0.0));
 
-
-
 	//Finally, draw one
 	draw();
 }

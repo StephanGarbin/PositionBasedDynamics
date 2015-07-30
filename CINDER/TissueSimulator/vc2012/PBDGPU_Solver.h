@@ -29,14 +29,23 @@ private:
 	void updateVelocities(std::shared_ptr<std::vector<PBDParticle>>& particles,
 		const Parameters& settings);
 
+	void setupCUDA();
+	void deleteCUDA();
+
 	float m_isSetup;
 
 	std::vector<float> m_inverseMasses;
 	std::vector<int> m_indices;
 	std::vector<float> m_undeformedVolumes;
 	std::vector<float> m_referenceShapeMatrices;
-
 	std::vector<float> m_positions;
+
+	//CUDA device ptrs
+	int* m_device_indices;
+	float* m_device_positions;
+	float* m_device_undeformedVolumes;
+	float* m_device_referenceShapeMatrices;
+	float* m_device_inverseMasses;
 
 	int CUDA_NUM_BLOCKS;
 	int CUDA_NUM_THREADS_PER_BLOCK;

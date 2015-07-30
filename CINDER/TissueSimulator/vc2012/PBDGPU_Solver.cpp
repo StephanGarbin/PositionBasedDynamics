@@ -16,6 +16,7 @@ PBDGPU_Solver::PBDGPU_Solver()
 PBDGPU_Solver::~PBDGPU_Solver()
 {
 	std::cout << "Destroying CUDA Solver..." << std::endl;
+	deleteCUDA();
 }
 
 void
@@ -43,14 +44,10 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 	determineCUDALaunchParameters(tetrahedra.size());
 
 	//1. Inverse masses
-	for (int i = 0; i < tetrahedra.size(); ++i)
+	for (int i = 0; i < particles->size(); ++i)
 	{
-		for (int j = 0; j < 4; ++j)
-		{
-			m_inverseMasses.push_back((*particles)[tetrahedra[i].getVertexIndices()[j]].inverseMass());
-		}
+		m_inverseMasses.push_back((*particles)[i].inverseMass());
 	}
-
 
 	//2. Indices
 	for (int i = 0; i < tetrahedra.size(); ++i)
@@ -68,28 +65,25 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 		m_undeformedVolumes.push_back(tetrahedra[i].getUndeformedVolume());
 	}
 
-	Eigen::Matrix3f temp;
 	//4. Reference Shape Matrices
+	Eigen::Matrix3f temp;
 	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
 		temp = tetrahedra[i].getReferenceShapeMatrixInverseTranspose().transpose();
-		//std::cout << "HOST RefShape [" << i << "]: " << std::endl;
-		//std::cout << temp << std::endl;
 		for (int row = 0; row < 3; ++row)
 		{
 			for (int col = 0; col < 3; ++col)
 			{
-				//std::cout << tetrahedra[i].getReferenceShapeMatrixInverseTranspose()(row, col) << ", ";
 				m_referenceShapeMatrices.push_back(temp(row, col));
 			}
 		}
-
-		//std::cout << std::endl;
 	}
 
-	m_positions.resize(m_inverseMasses.size());
+	m_positions.resize(m_inverseMasses.size() * 3);
 
 	queryCUDADevices();
+
+	setupCUDA();
 
 	std::cout << "CUDA Solver successfully initialised..." << std::endl;
 	m_isSetup = true;
@@ -125,13 +119,15 @@ Parameters& settings)
 	//3. Advance System
 	settings.calculateMu();
 	settings.calculateLambda();
-	//std::cout << "Solving System with CUDA..." << std::endl;
-	CUDA_projectConstraints(m_indices, m_positions, m_inverseMasses,
-		m_referenceShapeMatrices, m_undeformedVolumes, settings);
+
+	CUDA_updateBuffers(m_device_positions, m_positions);
+
+	CUDA_projectConstraints(m_device_indices, m_device_positions, m_device_inverseMasses,
+		m_device_referenceShapeMatrices, m_device_undeformedVolumes, settings);
+
+	CUDA_getBuffers(m_device_positions, m_positions);
 
 	//4. Copy Positions back
-	//std::cout << "Copying Positions back to particles..." << std::endl;
-
 	for (int i = 0; i < particles->size(); ++i)
 	{
 		for (int j = 0; j < 3; ++j)
@@ -139,8 +135,6 @@ Parameters& settings)
 			(*particles)[i].position()[j] = m_positions[i * 3 + j];
 		}
 	}
-
-	//std::cout << "...done" << std::endl;
 
 	//Update Velocities
 	updateVelocities(particles, settings);
@@ -190,5 +184,21 @@ const Parameters& settings)
 	{
 		p.velocity() = (1.0 / settings.timeStep) * (p.position() - p.previousPosition());
 	}
+}
+
+
+void
+PBDGPU_Solver::setupCUDA()
+{
+	CUDA_allocateBuffers(&m_device_indices, &m_device_positions, &m_device_inverseMasses,
+		&m_device_referenceShapeMatrices, &m_device_undeformedVolumes,
+		m_indices, m_positions, m_inverseMasses, m_referenceShapeMatrices, m_undeformedVolumes);
+}
+
+void
+PBDGPU_Solver::deleteCUDA()
+{
+	CUDA_destroyBuffers(m_device_indices, m_device_positions, m_device_inverseMasses,
+		m_device_referenceShapeMatrices, m_device_undeformedVolumes);
 }
 
