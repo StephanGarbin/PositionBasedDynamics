@@ -8,7 +8,7 @@
 
 #include "CUDA_WRAPPER.h"
 
-const int NUM_THREADS_PER_BLOCK = 256;
+const int NUM_THREADS_PER_BLOCK = 32;
 
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float TEMP1[NUM_THREADS_PER_BLOCK][3][3];
@@ -537,9 +537,9 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 	cudaError_t deviceStatus;
 
 	//Execute Kernel
-	std::cout << "Executing Kernel..." << settings.numConstraintIterations<< std::endl;
-	std::cout << settings.numBlocks * settings.numThreadsPerBlock << "threads..." << std::endl;
-	std::cout << settings.trueNumberOfConstraints << "true num of constraints..." << std::endl;
+	//std::cout << "Executing Kernel..." << settings.numConstraintIterations<< std::endl;
+	//std::cout << settings.numBlocks * settings.numThreadsPerBlock << "threads..." << std::endl;
+	//std::cout << settings.trueNumberOfConstraints << "true num of constraints..." << std::endl;
 
 	dim3 numBlocks;
 	dim3 numThreads;
@@ -552,6 +552,12 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 	numThreads.y = 1;
 	numThreads.z = 1;
 
+	cudaEvent_t start;
+	cudaEvent_t end;
+	cudaEventCreate(&start);
+	cudaEventCreate(&end);
+
+	cudaEventRecord(start);
 	for (int it = 0; it < settings.numConstraintIterations; ++it)
 	{
 		solveFEMConstraint << <numBlocks, numThreads >> >(
@@ -561,8 +567,13 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
 	}
-
 	cudaErrorWrapper(cudaDeviceSynchronize());
+
+	cudaEventRecord(end);
+	cudaEventSynchronize(end);
+	float milliseconds = 0;
+	cudaEventElapsedTime(&milliseconds, start, end);
+	std::cout << "Execution Time: " << milliseconds / 1000.0 << "s." << std::endl;
 
 	deviceStatus = cudaGetLastError();
 	checkCudaErrorStatus(deviceStatus);
