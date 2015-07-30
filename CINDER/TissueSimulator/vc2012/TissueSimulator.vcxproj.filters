@@ -72,6 +72,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CUDA_WRAPPER.cu" />
+    <CudaCompile Include="CUDA_WRAPPER.cu" />
   </ItemGroup>
 </Project>

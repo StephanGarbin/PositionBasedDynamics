@@ -8,14 +8,9 @@
 
 #include "CUDA_WRAPPER.h"
 
-//const int NUM_THREADS_PER_BLOCK_SINGLE = 8;
-//const int NUM_THREADS_PER_BLOCK = NUM_THREADS_PER_BLOCK_SINGLE * NUM_THREADS_PER_BLOCK_SINGLE;
-
 const int NUM_THREADS_PER_BLOCK = 256;
 
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
-//__shared__ float FTransposeF[NUM_THREADS_PER_BLOCK][3][3];
-//__shared__ float FInverseTranspose[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float TEMP1[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float FirstPiolaKirchoffTensor[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float Gradient[NUM_THREADS_PER_BLOCK][3][4];
@@ -67,43 +62,6 @@ __device__ void calculateF(int globalIdx, int idx, float* positions, float* refS
 	FirstPiolaKirchoffTensor[idx][0][2] = positions[LocalIndices[idx][2] * 3 + 0] - positions[LocalIndices[idx][3] * 3 + 0];
 	FirstPiolaKirchoffTensor[idx][1][2] = positions[LocalIndices[idx][2] * 3 + 1] - positions[LocalIndices[idx][3] * 3 + 1];
 	FirstPiolaKirchoffTensor[idx][2][2] = positions[LocalIndices[idx][2] * 3 + 2] - positions[LocalIndices[idx][3] * 3 + 2];
-	//if ((blockIdx.x * blockDim.x + threadIdx.x) == 47)
-	//{
-	//	printf("Particles: \n");
-	//	for (int i = 0; i < 4; ++i)
-	//	{
-	//		printf("%4.8f ,", positions[LocalIndices[idx][i] * 3 + 0]);
-	//		printf("%4.8f ,", positions[LocalIndices[idx][i] * 3 + 1]);
-	//		printf("%4.8f \n", positions[LocalIndices[idx][i] * 3 + 2]);
-	//	}
-	//}
-
-	//printf("Local Indices: \n");
-	//for (int i = 0; i < 4; ++i)
-	//{
-	//	printf("%d, ", LocalIndices[idx][i]);
-	//}
-	//printf("\n");
-	//
-	//printf("Particles: \n");
-	//for (int i = 0; i < 4; ++i)
-	//{
-	//	printf("%4.4f ,", positions[LocalIndices[idx][i] * 3 + 0]);
-	//	printf("%4.4f ,", positions[LocalIndices[idx][i] * 3 + 1]);
-	//	printf("%4.4f \n", positions[LocalIndices[idx][i] * 3 + 2]);
-	//}
-	//printf("Particles END \n");
-	//printf("\n");
-	//printf("Ref Shape Matrix: \n");
-	//for (int row = 0; row < 3; ++row)
-	//{
-	//	for (int col = 0; col < 3; ++col)
-	//	{
-	//		printf("%4.4f,", refShapeMatrixInverse[idx * 3 * 3 + row * 3 + col]);
-	//	}
-	//	printf("\n");
-	//}
-	//printf("\n \n");
 
 	//2. Multiply 
 	for (int row = 0; row < 3; ++row)
@@ -220,21 +178,7 @@ __device__ void calculateFTransposeF(int idx)
 		}
 	}
 
-	//2. Transpose F (Subsume into multiplication later!)
-	float temp;
-	temp = TEMP1[idx][0][1];
-	TEMP1[idx][0][1] = TEMP1[idx][1][0];
-	TEMP1[idx][1][0] = temp;
-
-	temp = TEMP1[idx][0][2];
-	TEMP1[idx][0][2] = TEMP1[idx][2][0];
-	TEMP1[idx][2][0] = temp;
-
-	temp = TEMP1[idx][1][2];
-	TEMP1[idx][1][2] = TEMP1[idx][2][1];
-	TEMP1[idx][2][1] = temp;
-
-	//3. Multiply with F
+	//3. Multiply with F (TEMP1 transposed)
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 3; ++col)
@@ -243,7 +187,7 @@ __device__ void calculateFTransposeF(int idx)
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += TEMP1[idx][row][i] * F[idx][i][col];
+				sum += TEMP1[idx][i][row] * F[idx][i][col];
 			}
 
 			FirstPiolaKirchoffTensor[idx][row][col] = sum;
