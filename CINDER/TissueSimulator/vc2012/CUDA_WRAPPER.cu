@@ -8,7 +8,7 @@
 
 #include "CUDA_WRAPPER.h"
 
-const int NUM_THREADS_PER_BLOCK = 32;
+const int NUM_THREADS_PER_BLOCK = 64;
 
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float TEMP1[NUM_THREADS_PER_BLOCK][3][3];
