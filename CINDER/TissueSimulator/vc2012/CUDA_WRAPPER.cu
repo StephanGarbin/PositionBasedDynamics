@@ -8,12 +8,15 @@
 
 #include "CUDA_WRAPPER.h"
 
-const int NUM_THREADS_PER_BLOCK_SINGLE = 8;
-const int NUM_THREADS_PER_BLOCK = NUM_THREADS_PER_BLOCK_SINGLE * NUM_THREADS_PER_BLOCK_SINGLE;
+//const int NUM_THREADS_PER_BLOCK_SINGLE = 8;
+//const int NUM_THREADS_PER_BLOCK = NUM_THREADS_PER_BLOCK_SINGLE * NUM_THREADS_PER_BLOCK_SINGLE;
+
+const int NUM_THREADS_PER_BLOCK = 128;
 
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
-__shared__ float FTransposeF[NUM_THREADS_PER_BLOCK][3][3];
-__shared__ float FInverseTranspose[NUM_THREADS_PER_BLOCK][3][3];
+//__shared__ float FTransposeF[NUM_THREADS_PER_BLOCK][3][3];
+//__shared__ float FInverseTranspose[NUM_THREADS_PER_BLOCK][3][3];
+__shared__ float TEMP[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float FirstPiolaKirchoffTensor[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float Gradient[NUM_THREADS_PER_BLOCK][3][4];
 __shared__ int LocalIndices[NUM_THREADS_PER_BLOCK][4];
@@ -50,7 +53,7 @@ __device__ float determinantF(int idx)
 		* (F[idx][1][0] * F[idx][2][1] - F[idx][1][1] * F[idx][2][0]);
 }
 
-__device__ void calculateF(int idx, float* positions, float* refShapeMatrixInverse)
+__device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse)
 {
 	//1. Calculate Deformed Shape Matrix
 	FirstPiolaKirchoffTensor[idx][0][0] = positions[LocalIndices[idx][0] * 3 + 0] - positions[LocalIndices[idx][3] * 3 + 0];
@@ -111,7 +114,7 @@ __device__ void calculateF(int idx, float* positions, float* refShapeMatrixInver
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += FirstPiolaKirchoffTensor[idx][row][i] * refShapeMatrixInverse[(blockIdx.x * blockDim.x + threadIdx.x) * 3 * 3 + i * 3 + col];
+				sum += FirstPiolaKirchoffTensor[idx][row][i] * refShapeMatrixInverse[globalIdx * 9 + i * 3 + col];
 			}
 
 			F[idx][row][col] = sum;
@@ -154,7 +157,7 @@ __device__ float calculateStrainEnergy_NEO_HOOKEAN(float volume, float lambda, f
 	return volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3)));
 }
 
-__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int idx, float volume, float* refShapeMatrixInverse)
+__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx, float volume, float* refShapeMatrixInverse)
 {
 	//1. Copy refShapeMatrixInverse from global memory
 	for (int row = 0; row < 3; ++row)
@@ -162,7 +165,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int idx, float volume,
 		for (int col = 0; col < 3; ++col)
 		{
 			//We need the TRANSPOSE of the reference shape matrix inverse
-			Gradient[idx][row][col] = refShapeMatrixInverse[(blockIdx.x * blockDim.x + threadIdx.x) * 9 + col * 3 + row];
+			Gradient[idx][row][col] = refShapeMatrixInverse[globalIdx * 9 + col * 3 + row];
 		}
 	}
 
@@ -339,7 +342,7 @@ __device__ void updatePositions(int idx, float lagrangeMultiplier, float* positi
 {
 	for (int i = 0; i < 4; ++i)
 	{
-		for (int j = 0; j < 1; ++j)
+		for (int j = 0; j < 3; ++j)
 		{
 			atomicAdd(&positions[LocalIndices[idx][i] * 3 + j], LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
 			//atomicAdd(&positions[LocalIndices[threadIdx.x][i] * 3 + j], 0.0001f);
@@ -369,26 +372,26 @@ __device__ void getMasses(int idx, float* masses)
 
 __device__ bool isFIdentity()
 {
-	return(abs(F[threadIdx.x][0][0] - 1.0f) < 1e-6f
-		&& abs(F[threadIdx.x][0][1] - 0.0f) < 1e-6f
-		&& abs(F[threadIdx.x][0][2] - 0.0f) < 1e-6f
-		&& abs(F[threadIdx.x][1][0] - 0.0f) < 1e-6f
-		&& abs(F[threadIdx.x][1][1] - 1.0f) < 1e-6f
-		&& abs(F[threadIdx.x][1][2] - 0.0f) < 1e-6f
-		&& abs(F[threadIdx.x][2][0] - 0.0f) < 1e-6f
-		&& abs(F[threadIdx.x][2][1] - 0.0f) < 1e-6f
-		&& abs(F[threadIdx.x][2][2] - 1.0f) < 1e-6f);
+	return(abs(F[threadIdx.x][0][0] - 1.0f) < 1e-8f
+		&& abs(F[threadIdx.x][0][1] - 0.0f) < 1e-8f
+		&& abs(F[threadIdx.x][0][2] - 0.0f) < 1e-8f
+		&& abs(F[threadIdx.x][1][0] - 0.0f) < 1e-8f
+		&& abs(F[threadIdx.x][1][1] - 1.0f) < 1e-8f
+		&& abs(F[threadIdx.x][1][2] - 0.0f) < 1e-8f
+		&& abs(F[threadIdx.x][2][0] - 0.0f) < 1e-8f
+		&& abs(F[threadIdx.x][2][1] - 0.0f) < 1e-8f
+		&& abs(F[threadIdx.x][2][2] - 1.0f) < 1e-8f);
 }
 
 __global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
 	float lambda, float mu, int trueNumConstraints)
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int idx = (blockIdx.x * blockDim.x + threadIdx.x) % trueNumConstraints;
 
-	if (idx >= trueNumConstraints)
-	{
-		return;
-	}
+	//if (idx >= trueNumConstraints)
+	//{
+	//	return;
+	//}
 
 	//printf("blockIdx: %d, blockDim: %d, threadIdx: %d, idx: %d; ", blockIdx.x, blockDim.x, threadIdx.x, idx);
 
@@ -397,7 +400,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	getMasses(idx, inverseMass);
 
 	//1. Calculate Deformation Gradient F
-	calculateF(threadIdx.x, positions, refShapeMatrixInverse);
+	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse);
 
 	//if (idx == 47)
 	//{
@@ -429,10 +432,10 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
 	refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
 
-	if (isFIdentity())
-	{
-		return;
-	}
+	//if (isFIdentity())
+	//{
+	//	return;
+	//}
 
 	//printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
 	//	FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
@@ -505,7 +508,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("StrainEnergy = %4.8f \n", strainEnergy);
 
 	//6. Calculate Strain Energy Gradient
-	calculateStrainEnergyGradient_NEO_HOOKEAN(threadIdx.x, volume[idx], refShapeMatrixInverse);
+	calculateStrainEnergyGradient_NEO_HOOKEAN(idx, threadIdx.x, volume[idx], refShapeMatrixInverse);
 
 	//printf("Strain Energy Gradient: \n");
 	//for (int row = 0; row < 3; ++row)
@@ -548,8 +551,6 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	{
 		return;
 	}
-
-	syncthreads();
 
 	//8. Update Positions
 	updatePositions(threadIdx.x, lagrangeMultiplier, positions, inverseMass);
@@ -662,7 +663,6 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
 	}
-
 
 	cudaErrorWrapper(cudaDeviceSynchronize());
 

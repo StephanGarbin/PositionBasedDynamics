@@ -23,11 +23,11 @@ struct Parameters
 
 	void initialiseToDefaults()
 	{
-		youngsModulus = 1.0f;
+		youngsModulus = 20.0f;
 		poissonRatio = 0.3;
 		inverseMass = 1.0f;
 		timeStep = 0.005f;
-		numConstraintIterations = 300;
+		numConstraintIterations = 25;
 
 		gravity = -9.8f;
 

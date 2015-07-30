@@ -24,7 +24,7 @@ PBDGPU_Solver::determineCUDALaunchParameters(int numParticles)
 {
 	CUDA_TRUE_NUM_CONSTRAINTS = numParticles;
 
-	CUDA_NUM_THREADS_PER_BLOCK = 64;
+	CUDA_NUM_THREADS_PER_BLOCK = 128;
 
 	CUDA_NUM_BLOCKS = (numParticles / CUDA_NUM_THREADS_PER_BLOCK) + 1;
 
