@@ -11,12 +11,12 @@
 //const int NUM_THREADS_PER_BLOCK_SINGLE = 8;
 //const int NUM_THREADS_PER_BLOCK = NUM_THREADS_PER_BLOCK_SINGLE * NUM_THREADS_PER_BLOCK_SINGLE;
 
-const int NUM_THREADS_PER_BLOCK = 128;
+const int NUM_THREADS_PER_BLOCK = 256;
 
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
 //__shared__ float FTransposeF[NUM_THREADS_PER_BLOCK][3][3];
 //__shared__ float FInverseTranspose[NUM_THREADS_PER_BLOCK][3][3];
-__shared__ float TEMP[NUM_THREADS_PER_BLOCK][3][3];
+__shared__ float TEMP1[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float FirstPiolaKirchoffTensor[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float Gradient[NUM_THREADS_PER_BLOCK][3][4];
 __shared__ int LocalIndices[NUM_THREADS_PER_BLOCK][4];
@@ -30,17 +30,17 @@ __device__ float sqr(float x)
 
 __device__ float traceFTransposeF(int idx)
 {
-	return FTransposeF[idx][0][0] + FTransposeF[idx][1][1] + FTransposeF[idx][2][2];
+	return TEMP1[idx][0][0] + TEMP1[idx][1][1] + TEMP1[idx][2][2];
 }
 
 __device__ float determinantFTransposeF(int idx)
 {
-	return FTransposeF[idx][0][0]
-		* (FTransposeF[idx][1][1] * FTransposeF[idx][2][2] - FTransposeF[idx][1][2] * FTransposeF[idx][2][1])
-		- FTransposeF[idx][0][1]
-		* (FTransposeF[idx][1][0] * FTransposeF[idx][2][2] - FTransposeF[idx][1][2] * FTransposeF[idx][2][0])
-		+ FTransposeF[idx][0][2]
-		* (FTransposeF[idx][1][0] * FTransposeF[idx][2][1] - FTransposeF[idx][1][1] * FTransposeF[idx][2][0]);
+	return TEMP1[idx][0][0]
+		* (TEMP1[idx][1][1] * TEMP1[idx][2][2] - TEMP1[idx][1][2] * TEMP1[idx][2][1])
+		- TEMP1[idx][0][1]
+		* (TEMP1[idx][1][0] * TEMP1[idx][2][2] - TEMP1[idx][1][2] * TEMP1[idx][2][0])
+		+ TEMP1[idx][0][2]
+		* (TEMP1[idx][1][0] * TEMP1[idx][2][1] - TEMP1[idx][1][1] * TEMP1[idx][2][0]);
 }
 
 __device__ float determinantF(int idx)
@@ -138,7 +138,7 @@ __device__ void calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(int idx, float mu,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			FirstPiolaKirchoffTensor[idx][row][col] -= FInverseTranspose[idx][row][col] * mu;
+			FirstPiolaKirchoffTensor[idx][row][col] -= TEMP1[idx][row][col] * mu;
 		}
 	}
 
@@ -147,7 +147,7 @@ __device__ void calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(int idx, float mu,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			FirstPiolaKirchoffTensor[idx][row][col] += FInverseTranspose[idx][row][col] * ((lambda * log(I3)) / 2.0f);
+			FirstPiolaKirchoffTensor[idx][row][col] += TEMP1[idx][row][col] * ((lambda * log(I3)) / 2.0f);
 		}
 	}
 }
@@ -181,7 +181,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx
 				sum += FirstPiolaKirchoffTensor[idx][row][i] * Gradient[idx][i][col];
 			}
 
-			FTransposeF[idx][row][col] = sum;
+			TEMP1[idx][row][col] = sum;
 		}
 	}
 
@@ -190,7 +190,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			Gradient[idx][row][col] = FTransposeF[idx][row][col] * volume;
+			Gradient[idx][row][col] = TEMP1[idx][row][col] * volume;
 		}
 	}
 
@@ -216,35 +216,23 @@ __device__ void calculateFTransposeF(int idx)
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			FTransposeF[idx][row][col] = F[idx][row][col];
+			TEMP1[idx][row][col] = F[idx][row][col];
 		}
 	}
 
 	//2. Transpose F (Subsume into multiplication later!)
 	float temp;
-	temp = FTransposeF[idx][0][1];
-	FTransposeF[idx][0][1] = FTransposeF[idx][1][0];
-	FTransposeF[idx][1][0] = temp;
+	temp = TEMP1[idx][0][1];
+	TEMP1[idx][0][1] = TEMP1[idx][1][0];
+	TEMP1[idx][1][0] = temp;
 
-	temp = FTransposeF[idx][0][2];
-	FTransposeF[idx][0][2] = FTransposeF[idx][2][0];
-	FTransposeF[idx][2][0] = temp;
+	temp = TEMP1[idx][0][2];
+	TEMP1[idx][0][2] = TEMP1[idx][2][0];
+	TEMP1[idx][2][0] = temp;
 
-	temp = FTransposeF[idx][1][2];
-	FTransposeF[idx][1][2] = FTransposeF[idx][2][1];
-	FTransposeF[idx][2][1] = temp;
-
-
-	//printf("FTranspose: \n");
-	//for (int row = 0; row < 3; ++row)
-	//{
-	//	for (int col = 0; col < 3; ++col)
-	//	{
-	//		printf("%4.8f,", FTransposeF[idx][row][col]);
-	//	}
-	//	printf("\n");
-	//}
-	//printf("\n \n");
+	temp = TEMP1[idx][1][2];
+	TEMP1[idx][1][2] = TEMP1[idx][2][1];
+	TEMP1[idx][2][1] = temp;
 
 	//3. Multiply with F
 	for (int row = 0; row < 3; ++row)
@@ -255,7 +243,7 @@ __device__ void calculateFTransposeF(int idx)
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += FTransposeF[idx][row][i] * F[idx][i][col];
+				sum += TEMP1[idx][row][i] * F[idx][i][col];
 			}
 
 			FirstPiolaKirchoffTensor[idx][row][col] = sum;
@@ -267,7 +255,7 @@ __device__ void calculateFTransposeF(int idx)
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			FTransposeF[idx][row][col] = FirstPiolaKirchoffTensor[idx][row][col];
+			TEMP1[idx][row][col] = FirstPiolaKirchoffTensor[idx][row][col];
 		}
 	}
 }
@@ -275,32 +263,17 @@ __device__ void calculateFTransposeF(int idx)
 __device__ void calculateFInverseTranspose(int idx)
 {
 	//1. Calculate cofactors
-	FInverseTranspose[idx][0][0] = F[idx][1][1] * F[idx][2][2] - F[idx][2][1] * F[idx][1][2];
-	FInverseTranspose[idx][0][1] = -(F[idx][1][0] * F[idx][2][2] - F[idx][2][0] * F[idx][1][2]);
-	FInverseTranspose[idx][0][2] = F[idx][1][0] * F[idx][2][1] - F[idx][2][0] * F[idx][1][1];
+	TEMP1[idx][0][0] = F[idx][1][1] * F[idx][2][2] - F[idx][2][1] * F[idx][1][2];
+	TEMP1[idx][0][1] = -(F[idx][1][0] * F[idx][2][2] - F[idx][2][0] * F[idx][1][2]);
+	TEMP1[idx][0][2] = F[idx][1][0] * F[idx][2][1] - F[idx][2][0] * F[idx][1][1];
 
-	FInverseTranspose[idx][1][0] = -(F[idx][0][1] * F[idx][2][2] - F[idx][2][1] * F[idx][0][2]);
-	FInverseTranspose[idx][1][1] = F[idx][0][0] * F[idx][2][2] - F[idx][2][0] * F[idx][0][2];
-	FInverseTranspose[idx][1][2] = -(F[idx][0][0] * F[idx][2][1] - F[idx][2][0] * F[idx][0][1]);
+	TEMP1[idx][1][0] = -(F[idx][0][1] * F[idx][2][2] - F[idx][2][1] * F[idx][0][2]);
+	TEMP1[idx][1][1] = F[idx][0][0] * F[idx][2][2] - F[idx][2][0] * F[idx][0][2];
+	TEMP1[idx][1][2] = -(F[idx][0][0] * F[idx][2][1] - F[idx][2][0] * F[idx][0][1]);
 
-	FInverseTranspose[idx][2][0] = F[idx][0][1] * F[idx][1][2] - F[idx][1][1] * F[idx][0][2];
-	FInverseTranspose[idx][2][1] = -(F[idx][0][0] * F[idx][1][2] - F[idx][1][0] * F[idx][0][2]);
-	FInverseTranspose[idx][2][2] = F[idx][0][0] * F[idx][1][1] - F[idx][1][0] * F[idx][0][1];
-
-	//2. Transpose (Alread in Co-factor calculation)
-	//float temp;
-
-	//temp = FInverseTranspose[idx][0][1];
-	//FInverseTranspose[idx][0][1] = FInverseTranspose[idx][1][0];
-	//FInverseTranspose[idx][1][0] = temp;
-
-	//temp = FInverseTranspose[idx][0][2];
-	//FInverseTranspose[idx][0][2] = FInverseTranspose[idx][2][0];
-	//FInverseTranspose[idx][2][0] = temp;
-
-	//temp = FInverseTranspose[idx][1][2];
-	//FInverseTranspose[idx][1][2] = FInverseTranspose[idx][2][1];
-	//FInverseTranspose[idx][2][1] = temp;
+	TEMP1[idx][2][0] = F[idx][0][1] * F[idx][1][2] - F[idx][1][1] * F[idx][0][2];
+	TEMP1[idx][2][1] = -(F[idx][0][0] * F[idx][1][2] - F[idx][1][0] * F[idx][0][2]);
+	TEMP1[idx][2][2] = F[idx][0][0] * F[idx][1][1] - F[idx][1][0] * F[idx][0][1];
 
 	//3. Calculate the determinant
 	float determinant = determinantF(idx);
@@ -311,7 +284,7 @@ __device__ void calculateFInverseTranspose(int idx)
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			FInverseTranspose[idx][row][col] /= determinant;
+			TEMP1[idx][row][col] /= determinant;
 		}
 	}
 }
@@ -388,13 +361,6 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 {
 	int idx = (blockIdx.x * blockDim.x + threadIdx.x) % trueNumConstraints;
 
-	//if (idx >= trueNumConstraints)
-	//{
-	//	return;
-	//}
-
-	//printf("blockIdx: %d, blockDim: %d, threadIdx: %d, idx: %d; ", blockIdx.x, blockDim.x, threadIdx.x, idx);
-
 	getIndices(idx, indices);
 
 	getMasses(idx, inverseMass);
@@ -454,20 +420,6 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 
 	//2. Compute Cauchy Tensors
-	calculateFInverseTranspose(threadIdx.x);
-
-	//printf("FInverseTranspose: \n");
-	//for (int row = 0; row < 3; ++row)
-	//{
-	//	for (int col = 0; col < 3; ++col)
-	//	{
-	//		printf("%4.8f,", FInverseTranspose[idx][row][col]);
-	//	}
-	//	printf("\n");
-	//}
-	//printf("\n \n");
-
-
 	calculateFTransposeF(threadIdx.x);
 
 	//printf("FTransposeF: \n");
@@ -487,6 +439,8 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	//printf("I1 = %4.8f \n", I1);
 	//printf("I3 = %4.8f \n", I3);
+
+	calculateFInverseTranspose(threadIdx.x);
 
 	//4. Calculate First Piola-Kirchoff Stress Tensor
 	calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(threadIdx.x, mu, lambda, I3);
