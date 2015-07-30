@@ -326,7 +326,10 @@ __device__ float calculateLagrangeMultiplierDenominator(int idx, float* inverseM
 	for (int i = 0; i < 4; ++i)
 	{
 		denominator += LocalMasses[idx][i] * squaredNormGradient(idx, i);
-		//printf("Denominator Component: %4.8f \n", inverseMass[LocalIndices[idx][i]] * squaredNormGradient(idx, i));
+		//if (idx == 47)
+		//{
+		//	printf("[%d]: mass: %4.8f, gradientNorm: %4.8f \n", idx, inverseMass[LocalIndices[idx][i]], squaredNormGradient(idx, i));
+		//}
 	}
 	//printf("Denominator: %4.8f \n", denominator);
 	return denominator;
@@ -396,25 +399,21 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//1. Calculate Deformation Gradient F
 	calculateF(threadIdx.x, positions, refShapeMatrixInverse);
 
-	if (idx == 47)
-	{
-		printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
-			F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
-			F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
-			F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
-
-		printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
-		refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);
-
-		printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-			FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
-			FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
-			FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
-
-
-	}
+	//if (idx == 47)
+	//{
+	//	printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+	//		F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
+	//		F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
+	//		F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
+	//	printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+	//	refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+	//	refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+	//	refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);
+	//	printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+	//		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+	//		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+	//		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+	//}
 
 	//printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
 	//	F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
@@ -528,25 +527,22 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//}
 
 	float lagrangeMultiplier = -(strainEnergy / denominator);
-	if (idx == 47)
-	{
-		printf("[%d]: I1 = %8.16f \n", idx, I1);
-		printf("[%d]: I3 = %8.16f \n", idx, I3);
-
-		printf("[%d]: lagrangeMultiplier = %8.16f \n", idx, lagrangeMultiplier);
-		printf("[%d]: strainEnergy = %8.16f \n", idx, strainEnergy);
-		printf("[%d]: denominator = %8.16f \n", idx, denominator);
-
-		printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", idx,
-			FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
-			FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
-			FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
-
-		printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", idx,
-			Gradient[threadIdx.x][0][0], Gradient[threadIdx.x][0][1], Gradient[threadIdx.x][0][2], Gradient[threadIdx.x][0][3],
-			Gradient[threadIdx.x][1][0], Gradient[threadIdx.x][1][1], Gradient[threadIdx.x][1][2], Gradient[threadIdx.x][1][3],
-			Gradient[threadIdx.x][2][0], Gradient[threadIdx.x][2][1], Gradient[threadIdx.x][2][2], Gradient[threadIdx.x][2][3]);
-	}
+	//if (idx == 47)
+	//{
+	//	printf("[%d]: I1 = %8.16f \n", idx, I1);
+	//	printf("[%d]: I3 = %8.16f \n", idx, I3);
+	//	printf("[%d]: lagrangeMultiplier = %8.16f \n", idx, lagrangeMultiplier);
+	//	printf("[%d]: strainEnergy = %8.16f \n", idx, strainEnergy);
+	//	printf("[%d]: denominator = %8.16f \n", idx, denominator);
+	//	printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", idx,
+	//		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+	//		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+	//		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+	//	printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", idx,
+	//		Gradient[threadIdx.x][0][0], Gradient[threadIdx.x][0][1], Gradient[threadIdx.x][0][2], Gradient[threadIdx.x][0][3],
+	//		Gradient[threadIdx.x][1][0], Gradient[threadIdx.x][1][1], Gradient[threadIdx.x][1][2], Gradient[threadIdx.x][1][3],
+	//		Gradient[threadIdx.x][2][0], Gradient[threadIdx.x][2][1], Gradient[threadIdx.x][2][2], Gradient[threadIdx.x][2][3]);
+	//}
 
 	if (isnan(lagrangeMultiplier))
 	{
@@ -660,11 +656,11 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 
 	cudaError_t deviceStatus;
 
-	std::cout << "Indices  : " << indices.size() << std::endl;
-	std::cout << "Position : " << positions.size() << std::endl;
-	std::cout << "Masses   : " << inverseMasses.size() << std::endl;
-	std::cout << "RefShapes: " << refShapeMatrixInverses.size() << std::endl;
-	std::cout << "Volumes  : " << volumes.size() << std::endl;
+	//std::cout << "Indices  : " << indices.size() << std::endl;
+	//std::cout << "Position : " << positions.size() << std::endl;
+	//std::cout << "Masses   : " << inverseMasses.size() << std::endl;
+	//std::cout << "RefShapes: " << refShapeMatrixInverses.size() << std::endl;
+	//std::cout << "Volumes  : " << volumes.size() << std::endl;
 
 
 	//Allocate memory
@@ -731,7 +727,7 @@ cudaError_t projectConstraints(std::vector<int>& indices,
 	//std::cout << std::endl;
 
 	cudaErrorWrapper(cudaDeviceSynchronize());
-	std::cout << "Done..." << std::endl;
+	//std::cout << "Done..." << std::endl;
 
 	deviceStatus = cudaGetLastError();
 	checkCudaErrorStatus(deviceStatus);

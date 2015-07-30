@@ -679,6 +679,12 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 			for (int cI = 0; cI < 4; ++cI)
 			{
+				if (t == 47)
+				{
+					std::cout << "[" << cI << "]: " << tetrahedra[t].get_x(cI).inverseMass() << "; "
+						<< gradient.col(cI).lpNorm<2>() << std::endl;
+				}
+
 				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
 				{
 					denominator += tetrahedra[t].get_x(cI).inverseMass()
