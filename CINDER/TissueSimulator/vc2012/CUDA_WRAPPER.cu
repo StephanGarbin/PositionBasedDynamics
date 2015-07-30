@@ -64,6 +64,16 @@ __device__ void calculateF(int idx, float* positions, float* refShapeMatrixInver
 	FirstPiolaKirchoffTensor[idx][0][2] = positions[LocalIndices[idx][2] * 3 + 0] - positions[LocalIndices[idx][3] * 3 + 0];
 	FirstPiolaKirchoffTensor[idx][1][2] = positions[LocalIndices[idx][2] * 3 + 1] - positions[LocalIndices[idx][3] * 3 + 1];
 	FirstPiolaKirchoffTensor[idx][2][2] = positions[LocalIndices[idx][2] * 3 + 2] - positions[LocalIndices[idx][3] * 3 + 2];
+	//if ((blockIdx.x * blockDim.x + threadIdx.x) == 47)
+	//{
+	//	printf("Particles: \n");
+	//	for (int i = 0; i < 4; ++i)
+	//	{
+	//		printf("%4.8f ,", positions[LocalIndices[idx][i] * 3 + 0]);
+	//		printf("%4.8f ,", positions[LocalIndices[idx][i] * 3 + 1]);
+	//		printf("%4.8f \n", positions[LocalIndices[idx][i] * 3 + 2]);
+	//	}
+	//}
 
 	//printf("Local Indices: \n");
 	//for (int i = 0; i < 4; ++i)
@@ -151,16 +161,8 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int idx, float volume,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			Gradient[idx][row][col] = refShapeMatrixInverse[idx * 3 + row * 3 + col];
-		}
-	}
-
-	//2. Multiply by volume
-	for (int row = 0; row < 3; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			Gradient[idx][row][col] *= volume;
+			//We need the TRANSPOSE of the reference shape matrix inverse
+			Gradient[idx][row][col] = refShapeMatrixInverse[(blockIdx.x * blockDim.x + threadIdx.x) * 9 + col * 3 + row];
 		}
 	}
 
@@ -173,10 +175,10 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int idx, float volume,
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += Gradient[idx][row][i] * FirstPiolaKirchoffTensor[idx][i][col];
+				sum += FirstPiolaKirchoffTensor[idx][row][i] * Gradient[idx][i][col];
 			}
 
-			FTransposeF[idx][col][row] = sum;
+			FTransposeF[idx][row][col] = sum;
 		}
 	}
 
@@ -185,7 +187,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int idx, float volume,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			Gradient[idx][row][col] = FTransposeF[idx][row][col];
+			Gradient[idx][row][col] = FTransposeF[idx][row][col] * volume;
 		}
 	}
 
@@ -394,6 +396,40 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//1. Calculate Deformation Gradient F
 	calculateF(threadIdx.x, positions, refShapeMatrixInverse);
 
+	if (idx == 47)
+	{
+		printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+			F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
+			F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
+			F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
+
+		printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+		refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+		refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+		refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);
+
+		printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+			FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+			FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+			FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+
+
+	}
+
+	//printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+	//	F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
+	//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
+	//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
+
+	/*printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);*/
+	/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+	refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+	refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+	refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
+
 	if (isFIdentity())
 	{
 		return;
@@ -492,14 +528,32 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//}
 
 	float lagrangeMultiplier = -(strainEnergy / denominator);
+	if (idx == 47)
+	{
+		printf("[%d]: I1 = %8.16f \n", idx, I1);
+		printf("[%d]: I3 = %8.16f \n", idx, I3);
 
-	//printf("lagrangeMultiplier = %4.8f \n", lagrangeMultiplier);
+		printf("[%d]: lagrangeMultiplier = %8.16f \n", idx, lagrangeMultiplier);
+		printf("[%d]: strainEnergy = %8.16f \n", idx, strainEnergy);
+		printf("[%d]: denominator = %8.16f \n", idx, denominator);
+
+		printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", idx,
+			FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+			FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+			FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+
+		printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", idx,
+			Gradient[threadIdx.x][0][0], Gradient[threadIdx.x][0][1], Gradient[threadIdx.x][0][2], Gradient[threadIdx.x][0][3],
+			Gradient[threadIdx.x][1][0], Gradient[threadIdx.x][1][1], Gradient[threadIdx.x][1][2], Gradient[threadIdx.x][1][3],
+			Gradient[threadIdx.x][2][0], Gradient[threadIdx.x][2][1], Gradient[threadIdx.x][2][2], Gradient[threadIdx.x][2][3]);
+	}
 
 	if (isnan(lagrangeMultiplier))
 	{
 		return;
 	}
 
+	syncthreads();
 
 	//8. Update Positions
 	updatePositions(threadIdx.x, lagrangeMultiplier, positions, inverseMass);

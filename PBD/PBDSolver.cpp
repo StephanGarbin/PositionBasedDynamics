@@ -80,6 +80,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 	for (auto& p : *particles)
 	{
 		p.position() = p.previousPosition() + settings.deltaT * p.velocity();
+		//std::cout << p.velocity().transpose() << std::endl;
 	}
 }
 
@@ -437,6 +438,8 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 	for (int it = 0; it < settings.numConstraintIts; ++it)
 	{
+		std::cout << "IT: " << it << std::endl;
+
 		for (int t = 0; t < settings.numTetrahedra; ++t)
 		{
 			float lagrangeM;
@@ -444,11 +447,41 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//Get deformation gradient
 			F = tetrahedra[t].getDeformationGradient();
 
-			std::cout << t << ": " << std::endl;
-			std::cout << tetrahedra[t].getDeformedShapeMatrix() << std::endl;
+			//std::cout << t << ": " << std::endl;
+			//std::cout << tetrahedra[t].getDeformedShapeMatrix() << std::endl;
 			//std::cout << F << std::endl;
-			//std::cout << tetrahedra[t].getReferenceShapeMatrixInverseTranspose() << std::endl;
+			//std::cout << tetrahedra[t].getReferenceShapeMatrixInverseTranspose().transpose() << std::endl;
 
+			if (t == 47)
+			{
+				//std::cout << tetrahedra[t].getVertexIndices()[0] << ", ";
+				//std::cout << tetrahedra[t].getVertexIndices()[1] << ", ";
+				//std::cout << tetrahedra[t].getVertexIndices()[2] << ", ";
+				//std::cout << tetrahedra[t].getVertexIndices()[3] << std::endl;
+
+				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[0]].position() << std::endl;
+				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[1]].position() << std::endl;
+				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[2]].position() << std::endl;
+				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[3]].position() << std::endl;
+
+
+				printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
+					F(0, 0), F(0, 1), F(0, 2),
+					F(1, 0), F(1, 1), F(1, 2),
+					F(2, 0), F(2, 1), F(2, 2));
+
+				FTransposeF = tetrahedra[t].getReferenceShapeMatrixInverseTranspose().transpose();
+				printf("RefInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
+					FTransposeF(0, 0), FTransposeF(0, 1), FTransposeF(0, 2),
+					FTransposeF(1, 0), FTransposeF(1, 1), FTransposeF(1, 2),
+					FTransposeF(2, 0), FTransposeF(2, 1), FTransposeF(2, 2));
+
+				FTransposeF = tetrahedra[t].getDeformedShapeMatrix();
+				printf("Deformed [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
+					FTransposeF(0, 0), FTransposeF(0, 1), FTransposeF(0, 2),
+					FTransposeF(1, 0), FTransposeF(1, 1), FTransposeF(1, 2),
+					FTransposeF(2, 0), FTransposeF(2, 1), FTransposeF(2, 2));
+			}
 			if (F.isIdentity())
 			{
 				continue;
@@ -459,130 +492,130 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//check for inversion
 			if (isInverted)
 			{
-				inversionHandled = true;
-				//1. Compute Eigendecomposition
-				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-				S = eigenSolver.pseudoEigenvalueMatrix();
-				V = eigenSolver.pseudoEigenvectors();
-				for (int i = 0; i < 3; ++i)
-				{
-					if (S(i, i) < 0.0f)
-					{
-						S(i, i) = 0.0f;
-					}
-				}
+				//inversionHandled = true;
+				////1. Compute Eigendecomposition
+				//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				//S = eigenSolver.pseudoEigenvalueMatrix();
+				//V = eigenSolver.pseudoEigenvectors();
+				//for (int i = 0; i < 3; ++i)
+				//{
+				//	if (S(i, i) < 0.0f)
+				//	{
+				//		S(i, i) = 0.0f;
+				//	}
+				//}
 
-				//2.  Detect if V is a reflection .
-				//    Make a rotation out of it by multiplying one column with -1.
-				const float detV = V.determinant();
-				if (detV < 0.0)
-				{
-					float minLambda = FLT_MAX;
-					unsigned char pos = 0;
-					for (unsigned char l = 0; l < 3; l++)
-					{
-						if (S(l,l) < minLambda)
-						{
-							pos = l;
-							minLambda = S(l, l);
-						}
-					}
-					V(0, pos) = -V(0, pos);
-					V(1, pos) = -V(1, pos);
-					V(2, pos) = -V(2, pos);
-				}
+				////2.  Detect if V is a reflection .
+				////    Make a rotation out of it by multiplying one column with -1.
+				//const float detV = V.determinant();
+				//if (detV < 0.0)
+				//{
+				//	float minLambda = FLT_MAX;
+				//	unsigned char pos = 0;
+				//	for (unsigned char l = 0; l < 3; l++)
+				//	{
+				//		if (S(l,l) < minLambda)
+				//		{
+				//			pos = l;
+				//			minLambda = S(l, l);
+				//		}
+				//	}
+				//	V(0, pos) = -V(0, pos);
+				//	V(1, pos) = -V(1, pos);
+				//	V(2, pos) = -V(2, pos);
+				//}
 
-				//3. Compute Fhat
-				Fhat.setZero();
-				Fhat(0, 0) = sqrtf(S(0, 0));
-				Fhat(1, 1) = sqrtf(S(1, 1));
-				Fhat(2, 2) = sqrtf(S(2, 2));
+				////3. Compute Fhat
+				//Fhat.setZero();
+				//Fhat(0, 0) = sqrtf(S(0, 0));
+				//Fhat(1, 1) = sqrtf(S(1, 1));
+				//Fhat(2, 2) = sqrtf(S(2, 2));
 
-				//4. Compute U
-				U = F * V * Fhat.inverse();
+				////4. Compute U
+				//U = F * V * Fhat.inverse();
 
-				//CORRECT U
-				//
-				// Check for values of hatF near zero
-				//
-				unsigned char chk = 0;
-				unsigned char pos = 0;
-				for (unsigned char l = 0; l < 3; l++)
-				{
-					if (fabs(Fhat(l, l)) < 1.0e-4f)
-					{
-						pos = l;
-						chk++;
-					}
-				}
+				////CORRECT U
+				////
+				//// Check for values of hatF near zero
+				////
+				//unsigned char chk = 0;
+				//unsigned char pos = 0;
+				//for (unsigned char l = 0; l < 3; l++)
+				//{
+				//	if (fabs(Fhat(l, l)) < 1.0e-4f)
+				//	{
+				//		pos = l;
+				//		chk++;
+				//	}
+				//}
 
-				if (chk > 0)
-				{
-					if (chk > 1)
-					{
-						U.setIdentity();
-					}
-					else
-					{
-						U = F * V;
-						for (unsigned char l = 0; l < 3; l++)
-						{
-							if (l != pos)
-							{
-								for (unsigned char m = 0; m < 3; m++)
-								{
-									U(m, l) *= 1.0f / Fhat(l, l);
-								}
-							}
-						}
+				//if (chk > 0)
+				//{
+				//	if (chk > 1)
+				//	{
+				//		U.setIdentity();
+				//	}
+				//	else
+				//	{
+				//		U = F * V;
+				//		for (unsigned char l = 0; l < 3; l++)
+				//		{
+				//			if (l != pos)
+				//			{
+				//				for (unsigned char m = 0; m < 3; m++)
+				//				{
+				//					U(m, l) *= 1.0f / Fhat(l, l);
+				//				}
+				//			}
+				//		}
 
-						Eigen::Vector3f v[2];
-						unsigned char index = 0;
-						for (unsigned char l = 0; l < 3; l++)
-						{
-							if (l != pos)
-							{
-								v[index++] = Eigen::Vector3f(U(0, l), U(1, l), U(2, l));
-							}
-						}
-						Eigen::Vector3f vec = v[0].cross(v[1]);
-						vec.normalize();
-						U(0, pos) = vec[0];
-						U(1, pos) = vec[1];
-						U(2, pos) = vec[2];
-					}
-				}
-				else
-				{
-					Eigen::Vector3f hatFInv(1.0f / Fhat(0, 0), 1.0f / Fhat(1, 1), 1.0f / Fhat(2, 2));
-					U = F * V;
-					for (unsigned char l = 0; l < 3; l++)
-					{
-						for (unsigned char m = 0; m < 3; m++)
-						{
-							U(m, l) *= hatFInv[l];
-						}
-					}
-				}
+				//		Eigen::Vector3f v[2];
+				//		unsigned char index = 0;
+				//		for (unsigned char l = 0; l < 3; l++)
+				//		{
+				//			if (l != pos)
+				//			{
+				//				v[index++] = Eigen::Vector3f(U(0, l), U(1, l), U(2, l));
+				//			}
+				//		}
+				//		Eigen::Vector3f vec = v[0].cross(v[1]);
+				//		vec.normalize();
+				//		U(0, pos) = vec[0];
+				//		U(1, pos) = vec[1];
+				//		U(2, pos) = vec[2];
+				//	}
+				//}
+				//else
+				//{
+				//	Eigen::Vector3f hatFInv(1.0f / Fhat(0, 0), 1.0f / Fhat(1, 1), 1.0f / Fhat(2, 2));
+				//	U = F * V;
+				//	for (unsigned char l = 0; l < 3; l++)
+				//	{
+				//		for (unsigned char m = 0; m < 3; m++)
+				//		{
+				//			U(m, l) *= hatFInv[l];
+				//		}
+				//	}
+				//}
 
-				//5. Check if U is also a rotation and correct
-				if (U.determinant() < 0)
-				{
-					//find minimal element of U
-					int minElementFhat = 0;
-					float minElementFhatValue = Fhat(0, 0);
-					for (int e = 0; e < 3; ++e)
-					{
-						if (Fhat(e, e) < minElementFhatValue)
-						{
-							minElementFhat = e;
-							minElementFhatValue = Fhat(e, e);
-						}
-					}
+				////5. Check if U is also a rotation and correct
+				//if (U.determinant() < 0)
+				//{
+				//	//find minimal element of U
+				//	int minElementFhat = 0;
+				//	float minElementFhatValue = Fhat(0, 0);
+				//	for (int e = 0; e < 3; ++e)
+				//	{
+				//		if (Fhat(e, e) < minElementFhatValue)
+				//		{
+				//			minElementFhat = e;
+				//			minElementFhatValue = Fhat(e, e);
+				//		}
+				//	}
 
-					Fhat(minElementFhat, minElementFhat) *= -1.0;
-					U.col(minElementFhat) *= -1.0;
-				}
+				//	Fhat(minElementFhat, minElementFhat) *= -1.0;
+				//	U.col(minElementFhat) *= -1.0;
+				//}
 
 			}
 
@@ -598,15 +631,15 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//Compute Stress tensor
 			if (isInverted)
 			{
-				PF = settings.mu * Fhat - settings.mu * Fhat.inverse().transpose()
-					+ ((settings.lambda * logI3) / 2.0) * Fhat.inverse().transpose();
+				//PF = settings.mu * Fhat - settings.mu * Fhat.inverse().transpose()
+				//	+ ((settings.lambda * logI3) / 2.0) * Fhat.inverse().transpose();
 
-				PF = U * PF * V;
+				//PF = U * PF * V;
 
-				I1 = (Fhat.transpose() * Fhat).trace();
-				I3 = (Fhat.transpose() * Fhat).determinant();
+				//I1 = (Fhat.transpose() * Fhat).trace();
+				//I3 = (Fhat.transpose() * Fhat).determinant();
 
-				logI3 = log(I3);
+				//logI3 = log(I3);
 			}
 			else
 			{
@@ -668,7 +701,24 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			{
 				lagrangeM = -(strainEnergy / denominator);
 			}
+			if (t == 47)
+			{
+				printf("I1 = %8.16f \n",I1);
+				printf("I3 = %8.16f \n",I3);
+				printf("lagrangeMultiplier = %8.16f \n", lagrangeM);
+				printf("strainEnergy = %8.16f \n", strainEnergy);
+				printf("denominator = %8.16f \n", denominator);
 
+				printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", 47,
+					PF(0, 0), PF(0, 1), PF(0, 2),
+					PF(1, 0), PF(1, 1), PF(1, 2),
+					PF(2, 0), PF(2, 1), PF(2, 2));
+
+				printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", 47,
+					gradient(0, 0), gradient(0, 1), gradient(0, 2), gradient(0, 3),
+					gradient(1, 0), gradient(1, 1), gradient(1, 2), gradient(1, 3),
+					gradient(2, 0), gradient(2, 1), gradient(2, 2), gradient(2, 3));
+			}
 			if (std::isnan(lagrangeM))
 			{
 				//if (isInverted)
@@ -712,9 +762,11 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 						* lagrangeM) * gradient.col(cI);
 
 					tetrahedra[t].get_x(cI).position() += deltaX;
-
-					//std::cout << "[ " << cI << "] : " << std::endl;
-					//std::cout << deltaX << std::endl;
+					if (t == 47)
+					{
+						std::cout << "[ " << cI << "] : " << std::endl;
+						std::cout << deltaX << std::endl;
+					}
 				}
 			}
 

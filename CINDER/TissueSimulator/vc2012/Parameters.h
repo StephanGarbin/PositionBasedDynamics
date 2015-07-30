@@ -9,6 +9,7 @@ struct Parameters
 	int numConstraintIterations;
 	float lambda;
 	float mu;
+	float gravity;
 
 	std::string tetGenNodeFile;
 	std::string tetGenElementFile;
@@ -28,6 +29,8 @@ struct Parameters
 		timeStep = 0.005f;
 		numConstraintIterations = 15;
 
+		gravity = -9.8f;
+
 		tetGenNodeFile = "barout.node";
 		tetGenElementFile = "barout.ele";
 		positionConstraintFile = "barLowVertexConstraints.txt";
@@ -44,12 +47,12 @@ struct Parameters
 		return youngsModulus / (2.0f * (1.0f + poissonRatio));
 	}
 
-	float calculateLambda()
+	void calculateLambda()
 	{
 		lambda = (youngsModulus * poissonRatio) / ((1.0f + poissonRatio) * (1.0f - 2.0f * poissonRatio));
 	}
 
-	float calculateMu()
+	void calculateMu()
 	{
 		mu = youngsModulus / (2.0f * (1.0f + poissonRatio));
 	}

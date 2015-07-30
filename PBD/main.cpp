@@ -442,7 +442,7 @@ int main(int argc, char* argv[])
 	settings.youngsModulus = youngsModulus;
 	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
-	settings.gravity = 0.0f;
+	settings.gravity = -9.8f;
 	settings.lambda = lambda;
 	settings.mu = mu;
 	settings.numConstraintIts = numConstraintIts;

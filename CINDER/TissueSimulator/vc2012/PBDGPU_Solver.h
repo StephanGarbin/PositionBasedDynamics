@@ -18,7 +18,17 @@ public:
 	void advanceSystem(std::shared_ptr<std::vector<PBDParticle>>& particles,
 		Parameters& settings);
 
-	//private:
+private:
+
+	void advanceVelocities(std::shared_ptr<std::vector<PBDParticle>>& particles,
+		const Parameters& settings);
+
+	void advancePositions(std::shared_ptr<std::vector<PBDParticle>>& particles,
+		const Parameters& settings);
+
+	void updateVelocities(std::shared_ptr<std::vector<PBDParticle>>& particles,
+		const Parameters& settings);
+
 	float m_isSetup;
 
 	std::vector<float> m_inverseMasses;

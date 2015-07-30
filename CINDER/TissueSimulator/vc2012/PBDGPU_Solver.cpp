@@ -68,19 +68,23 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 		m_undeformedVolumes.push_back(tetrahedra[i].getUndeformedVolume());
 	}
 
+	Eigen::Matrix3f temp;
 	//4. Reference Shape Matrices
 	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
+		temp = tetrahedra[i].getReferenceShapeMatrixInverseTranspose().transpose();
 		//std::cout << "HOST RefShape [" << i << "]: " << std::endl;
-		//std::cout << tetrahedra[i].getReferenceShapeMatrixInverseTranspose() << std::endl;
+		//std::cout << temp << std::endl;
 		for (int row = 0; row < 3; ++row)
 		{
 			for (int col = 0; col < 3; ++col)
 			{
 				//std::cout << tetrahedra[i].getReferenceShapeMatrixInverseTranspose()(row, col) << ", ";
-				m_referenceShapeMatrices.push_back(tetrahedra[i].getReferenceShapeMatrixInverseTranspose().transpose()(row, col));
+				m_referenceShapeMatrices.push_back(temp(row, col));
 			}
 		}
+
+		//std::cout << std::endl;
 	}
 
 	m_positions.resize(m_inverseMasses.size());
@@ -101,6 +105,9 @@ Parameters& settings)
 		printError("Cannot advance system, setup() must be called first!");
 	}
 
+	advanceVelocities(particles, settings);
+	advancePositions(particles, settings);
+
 	//1. Get Positions
 	for (int i = 0; i < particles->size(); ++i)
 	{
@@ -116,6 +123,8 @@ Parameters& settings)
 	settings.trueNumberOfConstraints = CUDA_TRUE_NUM_CONSTRAINTS;
 
 	//3. Advance System
+	settings.calculateMu();
+	settings.calculateLambda();
 	//std::cout << "Solving System with CUDA..." << std::endl;
 	CUDA_projectConstraints(m_indices, m_positions, m_inverseMasses,
 		m_referenceShapeMatrices, m_undeformedVolumes, settings);
@@ -132,6 +141,15 @@ Parameters& settings)
 	}
 
 	//std::cout << "...done" << std::endl;
+
+	//Update Velocities
+	updateVelocities(particles, settings);
+
+	//swap particles states
+	for (auto& p : *particles)
+	{
+		p.swapStates();
+	}
 }
 
 void
@@ -139,3 +157,38 @@ PBDGPU_Solver::printError(const std::string& message)
 {
 	std::cerr << "GPUPBD Solver Error: " << message << std::endl;
 }
+
+void
+PBDGPU_Solver::advanceVelocities(std::shared_ptr<std::vector<PBDParticle>>& particles,
+const Parameters& settings)
+{
+	for (auto& p : *particles)
+	{
+		float temp = settings.timeStep * p.inverseMass() * settings.gravity;
+		p.velocity().x() = p.previousVelocity().x() + 0;
+		p.velocity().y() = p.previousVelocity().y() + temp;
+		p.velocity().z() = p.previousVelocity().z() + 0;
+	}
+}
+
+void
+PBDGPU_Solver::advancePositions(std::shared_ptr<std::vector<PBDParticle>>& particles,
+const Parameters& settings)
+{
+	for (auto& p : *particles)
+	{
+		p.position() = p.previousPosition() + settings.timeStep * p.velocity();
+		//std::cout << p.velocity().transpose() << std::endl;
+	}
+}
+
+void
+PBDGPU_Solver::updateVelocities(std::shared_ptr<std::vector<PBDParticle>>& particles,
+const Parameters& settings)
+{
+	for (auto& p : *particles)
+	{
+		p.velocity() = (1.0 / settings.timeStep) * (p.position() - p.previousPosition());
+	}
+}
+
