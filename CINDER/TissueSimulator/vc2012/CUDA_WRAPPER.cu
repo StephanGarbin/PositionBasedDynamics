@@ -14,7 +14,7 @@
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float FirstPiolaKirchoffTensor[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float Gradient[NUM_THREADS_PER_BLOCK][3][4];
-__shared__ int LocalIndices[NUM_THREADS_PER_BLOCK][4];
+//__shared__ int LocalIndices[NUM_THREADS_PER_BLOCK][4];
 
 
 __device__ float sqr(float x)
@@ -47,20 +47,18 @@ __device__ float determinantF(int idx)
 		* (F[idx][1][0] * F[idx][2][1] - F[idx][1][1] * F[idx][2][0]);
 }
 
-__device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse, int trueNumConstraints)
+__device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse, int* indices, int trueNumConstraints)
 {
 	//1. Calculate Deformed Shape Matrix
-	FirstPiolaKirchoffTensor[idx][0][0] = positions[LocalIndices[idx][0] * 3 + 0] - positions[LocalIndices[idx][3] * 3 + 0];
-	FirstPiolaKirchoffTensor[idx][1][0] = positions[LocalIndices[idx][0] * 3 + 1] - positions[LocalIndices[idx][3] * 3 + 1];
-	FirstPiolaKirchoffTensor[idx][2][0] = positions[LocalIndices[idx][0] * 3 + 2] - positions[LocalIndices[idx][3] * 3 + 2];
-
-	FirstPiolaKirchoffTensor[idx][0][1] = positions[LocalIndices[idx][1] * 3 + 0] - positions[LocalIndices[idx][3] * 3 + 0];
-	FirstPiolaKirchoffTensor[idx][1][1] = positions[LocalIndices[idx][1] * 3 + 1] - positions[LocalIndices[idx][3] * 3 + 1];
-	FirstPiolaKirchoffTensor[idx][2][1] = positions[LocalIndices[idx][1] * 3 + 2] - positions[LocalIndices[idx][3] * 3 + 2];
-
-	FirstPiolaKirchoffTensor[idx][0][2] = positions[LocalIndices[idx][2] * 3 + 0] - positions[LocalIndices[idx][3] * 3 + 0];
-	FirstPiolaKirchoffTensor[idx][1][2] = positions[LocalIndices[idx][2] * 3 + 1] - positions[LocalIndices[idx][3] * 3 + 1];
-	FirstPiolaKirchoffTensor[idx][2][2] = positions[LocalIndices[idx][2] * 3 + 2] - positions[LocalIndices[idx][3] * 3 + 2];
+	FirstPiolaKirchoffTensor[idx][0][0] = positions[indices[(globalIdx)+trueNumConstraints * 0] * 3 + 0] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 0];
+	FirstPiolaKirchoffTensor[idx][1][0] = positions[indices[(globalIdx)+trueNumConstraints * 0] * 3 + 1] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 1];
+	FirstPiolaKirchoffTensor[idx][2][0] = positions[indices[(globalIdx)+trueNumConstraints * 0] * 3 + 2] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 2];
+	FirstPiolaKirchoffTensor[idx][0][1] = positions[indices[(globalIdx)+trueNumConstraints * 1] * 3 + 0] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 0];
+	FirstPiolaKirchoffTensor[idx][1][1] = positions[indices[(globalIdx)+trueNumConstraints * 1] * 3 + 1] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 1];
+	FirstPiolaKirchoffTensor[idx][2][1] = positions[indices[(globalIdx)+trueNumConstraints * 1] * 3 + 2] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 2];
+	FirstPiolaKirchoffTensor[idx][0][2] = positions[indices[(globalIdx)+trueNumConstraints * 2] * 3 + 0] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 0];
+	FirstPiolaKirchoffTensor[idx][1][2] = positions[indices[(globalIdx)+trueNumConstraints * 2] * 3 + 1] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 1];
+	FirstPiolaKirchoffTensor[idx][2][2] = positions[indices[(globalIdx)+trueNumConstraints * 2] * 3 + 2] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 2];
 
 	//2. Multiply 
 	for (int row = 0; row < 3; ++row)
@@ -243,13 +241,13 @@ __device__ float calculateLagrangeMultiplierDenominator(int globalIdx, int idx, 
 	return denominator;
 }
 
-__device__ void updatePositions(int globalIdx, int idx, float lagrangeMultiplier, float* positions, float* masses, int trueNumConstraints)
+__device__ void updatePositions(int globalIdx, int idx, float lagrangeMultiplier, float* positions, float* masses, int* indices, int trueNumConstraints)
 {
 	for (int i = 0; i < 4; ++i)
 	{
 		for (int j = 0; j < 3; ++j)
 		{
-			atomicAdd(&positions[LocalIndices[idx][i] * 3 + j], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * Gradient[idx][j][i]);
+			atomicAdd(&positions[indices[globalIdx + trueNumConstraints * i] * 3 + j], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * Gradient[idx][j][i]);
 			//atomicAdd(&positions[LocalIndices[threadIdx.x][i] * 3 + j], 0.0001f);
 			//printf("%d, ", LocalIndices[threadIdx.x][i] * 3 + j);
 			//printf("Position Update %4.8f \n", LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
@@ -258,17 +256,17 @@ __device__ void updatePositions(int globalIdx, int idx, float lagrangeMultiplier
 	}
 }
 
-__device__ __forceinline__ void getIndices(int idx, int* indices, int trueNumConstraints)
-{
-	//for (int i = 0; i < 4; ++i)
-	//{
-	//	LocalIndices[threadIdx.x][i] = indices[idx * 4 + i];
-	//}
-	for (int i = 0; i < 4; ++i)
-	{
-		LocalIndices[threadIdx.x][i] = indices[idx + i * trueNumConstraints];
-	}
-}
+//__device__ __forceinline__ void getIndices(int idx, int* indices, int trueNumConstraints)
+//{
+//	//for (int i = 0; i < 4; ++i)
+//	//{
+//	//	LocalIndices[threadIdx.x][i] = indices[idx * 4 + i];
+//	//}
+//	for (int i = 0; i < 4; ++i)
+//	{
+//		LocalIndices[threadIdx.x][i] = indices[idx + i * trueNumConstraints];
+//	}
+//}
 
 __device__ float calculateTraceFTransposeF_INPLACE()
 {
@@ -290,7 +288,7 @@ __device__ __forceinline__ float getFtFEntry(int row, int col)
 	for (int i = 0; i < 3; ++i)
 	{
 		result += F[threadIdx.x][i][row] * F[threadIdx.x][i][col];
-	} 
+	}
 
 	return result;
 }
@@ -375,7 +373,7 @@ __device__ void calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN_INPLACE(int idx, f
 			}
 
 			FInverseTEntry /= det;
-			
+
 			FirstPiolaKirchoffTensor[idx][row][col] = F[idx][row][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f);
 		}
 	}
@@ -418,11 +416,11 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	int idx = IDX;
 
-	getIndices(idx, indices, trueNumConstraints);
+	//getIndices(idx, indices, trueNumConstraints);
 	//getMasses(idx, inverseMass, trueNumConstraints);
 
 	//1. Calculate Deformation Gradient F
-	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse, trueNumConstraints);
+	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse, indices, trueNumConstraints);
 
 	//if (idx == 47)
 	//{
@@ -444,9 +442,9 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
 	//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
 	/*printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
-		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
-		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);*/
+	FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+	FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+	FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);*/
 	/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
 	refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
 	refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
@@ -464,9 +462,9 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
 	//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
 	/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-		refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
+	refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+	refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+	refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
 
 
 	//2. Compute Cauchy Tensors
@@ -523,7 +521,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	}
 
 	//8. Update Positions
-	updatePositions(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, trueNumConstraints);
+	updatePositions(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints);
 }
 
 
@@ -728,10 +726,10 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 
 	//Print some statistics
 	double totalNumbytes = indices.size() * sizeof(int)
-		+ positions.size() * sizeof(float)
-		+ volumes.size() * sizeof(float)
-		+ inverseMasses.size() * sizeof(float)
-		+ refShapeMatrixInverses.size() * sizeof(float);
+		+positions.size() * sizeof(float)
+		+volumes.size() * sizeof(float)
+		+inverseMasses.size() * sizeof(float)
+		+refShapeMatrixInverses.size() * sizeof(float);
 
 	std::cout << "Memory Usage: " << std::endl;
 	std::cout << "	Indices (int32)             : " << indices.size() * sizeof(int) << " bytes" << std::endl;
