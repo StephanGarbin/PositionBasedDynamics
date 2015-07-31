@@ -114,7 +114,7 @@ __device__ float calculateStrainEnergy_NEO_HOOKEAN(float volume, float lambda, f
 	return volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3)));
 }
 
-__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints)
+__device__ __forceinline__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints)
 {
 	//1. Copy refShapeMatrixInverse from global memory
 	for (int row = 0; row < 3; ++row)
@@ -471,17 +471,6 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	//2. Compute Cauchy Tensors
 	//calculateFTransposeF(threadIdx.x);
-
-	//printf("FTransposeF: \n");
-	//for (int row = 0; row < 3; ++row)
-	//{
-	//	for (int col = 0; col < 3; ++col)
-	//	{
-	//		printf("%4.8f,", FTransposeF[idx][row][col]);
-	//	}
-	//	printf("\n");
-	//}
-	//printf("\n \n");
 
 	//3. Compute Invariants
 	//float I1 = traceFTransposeF(threadIdx.x);
