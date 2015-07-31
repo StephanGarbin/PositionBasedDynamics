@@ -6,6 +6,7 @@
 
 #include "Parameters.h"
 #include "CUDA_WRAPPER.h"
+#include "CUDA_GLOBALS.h"
 
 PBDGPU_Solver::PBDGPU_Solver()
 {
@@ -22,18 +23,18 @@ PBDGPU_Solver::~PBDGPU_Solver()
 void
 PBDGPU_Solver::determineCUDALaunchParameters(int numParticles)
 {
-	CUDA_TRUE_NUM_CONSTRAINTS = numParticles;
+	m_CUDA_TRUE_NUM_CONSTRAINTS = numParticles;
 
-	CUDA_NUM_THREADS_PER_BLOCK = 64;
+	m_CUDA_NUM_THREADS_PER_BLOCK = NUM_THREADS_PER_BLOCK;
 
-	CUDA_NUM_BLOCKS = (numParticles / CUDA_NUM_THREADS_PER_BLOCK) + 1;
+	m_CUDA_NUM_BLOCKS = (numParticles / m_CUDA_NUM_THREADS_PER_BLOCK) + 1;
 
-	CUDA_NUM_PARTICLES = CUDA_NUM_BLOCKS * CUDA_NUM_THREADS_PER_BLOCK;
+	m_CUDA_NUM_PARTICLES = m_CUDA_NUM_BLOCKS * m_CUDA_NUM_THREADS_PER_BLOCK;
 
 	std::cout << "Determined (from " << numParticles << " tendered tetrahedra):" << std::endl;
-	std::cout << "	NUM_BLOCKS           : " << CUDA_NUM_BLOCKS << std::endl;
-	std::cout << "	NUM_THREADS_PER_BLOCK: " << CUDA_NUM_THREADS_PER_BLOCK << std::endl;
-	std::cout << "	This adds " << CUDA_NUM_PARTICLES - numParticles << " to the solver." << std::endl;
+	std::cout << "	NUM_BLOCKS           : " << m_CUDA_NUM_BLOCKS << std::endl;
+	std::cout << "	NUM_THREADS_PER_BLOCK: " << m_CUDA_NUM_THREADS_PER_BLOCK << std::endl;
+	std::cout << "	This adds " << m_CUDA_NUM_PARTICLES - numParticles << " to the solver." << std::endl;
 }
 
 void
@@ -126,9 +127,9 @@ Parameters& settings)
 	}
 
 	//2. Determine Settings
-	settings.numBlocks = CUDA_NUM_BLOCKS;
-	settings.numThreadsPerBlock = CUDA_NUM_THREADS_PER_BLOCK;
-	settings.trueNumberOfConstraints = CUDA_TRUE_NUM_CONSTRAINTS;
+	settings.numBlocks = m_CUDA_NUM_BLOCKS;
+	settings.numThreadsPerBlock = m_CUDA_NUM_THREADS_PER_BLOCK;
+	settings.trueNumberOfConstraints = m_CUDA_TRUE_NUM_CONSTRAINTS;
 
 	//3. Advance System
 	settings.calculateMu();

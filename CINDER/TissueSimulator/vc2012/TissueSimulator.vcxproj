@@ -221,6 +221,7 @@
   <ItemGroup>
     <ClInclude Include="..\include\Resources.h" />
     <ClInclude Include="ConstraintsIO.h" />
+    <ClInclude Include="CUDA_GLOBALS.h" />
     <ClInclude Include="CUDA_WRAPPER.h" />
     <ClInclude Include="Parameters.h" />
     <ClInclude Include="PBDGPU_Solver.h" />

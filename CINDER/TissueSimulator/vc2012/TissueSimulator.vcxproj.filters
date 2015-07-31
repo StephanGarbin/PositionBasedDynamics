@@ -65,6 +65,9 @@
     <ClInclude Include="CUDA_WRAPPER.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CUDA_GLOBALS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resources.rc">

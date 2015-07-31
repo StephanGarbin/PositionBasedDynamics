@@ -47,10 +47,10 @@ private:
 	float* m_device_referenceShapeMatrices;
 	float* m_device_inverseMasses;
 
-	int CUDA_NUM_BLOCKS;
-	int CUDA_NUM_THREADS_PER_BLOCK;
-	int CUDA_NUM_PARTICLES;
-	int CUDA_TRUE_NUM_CONSTRAINTS;
+	int m_CUDA_NUM_BLOCKS;
+	int m_CUDA_NUM_THREADS_PER_BLOCK;
+	int m_CUDA_NUM_PARTICLES;
+	int m_CUDA_TRUE_NUM_CONSTRAINTS;
 
 	void determineCUDALaunchParameters(int numParticles);
 
