@@ -43,9 +43,9 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
 	//projectConstraintsOLD(tetrahedra, particles, settings);
-	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
+	projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
-	projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);

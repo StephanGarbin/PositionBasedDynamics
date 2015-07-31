@@ -145,13 +145,13 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>C:\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;C:\TOOLS\ALEMBIC\win64_2013\include;C:\TOOLS\VEGAFEM\include;C:\Program Files\GLFW\include;C:\TOOLS\AntTweakBar\include;C:\TOOLS\boost\boost_1_57_0\;C:\TOOLS\FREEGLUT\freeglut-2.8.1\include;C:\TOOLS\GLEW\include;C:\TOOLS\GLUT\glut-3.7.6-bin;C:\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <Optimization>Full</Optimization>
       <BufferSecurityCheck>true</BufferSecurityCheck>
     </ClCompile>
     <Link>

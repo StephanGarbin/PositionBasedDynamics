@@ -321,7 +321,7 @@ void mainLoop()
 		glutLeaveMainLoop();
 	}
 
-	std::cout << "Current Frame: " << currentFrame << std::endl;
+	//std::cout << "Current Frame: " << currentFrame << std::endl;
 }
 
 // Callback function called by GLUT when window size changes

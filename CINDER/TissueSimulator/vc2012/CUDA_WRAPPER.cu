@@ -12,7 +12,7 @@
 #define IDX (blockIdx.x * blockDim.x + threadIdx.x)
 
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
-__shared__ float FirstPiolaKirchoffTensor[NUM_THREADS_PER_BLOCK][3][3];
+//__shared__ float FirstPiolaKirchoffTensor[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float Gradient[NUM_THREADS_PER_BLOCK][3][4];
 //__shared__ int LocalIndices[NUM_THREADS_PER_BLOCK][4];
 
@@ -49,16 +49,24 @@ __device__ float determinantF(int idx)
 
 __device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse, int* indices, int trueNumConstraints)
 {
+	int localIndices[4];
+	localIndices[0] = indices[globalIdx + trueNumConstraints * 0] * 3;
+	localIndices[1] = indices[globalIdx + trueNumConstraints * 1] * 3;
+	localIndices[2] = indices[globalIdx + trueNumConstraints * 2] * 3;
+	localIndices[3] = indices[globalIdx + trueNumConstraints * 3] * 3;
+
+	float temp[3][3];
+
 	//1. Calculate Deformed Shape Matrix
-	FirstPiolaKirchoffTensor[idx][0][0] = positions[indices[(globalIdx)+trueNumConstraints * 0] * 3 + 0] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 0];
-	FirstPiolaKirchoffTensor[idx][1][0] = positions[indices[(globalIdx)+trueNumConstraints * 0] * 3 + 1] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 1];
-	FirstPiolaKirchoffTensor[idx][2][0] = positions[indices[(globalIdx)+trueNumConstraints * 0] * 3 + 2] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 2];
-	FirstPiolaKirchoffTensor[idx][0][1] = positions[indices[(globalIdx)+trueNumConstraints * 1] * 3 + 0] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 0];
-	FirstPiolaKirchoffTensor[idx][1][1] = positions[indices[(globalIdx)+trueNumConstraints * 1] * 3 + 1] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 1];
-	FirstPiolaKirchoffTensor[idx][2][1] = positions[indices[(globalIdx)+trueNumConstraints * 1] * 3 + 2] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 2];
-	FirstPiolaKirchoffTensor[idx][0][2] = positions[indices[(globalIdx)+trueNumConstraints * 2] * 3 + 0] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 0];
-	FirstPiolaKirchoffTensor[idx][1][2] = positions[indices[(globalIdx)+trueNumConstraints * 2] * 3 + 1] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 1];
-	FirstPiolaKirchoffTensor[idx][2][2] = positions[indices[(globalIdx)+trueNumConstraints * 2] * 3 + 2] - positions[indices[(globalIdx)+trueNumConstraints * 3] * 3 + 2];
+	temp[0][0] = positions[localIndices[0] + 0] - positions[localIndices[3] + 0];
+	temp[1][0] = positions[localIndices[0] + 1] - positions[localIndices[3] + 1];
+	temp[2][0] = positions[localIndices[0] + 2] - positions[localIndices[3] + 2];
+	temp[0][1] = positions[localIndices[1] + 0] - positions[localIndices[3] + 0];
+	temp[1][1] = positions[localIndices[1] + 1] - positions[localIndices[3] + 1];
+	temp[2][1] = positions[localIndices[1] + 2] - positions[localIndices[3] + 2];
+	temp[0][2] = positions[localIndices[2] + 0] - positions[localIndices[3] + 0];
+	temp[1][2] = positions[localIndices[2] + 1] - positions[localIndices[3] + 1];
+	temp[2][2] = positions[localIndices[2] + 2] - positions[localIndices[3] + 2];
 
 	//2. Multiply 
 	for (int row = 0; row < 3; ++row)
@@ -69,7 +77,7 @@ __device__ void calculateF(int globalIdx, int idx, float* positions, float* refS
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += FirstPiolaKirchoffTensor[idx][row][i] * refShapeMatrixInverse[(i * 3 + col) * trueNumConstraints + globalIdx];
+				sum += temp[row][i] * refShapeMatrixInverse[(i * 3 + col) * trueNumConstraints + globalIdx];
 			}
 
 			F[idx][row][col] = sum;
@@ -112,55 +120,55 @@ __device__ float calculateStrainEnergy_NEO_HOOKEAN(float volume, float lambda, f
 	return volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3)));
 }
 
-__device__ __forceinline__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints)
-{
-	//1. Copy refShapeMatrixInverse from global memory
-	for (int row = 0; row < 3; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			//We need the TRANSPOSE of the reference shape matrix inverse
-			Gradient[idx][row][col] = refShapeMatrixInverse[(col * 3 + row) * trueNumConstraints + globalIdx];
-		}
-	}
-
-	//3. Multiply with First Piola-Kirchoff Stress tensor
-	for (int row = 0; row < 3; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			float sum = 0.0f;
-
-			for (int i = 0; i < 3; ++i)
-			{
-				sum += FirstPiolaKirchoffTensor[idx][row][i] * Gradient[idx][i][col];
-			}
-
-			F[idx][row][col] = sum;
-		}
-	}
-
-	//4. Copy back
-	for (int row = 0; row < 3; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			Gradient[idx][row][col] = F[idx][row][col] * volume;
-		}
-	}
-
-
-	//4. Calculate last column
-	for (int row = 0; row < 3; ++row)
-	{
-		float sum = 0.0f;
-		for (int col = 0; col < 3; ++col)
-		{
-			sum += Gradient[idx][row][col];
-		}
-		Gradient[idx][row][3] = -sum;
-	}
-}
+//__device__  void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints)
+//{
+//	//1. Copy refShapeMatrixInverse from global memory
+//	for (int row = 0; row < 3; ++row)
+//	{
+//		for (int col = 0; col < 3; ++col)
+//		{
+//			//We need the TRANSPOSE of the reference shape matrix inverse
+//			Gradient[idx][row][col] = refShapeMatrixInverse[(col * 3 + row) * trueNumConstraints + globalIdx];
+//		}
+//	}
+//
+//	//3. Multiply with First Piola-Kirchoff Stress tensor
+//	for (int row = 0; row < 3; ++row)
+//	{
+//		for (int col = 0; col < 3; ++col)
+//		{
+//			float sum = 0.0f;
+//
+//			for (int i = 0; i < 3; ++i)
+//			{
+//				sum += FirstPiolaKirchoffTensor[idx][row][i] * Gradient[idx][i][col];
+//			}
+//
+//			F[idx][row][col] = sum;
+//		}
+//	}
+//
+//	//4. Copy back
+//	for (int row = 0; row < 3; ++row)
+//	{
+//		for (int col = 0; col < 3; ++col)
+//		{
+//			Gradient[idx][row][col] = F[idx][row][col] * volume;
+//		}
+//	}
+//
+//
+//	//4. Calculate last column
+//	for (int row = 0; row < 3; ++row)
+//	{
+//		float sum = 0.0f;
+//		for (int col = 0; col < 3; ++col)
+//		{
+//			sum += Gradient[idx][row][col];
+//		}
+//		Gradient[idx][row][3] = -sum;
+//	}
+//}
 
 //__device__ void calculateFTransposeF(int idx)
 //{
@@ -219,7 +227,7 @@ __device__ __forceinline__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int gl
 //	//}
 //}
 
-__device__ float squaredNormGradient(int idx, int particleIdx)
+__device__ __forceinline__ float squaredNormGradient(int idx, int particleIdx)
 {
 	return sqrtf(sqr(Gradient[idx][0][particleIdx])
 		+ sqr(Gradient[idx][1][particleIdx])
@@ -243,11 +251,17 @@ __device__ float calculateLagrangeMultiplierDenominator(int globalIdx, int idx, 
 
 __device__ void updatePositions(int globalIdx, int idx, float lagrangeMultiplier, float* positions, float* masses, int* indices, int trueNumConstraints)
 {
+	int localIndices[4];
+	localIndices[0] = indices[globalIdx + trueNumConstraints * 0] * 3;
+	localIndices[1] = indices[globalIdx + trueNumConstraints * 1] * 3;
+	localIndices[2] = indices[globalIdx + trueNumConstraints * 2] * 3;
+	localIndices[3] = indices[globalIdx + trueNumConstraints * 3] * 3;
+
 	for (int i = 0; i < 4; ++i)
 	{
 		for (int j = 0; j < 3; ++j)
 		{
-			atomicAdd(&positions[indices[globalIdx + trueNumConstraints * i] * 3 + j], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * Gradient[idx][j][i]);
+			atomicAdd(&positions[localIndices[i] + j], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * Gradient[idx][j][i]);
 			//atomicAdd(&positions[LocalIndices[threadIdx.x][i] * 3 + j], 0.0001f);
 			//printf("%d, ", LocalIndices[threadIdx.x][i] * 3 + j);
 			//printf("Position Update %4.8f \n", LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
@@ -284,100 +298,198 @@ __device__ float calculateTraceFTransposeF_INPLACE()
 
 __device__ __forceinline__ float getFtFEntry(int row, int col)
 {
-	float result = 0.0f;
-	for (int i = 0; i < 3; ++i)
-	{
-		result += F[threadIdx.x][i][row] * F[threadIdx.x][i][col];
-	}
+	return F[threadIdx.x][0][row] * F[threadIdx.x][0][col]
+		+ F[threadIdx.x][1][row] * F[threadIdx.x][1][col]
+		+ F[threadIdx.x][2][row] * F[threadIdx.x][2][col];
+	//float result = 0.0f;
+	//for (int i = 0; i < 3; ++i)
+	//{
+	//	result += F[threadIdx.x][i][row] * F[threadIdx.x][i][col];
+	//}
 
-	return result;
+	//return result;
 }
 
-__device__ float calculatedeterminantFTransposeF_INPLACE()
+__device__ __forceinline__ float calculatedeterminantFTransposeF_INPLACE()
 {
-	float determinant = 0.0f;
-
-	determinant += getFtFEntry(0, 0)
-		* (getFtFEntry(1, 1) * getFtFEntry(2, 2) - getFtFEntry(1, 2) * getFtFEntry(2, 1));
-
-	determinant -= getFtFEntry(0, 1)
-		* (getFtFEntry(1, 0) * getFtFEntry(2, 2) - getFtFEntry(1, 2) * getFtFEntry(2, 0));
-
-	determinant += getFtFEntry(0, 2)
-		* (getFtFEntry(1, 0) * getFtFEntry(2, 1) - getFtFEntry(1, 1) * getFtFEntry(2, 0));
-
-	return determinant;
-	//return TEMP1[idx][0][0]
-	//	* (TEMP1[idx][1][1] * TEMP1[idx][2][2] - TEMP1[idx][1][2] * TEMP1[idx][2][1])
-	//	- TEMP1[idx][0][1]
-	//	* (TEMP1[idx][1][0] * TEMP1[idx][2][2] - TEMP1[idx][1][2] * TEMP1[idx][2][0])
-	//	+ TEMP1[idx][0][2]
-	//	* (TEMP1[idx][1][0] * TEMP1[idx][2][1] - TEMP1[idx][1][1] * TEMP1[idx][2][0]);
+	return (getFtFEntry(0, 0)
+		* (getFtFEntry(1, 1) * getFtFEntry(2, 2) - getFtFEntry(1, 2) * getFtFEntry(2, 1)))
+		- (getFtFEntry(0, 1)
+		* (getFtFEntry(1, 0) * getFtFEntry(2, 2) - getFtFEntry(1, 2) * getFtFEntry(2, 0)))
+		+ (getFtFEntry(0, 2)
+		* (getFtFEntry(1, 0) * getFtFEntry(2, 1) - getFtFEntry(1, 1) * getFtFEntry(2, 0)));
 }
 
-__device__ void calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN_INPLACE(int idx, float mu, float lambda, float I3)
+//__device__ void calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN_INPLACE(int idx, float mu, float lambda, float I3)
+//{
+//	float det = determinantF(idx);
+//
+//	//3. Subtract mu times FInverseTranspose
+//	for (int row = 0; row < 3; ++row)
+//	{
+//		for (int col = 0; col < 3; ++col)
+//		{
+//			float FInverseTEntry;
+//
+//			if (row == 0)
+//			{
+//				if (col == 0)
+//				{
+//					FInverseTEntry = F[idx][1][1] * F[idx][2][2] - F[idx][2][1] * F[idx][1][2];
+//				}
+//				else if (col == 1)
+//				{
+//					FInverseTEntry = -(F[idx][1][0] * F[idx][2][2] - F[idx][2][0] * F[idx][1][2]);
+//				}
+//				else if (col == 2)
+//				{
+//					FInverseTEntry = F[idx][1][0] * F[idx][2][1] - F[idx][2][0] * F[idx][1][1];
+//				}
+//			}
+//			else if (row == 1)
+//			{
+//				if (col == 0)
+//				{
+//					FInverseTEntry = -(F[idx][0][1] * F[idx][2][2] - F[idx][2][1] * F[idx][0][2]);
+//				}
+//				else if (col == 1)
+//				{
+//					FInverseTEntry = F[idx][0][0] * F[idx][2][2] - F[idx][2][0] * F[idx][0][2];
+//				}
+//				else if (col == 2)
+//				{
+//					FInverseTEntry = -(F[idx][0][0] * F[idx][2][1] - F[idx][2][0] * F[idx][0][1]);
+//				}
+//			}
+//			else if (row == 2)
+//			{
+//				if (col == 0)
+//				{
+//					FInverseTEntry = F[idx][0][1] * F[idx][1][2] - F[idx][1][1] * F[idx][0][2];
+//				}
+//				else if (col == 1)
+//				{
+//					FInverseTEntry = -(F[idx][0][0] * F[idx][1][2] - F[idx][1][0] * F[idx][0][2]);
+//				}
+//				else if (col == 2)
+//				{
+//					FInverseTEntry = F[idx][0][0] * F[idx][1][1] - F[idx][1][0] * F[idx][0][1];
+//				}
+//			}
+//
+//			FInverseTEntry /= det;
+//
+//			FirstPiolaKirchoffTensor[idx][row][col] = F[idx][row][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f);
+//		}
+//	}
+//}
+
+__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints, float mu, float lambda, float I3)
 {
 	float det = determinantF(idx);
 
-	//3. Subtract mu times FInverseTranspose
+	//1. Copy refShapeMatrixInverse from global memory
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			float FInverseTEntry;
-
-			if (row == 0)
-			{
-				if (col == 0)
-				{
-					FInverseTEntry = F[idx][1][1] * F[idx][2][2] - F[idx][2][1] * F[idx][1][2];
-				}
-				else if (col == 1)
-				{
-					FInverseTEntry = -(F[idx][1][0] * F[idx][2][2] - F[idx][2][0] * F[idx][1][2]);
-				}
-				else if (col == 2)
-				{
-					FInverseTEntry = F[idx][1][0] * F[idx][2][1] - F[idx][2][0] * F[idx][1][1];
-				}
-			}
-			else if (row == 1)
-			{
-				if (col == 0)
-				{
-					FInverseTEntry = -(F[idx][0][1] * F[idx][2][2] - F[idx][2][1] * F[idx][0][2]);
-				}
-				else if (col == 1)
-				{
-					FInverseTEntry = F[idx][0][0] * F[idx][2][2] - F[idx][2][0] * F[idx][0][2];
-				}
-				else if (col == 2)
-				{
-					FInverseTEntry = -(F[idx][0][0] * F[idx][2][1] - F[idx][2][0] * F[idx][0][1]);
-				}
-			}
-			else if (row == 2)
-			{
-				if (col == 0)
-				{
-					FInverseTEntry = F[idx][0][1] * F[idx][1][2] - F[idx][1][1] * F[idx][0][2];
-				}
-				else if (col == 1)
-				{
-					FInverseTEntry = -(F[idx][0][0] * F[idx][1][2] - F[idx][1][0] * F[idx][0][2]);
-				}
-				else if (col == 2)
-				{
-					FInverseTEntry = F[idx][0][0] * F[idx][1][1] - F[idx][1][0] * F[idx][0][1];
-				}
-			}
-
-			FInverseTEntry /= det;
-
-			FirstPiolaKirchoffTensor[idx][row][col] = F[idx][row][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f);
+			//We need the TRANSPOSE of the reference shape matrix inverse
+			Gradient[idx][row][col] = refShapeMatrixInverse[(col * 3 + row) * trueNumConstraints + globalIdx];
 		}
 	}
+
+	float temp[3][3];
+
+	//3. Multiply with First Piola-Kirchoff Stress tensor
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+
+			for (int i = 0; i < 3; ++i)
+			{
+				float FInverseTEntry;
+
+				if (row == 0)
+				{
+					if (i == 0)
+					{
+						FInverseTEntry = F[idx][1][1] * F[idx][2][2] - F[idx][2][1] * F[idx][1][2];
+					}
+					else if (i == 1)
+					{
+						FInverseTEntry = -(F[idx][1][0] * F[idx][2][2] - F[idx][2][0] * F[idx][1][2]);
+					}
+					else if (i == 2)
+					{
+						FInverseTEntry = F[idx][1][0] * F[idx][2][1] - F[idx][2][0] * F[idx][1][1];
+					}
+				}
+				else if (row == 1)
+				{
+					if (i == 0)
+					{
+						FInverseTEntry = -(F[idx][0][1] * F[idx][2][2] - F[idx][2][1] * F[idx][0][2]);
+					}
+					else if (i == 1)
+					{
+						FInverseTEntry = F[idx][0][0] * F[idx][2][2] - F[idx][2][0] * F[idx][0][2];
+					}
+					else if (i == 2)
+					{
+						FInverseTEntry = -(F[idx][0][0] * F[idx][2][1] - F[idx][2][0] * F[idx][0][1]);
+					}
+				}
+				else if (row == 2)
+				{
+					if (i == 0)
+					{
+						FInverseTEntry = F[idx][0][1] * F[idx][1][2] - F[idx][1][1] * F[idx][0][2];
+					}
+					else if (i == 1)
+					{
+						FInverseTEntry = -(F[idx][0][0] * F[idx][1][2] - F[idx][1][0] * F[idx][0][2]);
+					}
+					else if (i == 2)
+					{
+						FInverseTEntry = F[idx][0][0] * F[idx][1][1] - F[idx][1][0] * F[idx][0][1];
+					}
+				}
+
+				FInverseTEntry /= det;
+
+				float PFEntry = F[idx][row][i] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f);
+				
+				sum += PFEntry * Gradient[idx][i][col];
+			}
+
+			temp[row][col] = sum;
+		}
+	}
+
+	//4. Copy back
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			Gradient[idx][row][col] = temp[row][col] * volume;
+		}
+	}
+
+
+	//4. Calculate last column
+	for (int row = 0; row < 3; ++row)
+	{
+		float sum = 0.0f;
+		for (int col = 0; col < 3; ++col)
+		{
+			sum += Gradient[idx][row][col];
+		}
+		Gradient[idx][row][3] = -sum;
+	}
 }
+
 
 //__device__ void getMasses(int idx, float* masses, int trueNumConstraints)
 //{
@@ -483,7 +595,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	//4. Calculate First Piola-Kirchoff Stress Tensor
 	//calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(threadIdx.x, mu, lambda, I3);
-	calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN_INPLACE(threadIdx.x, mu, lambda, I3);
+	//calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN_INPLACE(threadIdx.x, mu, lambda, I3);
 
 	//5. Calculate StrainEnergy
 	float strainEnergy = calculateStrainEnergy_NEO_HOOKEAN(volume[idx], lambda, mu, I1, I3);
@@ -491,8 +603,8 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("StrainEnergy = %4.8f \n", strainEnergy);
 
 	//6. Calculate Strain Energy Gradient
-	calculateStrainEnergyGradient_NEO_HOOKEAN(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints);
-
+	//calculateStrainEnergyGradient_NEO_HOOKEAN(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints);
+	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3);
 
 	//7. Calculate Lagrange Multiplier
 	float denominator = calculateLagrangeMultiplierDenominator(idx, threadIdx.x, inverseMass, trueNumConstraints);
