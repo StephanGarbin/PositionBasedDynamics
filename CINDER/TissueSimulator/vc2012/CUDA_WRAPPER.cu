@@ -10,6 +10,8 @@
 
 const int NUM_THREADS_PER_BLOCK = 64;
 
+#define IDX (blockIdx.x * blockDim.x + threadIdx.x)
+
 __shared__ float F[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float TEMP1[NUM_THREADS_PER_BLOCK][3][3];
 __shared__ float FirstPiolaKirchoffTensor[NUM_THREADS_PER_BLOCK][3][3];
@@ -270,20 +272,30 @@ __device__ void updatePositions(int idx, float lagrangeMultiplier, float* positi
 	}
 }
 
-__device__ void getIndices(int idx, int* indices)
+__device__ __forceinline__ void getIndices(int idx, int* indices, int trueNumConstraints)
 {
+	//for (int i = 0; i < 4; ++i)
+	//{
+	//	LocalIndices[threadIdx.x][i] = indices[idx * 4 + i];
+	//}
 	for (int i = 0; i < 4; ++i)
 	{
-		LocalIndices[threadIdx.x][i] = indices[idx * 4 + i];
+		LocalIndices[threadIdx.x][i] = indices[idx + i * trueNumConstraints];
 	}
 }
 
-__device__ void getMasses(int idx, float* masses)
+__device__ void getMasses(int idx, float* masses, int trueNumConstraints)
 {
+	//for (int i = 0; i < 4; ++i)
+	//{
+	//	//printf("%d; ", LocalIndices[idx][i]);
+	//	LocalMasses[threadIdx.x][i] = masses[LocalIndices[threadIdx.x][i]];
+	//}
+
 	for (int i = 0; i < 4; ++i)
 	{
 		//printf("%d; ", LocalIndices[idx][i]);
-		LocalMasses[threadIdx.x][i] = masses[LocalIndices[threadIdx.x][i]];
+		LocalMasses[threadIdx.x][i] = masses[idx + i * trueNumConstraints];
 	}
 }
 
@@ -303,11 +315,16 @@ __device__ bool isFIdentity()
 __global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
 	float lambda, float mu, int trueNumConstraints)
 {
-	int idx = (blockIdx.x * blockDim.x + threadIdx.x) % trueNumConstraints;
+	if (IDX > trueNumConstraints)
+	{
+		return;
+	}
 
-	getIndices(idx, indices);
+	int idx = IDX;
 
-	getMasses(idx, inverseMass);
+	getIndices(idx, indices, trueNumConstraints);
+
+	getMasses(idx, inverseMass, trueNumConstraints);
 
 	//1. Calculate Deformation Gradient F
 	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse);
@@ -653,7 +670,22 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 		return false;
 	}
 
-	return true;
+
+	//Print some statistics
+	double totalNumbytes = indices.size() * sizeof(int)
+		+ positions.size() * sizeof(float)
+		+ volumes.size() * sizeof(float)
+		+ inverseMasses.size() * sizeof(float)
+		+ refShapeMatrixInverses.size() * sizeof(float);
+
+	std::cout << "Memory Usage: " << std::endl;
+	std::cout << "	Indices (int32)             : " << indices.size() * sizeof(int) << " bytes" << std::endl;
+	std::cout << "	Positions (float)           : " << positions.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	Volumes (float)             : " << volumes.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	Masses (float)              : " << inverseMasses.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	Ref. Shape Matrices: (float): " << refShapeMatrixInverses.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	--------------------------------------------------------" << std::endl;
+	std::cout << "	Total                       : " << totalNumbytes << " bytes (" << totalNumbytes / 1000.0 << " kb)" << std::endl;
 }
 
 bool CUDA_destroyBuffers(int* device_indices, float* device_positions,

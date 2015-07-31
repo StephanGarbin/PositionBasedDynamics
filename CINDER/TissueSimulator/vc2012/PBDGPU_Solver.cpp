@@ -43,16 +43,30 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 	//0. Determine CUDA Launch parameters
 	determineCUDALaunchParameters(tetrahedra.size());
 
-	//1. Inverse masses
-	for (int i = 0; i < particles->size(); ++i)
+	////1. Inverse masses
+	//for (int i = 0; i < particles->size(); ++i)
+	//{
+	//	m_inverseMasses.push_back((*particles)[i].inverseMass());
+	//}
+	for (int j = 0; j < 4; ++j)
 	{
-		m_inverseMasses.push_back((*particles)[i].inverseMass());
+		for (int i = 0; i < tetrahedra.size(); ++i)
+		{
+			m_inverseMasses.push_back((*particles)[tetrahedra[i].getVertexIndices()[j]].inverseMass());
+		}
 	}
 
 	//2. Indices
-	for (int i = 0; i < tetrahedra.size(); ++i)
+	//for (int i = 0; i < tetrahedra.size(); ++i)
+	//{
+	//	for (int j = 0; j < 4; ++j)
+	//	{
+	//		m_indices.push_back(tetrahedra[i].getVertexIndices()[j]);
+	//	}
+	//}
+	for (int j = 0; j < 4; ++j)
 	{
-		for (int j = 0; j < 4; ++j)
+		for (int i = 0; i < tetrahedra.size(); ++i)
 		{
 			m_indices.push_back(tetrahedra[i].getVertexIndices()[j]);
 		}

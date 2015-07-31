@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AnalysisReport Version="1.0">
+  <ProcessId>16212</ProcessId>
+  <ReportCreationTime>2015-07-30T15:33:41.9406237+01:00</ReportCreationTime>
+  <ReportDirectory>c:\temp\TissueSimulator150730_000\TissueSimulator150730_000_Capture_000</ReportDirectory>
+  <ReportFile>c:\temp\TissueSimulator150730_000\TissueSimulator150730_000_Capture_000\TissueSimulator150730_000_Capture_000.nvreport</ReportFile>
+  <CaptureStartQpcTimestamp>241690933475</CaptureStartQpcTimestamp>
+  <CaptureStartNveTimestamp>122245153862621</CaptureStartNveTimestamp>
+  <CaptureStartNveFrequency>2295000000</CaptureStartNveFrequency>
+  <CaptureEndQpcTimestamp>241810360628</CaptureEndQpcTimestamp>
+  <CaptureEndNveTimestamp>122367447268550</CaptureEndNveTimestamp>
+  <CaptureStartRdtscTimestamp>122245153862791</CaptureStartRdtscTimestamp>
+  <CaptureEndRdtscTimestamp>122367447269093</CaptureEndRdtscTimestamp>
+  <CaptureStartFileTimeTimestamp>130827404222431705</CaptureStartFileTimeTimestamp>
+  <CaptureEndFileTimeTimestamp>130827404755370767</CaptureEndFileTimeTimestamp>
+</AnalysisReport>

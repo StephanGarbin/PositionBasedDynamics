@@ -42,10 +42,10 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//{
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
-	projectConstraintsOLD(tetrahedra, particles, settings);
+	//projectConstraintsOLD(tetrahedra, particles, settings);
 	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
-	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, 1.0);
+	projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -451,37 +451,31 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//std::cout << tetrahedra[t].getDeformedShapeMatrix() << std::endl;
 			//std::cout << F << std::endl;
 			//std::cout << tetrahedra[t].getReferenceShapeMatrixInverseTranspose().transpose() << std::endl;
-
-			if (t == 47)
-			{
-				//std::cout << tetrahedra[t].getVertexIndices()[0] << ", ";
-				//std::cout << tetrahedra[t].getVertexIndices()[1] << ", ";
-				//std::cout << tetrahedra[t].getVertexIndices()[2] << ", ";
-				//std::cout << tetrahedra[t].getVertexIndices()[3] << std::endl;
-
-				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[0]].position() << std::endl;
-				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[1]].position() << std::endl;
-				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[2]].position() << std::endl;
-				//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[3]].position() << std::endl;
-
-
-				printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
-					F(0, 0), F(0, 1), F(0, 2),
-					F(1, 0), F(1, 1), F(1, 2),
-					F(2, 0), F(2, 1), F(2, 2));
-
-				FTransposeF = tetrahedra[t].getReferenceShapeMatrixInverseTranspose().transpose();
-				printf("RefInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
-					FTransposeF(0, 0), FTransposeF(0, 1), FTransposeF(0, 2),
-					FTransposeF(1, 0), FTransposeF(1, 1), FTransposeF(1, 2),
-					FTransposeF(2, 0), FTransposeF(2, 1), FTransposeF(2, 2));
-
-				FTransposeF = tetrahedra[t].getDeformedShapeMatrix();
-				printf("Deformed [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
-					FTransposeF(0, 0), FTransposeF(0, 1), FTransposeF(0, 2),
-					FTransposeF(1, 0), FTransposeF(1, 1), FTransposeF(1, 2),
-					FTransposeF(2, 0), FTransposeF(2, 1), FTransposeF(2, 2));
-			}
+			//if (t == 47)
+			//{
+			//	//std::cout << tetrahedra[t].getVertexIndices()[0] << ", ";
+			//	//std::cout << tetrahedra[t].getVertexIndices()[1] << ", ";
+			//	//std::cout << tetrahedra[t].getVertexIndices()[2] << ", ";
+			//	//std::cout << tetrahedra[t].getVertexIndices()[3] << std::endl;
+			//	//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[0]].position() << std::endl;
+			//	//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[1]].position() << std::endl;
+			//	//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[2]].position() << std::endl;
+			//	//std::cout << (*particles)[tetrahedra[t].getVertexIndices()[3]].position() << std::endl;
+			//	printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
+			//		F(0, 0), F(0, 1), F(0, 2),
+			//		F(1, 0), F(1, 1), F(1, 2),
+			//		F(2, 0), F(2, 1), F(2, 2));
+			//	FTransposeF = tetrahedra[t].getReferenceShapeMatrixInverseTranspose().transpose();
+			//	printf("RefInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
+			//		FTransposeF(0, 0), FTransposeF(0, 1), FTransposeF(0, 2),
+			//		FTransposeF(1, 0), FTransposeF(1, 1), FTransposeF(1, 2),
+			//		FTransposeF(2, 0), FTransposeF(2, 1), FTransposeF(2, 2));
+			//	FTransposeF = tetrahedra[t].getDeformedShapeMatrix();
+			//	printf("Deformed [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", t,
+			//		FTransposeF(0, 0), FTransposeF(0, 1), FTransposeF(0, 2),
+			//		FTransposeF(1, 0), FTransposeF(1, 1), FTransposeF(1, 2),
+			//		FTransposeF(2, 0), FTransposeF(2, 1), FTransposeF(2, 2));
+			//}
 			if (F.isIdentity())
 			{
 				continue;
@@ -504,7 +498,6 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				//		S(i, i) = 0.0f;
 				//	}
 				//}
-
 				////2.  Detect if V is a reflection .
 				////    Make a rotation out of it by multiplying one column with -1.
 				//const float detV = V.determinant();
@@ -524,13 +517,11 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				//	V(1, pos) = -V(1, pos);
 				//	V(2, pos) = -V(2, pos);
 				//}
-
 				////3. Compute Fhat
 				//Fhat.setZero();
 				//Fhat(0, 0) = sqrtf(S(0, 0));
 				//Fhat(1, 1) = sqrtf(S(1, 1));
 				//Fhat(2, 2) = sqrtf(S(2, 2));
-
 				////4. Compute U
 				//U = F * V * Fhat.inverse();
 
@@ -635,10 +626,8 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				//	+ ((settings.lambda * logI3) / 2.0) * Fhat.inverse().transpose();
 
 				//PF = U * PF * V;
-
 				//I1 = (Fhat.transpose() * Fhat).trace();
 				//I3 = (Fhat.transpose() * Fhat).determinant();
-
 				//logI3 = log(I3);
 			}
 			else
@@ -670,9 +659,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//{
 			//	strainEnergy = -1e-5f;
 			//}
-
 			//std::cout << "Strain Energy: " << strainEnergy << std::endl;
-
 			//Compute Lagrange Multiplier
 
 			float denominator = 0.0;
@@ -707,24 +694,22 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			{
 				lagrangeM = -(strainEnergy / denominator);
 			}
-			if (t == 47)
-			{
-				printf("I1 = %8.16f \n",I1);
-				printf("I3 = %8.16f \n",I3);
-				printf("lagrangeMultiplier = %8.16f \n", lagrangeM);
-				printf("strainEnergy = %8.16f \n", strainEnergy);
-				printf("denominator = %8.16f \n", denominator);
-
-				printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", 47,
-					PF(0, 0), PF(0, 1), PF(0, 2),
-					PF(1, 0), PF(1, 1), PF(1, 2),
-					PF(2, 0), PF(2, 1), PF(2, 2));
-
-				printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", 47,
-					gradient(0, 0), gradient(0, 1), gradient(0, 2), gradient(0, 3),
-					gradient(1, 0), gradient(1, 1), gradient(1, 2), gradient(1, 3),
-					gradient(2, 0), gradient(2, 1), gradient(2, 2), gradient(2, 3));
-			}
+			//if (t == 47)
+			//{
+			//	printf("I1 = %8.16f \n",I1);
+			//	printf("I3 = %8.16f \n",I3);
+			//	printf("lagrangeMultiplier = %8.16f \n", lagrangeM);
+			//	printf("strainEnergy = %8.16f \n", strainEnergy);
+			//	printf("denominator = %8.16f \n", denominator);
+			//	printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", 47,
+			//		PF(0, 0), PF(0, 1), PF(0, 2),
+			//		PF(1, 0), PF(1, 1), PF(1, 2),
+			//		PF(2, 0), PF(2, 1), PF(2, 2));
+			//	printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", 47,
+			//		gradient(0, 0), gradient(0, 1), gradient(0, 2), gradient(0, 3),
+			//		gradient(1, 0), gradient(1, 1), gradient(1, 2), gradient(1, 3),
+			//		gradient(2, 0), gradient(2, 1), gradient(2, 2), gradient(2, 3));
+			//}
 			if (std::isnan(lagrangeM))
 			{
 				//if (isInverted)
@@ -751,7 +736,6 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 				//std::cout << "Undeformed Volume: " << V << std::endl;
 				//
 				//std::cout << "STEPS: " << std::endl;
-
 				//std::cout << (settings.mu * F) << std::endl;
 				//std::cout << settings.mu * F.inverse().transpose() << std::endl;
 				//std::cout << log(I3) << std::endl;
@@ -1460,13 +1444,21 @@ PBDSolver::projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
 	
 	float stiffnessMultiplier;
 
+
 	if (k == 1.0f)
 	{
 		stiffnessMultiplier = 1.0f;
 	}
 	else
 	{
-		stiffnessMultiplier = 1.0 - std::pow((1.0 - k), 1.0f / (float)numIterations);
+		if (k > 1.0f)
+		{
+			stiffnessMultiplier = 1.0f;
+		}
+		else
+		{
+			stiffnessMultiplier = 1.0f - std::pow((1.0f - k), 1.0f / (float)numIterations);
+		}
 	}
 
 
@@ -1606,134 +1598,125 @@ PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tet
 			isInverted = F.determinant() < 0.0;
 
 			//check for inversion
-			if (isInverted)
-			{
-				inversionHandled = true;
-				//1. Compute Eigendecomposition
-				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-				S = eigenSolver.pseudoEigenvalueMatrix();
-				V = eigenSolver.pseudoEigenvectors();
-				for (int i = 0; i < 3; ++i)
-				{
-					if (S(i, i) < 0.0f)
-					{
-						S(i, i) = 0.0f;
-					}
-				}
-
-				//2.  Detect if V is a reflection .
-				//    Make a rotation out of it by multiplying one column with -1.
-				const float detV = V.determinant();
-				if (detV < 0.0)
-				{
-					float minLambda = FLT_MAX;
-					unsigned char pos = 0;
-					for (unsigned char l = 0; l < 3; l++)
-					{
-						if (S(l, l) < minLambda)
-						{
-							pos = l;
-							minLambda = S(l, l);
-						}
-					}
-					V(0, pos) = -V(0, pos);
-					V(1, pos) = -V(1, pos);
-					V(2, pos) = -V(2, pos);
-				}
-
-				//3. Compute Fhat
-				Fhat.setZero();
-				Fhat(0, 0) = sqrtf(S(0, 0));
-				Fhat(1, 1) = sqrtf(S(1, 1));
-				Fhat(2, 2) = sqrtf(S(2, 2));
-
-				//4. Compute U
-				U = F * V * Fhat.inverse();
-
-				//CORRECT U
-				//
-				// Check for values of hatF near zero
-				//
-				unsigned char chk = 0;
-				unsigned char pos = 0;
-				for (unsigned char l = 0; l < 3; l++)
-				{
-					if (fabs(Fhat(l, l)) < 1.0e-4f)
-					{
-						pos = l;
-						chk++;
-					}
-				}
-
-				if (chk > 0)
-				{
-					if (chk > 1)
-					{
-						U.setIdentity();
-					}
-					else
-					{
-						U = F * V;
-						for (unsigned char l = 0; l < 3; l++)
-						{
-							if (l != pos)
-							{
-								for (unsigned char m = 0; m < 3; m++)
-								{
-									U(m, l) *= 1.0f / Fhat(l, l);
-								}
-							}
-						}
-
-						Eigen::Vector3f v[2];
-						unsigned char index = 0;
-						for (unsigned char l = 0; l < 3; l++)
-						{
-							if (l != pos)
-							{
-								v[index++] = Eigen::Vector3f(U(0, l), U(1, l), U(2, l));
-							}
-						}
-						Eigen::Vector3f vec = v[0].cross(v[1]);
-						vec.normalize();
-						U(0, pos) = vec[0];
-						U(1, pos) = vec[1];
-						U(2, pos) = vec[2];
-					}
-				}
-				else
-				{
-					Eigen::Vector3f hatFInv(1.0f / Fhat(0, 0), 1.0f / Fhat(1, 1), 1.0f / Fhat(2, 2));
-					U = F * V;
-					for (unsigned char l = 0; l < 3; l++)
-					{
-						for (unsigned char m = 0; m < 3; m++)
-						{
-							U(m, l) *= hatFInv[l];
-						}
-					}
-				}
-
-				//5. Check if U is also a rotation and correct
-				if (U.determinant() < 0)
-				{
-					//find minimal element of U
-					int minElementFhat = 0;
-					float minElementFhatValue = Fhat(0, 0);
-					for (int e = 0; e < 3; ++e)
-					{
-						if (Fhat(e, e) < minElementFhatValue)
-						{
-							minElementFhat = e;
-							minElementFhatValue = Fhat(e, e);
-						}
-					}
-
-					Fhat(minElementFhat, minElementFhat) *= -1.0;
-					U.col(minElementFhat) *= -1.0;
-				}
-
-			}
+			//if (isInverted)
+			//{
+			//	inversionHandled = true;
+			//	//1. Compute Eigendecomposition
+			//	Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+			//	S = eigenSolver.pseudoEigenvalueMatrix();
+			//	V = eigenSolver.pseudoEigenvectors();
+			//	for (int i = 0; i < 3; ++i)
+			//	{
+			//		if (S(i, i) < 0.0f)
+			//		{
+			//			S(i, i) = 0.0f;
+			//		}
+			//	}
+			//	//2.  Detect if V is a reflection .
+			//	//    Make a rotation out of it by multiplying one column with -1.
+			//	const float detV = V.determinant();
+			//	if (detV < 0.0)
+			//	{
+			//		float minLambda = FLT_MAX;
+			//		unsigned char pos = 0;
+			//		for (unsigned char l = 0; l < 3; l++)
+			//		{
+			//			if (S(l, l) < minLambda)
+			//			{
+			//				pos = l;
+			//				minLambda = S(l, l);
+			//			}
+			//		}
+			//		V(0, pos) = -V(0, pos);
+			//		V(1, pos) = -V(1, pos);
+			//		V(2, pos) = -V(2, pos);
+			//	}
+			//	//3. Compute Fhat
+			//	Fhat.setZero();
+			//	Fhat(0, 0) = sqrtf(S(0, 0));
+			//	Fhat(1, 1) = sqrtf(S(1, 1));
+			//	Fhat(2, 2) = sqrtf(S(2, 2));
+			//	//4. Compute U
+			//	U = F * V * Fhat.inverse();
+			//	//CORRECT U
+			//	//
+			//	// Check for values of hatF near zero
+			//	//
+			//	unsigned char chk = 0;
+			//	unsigned char pos = 0;
+			//	for (unsigned char l = 0; l < 3; l++)
+			//	{
+			//		if (fabs(Fhat(l, l)) < 1.0e-4f)
+			//		{
+			//			pos = l;
+			//			chk++;
+			//		}
+			//	}
+			//	if (chk > 0)
+			//	{
+			//		if (chk > 1)
+			//		{
+			//			U.setIdentity();
+			//		}
+			//		else
+			//		{
+			//			U = F * V;
+			//			for (unsigned char l = 0; l < 3; l++)
+			//			{
+			//				if (l != pos)
+			//				{
+			//					for (unsigned char m = 0; m < 3; m++)
+			//					{
+			//						U(m, l) *= 1.0f / Fhat(l, l);
+			//					}
+			//				}
+			//			}
+			//			Eigen::Vector3f v[2];
+			//			unsigned char index = 0;
+			//			for (unsigned char l = 0; l < 3; l++)
+			//			{
+			//				if (l != pos)
+			//				{
+			//					v[index++] = Eigen::Vector3f(U(0, l), U(1, l), U(2, l));
+			//				}
+			//			}
+			//			Eigen::Vector3f vec = v[0].cross(v[1]);
+			//			vec.normalize();
+			//			U(0, pos) = vec[0];
+			//			U(1, pos) = vec[1];
+			//			U(2, pos) = vec[2];
+			//		}
+			//	}
+			//	else
+			//	{
+			//		Eigen::Vector3f hatFInv(1.0f / Fhat(0, 0), 1.0f / Fhat(1, 1), 1.0f / Fhat(2, 2));
+			//		U = F * V;
+			//		for (unsigned char l = 0; l < 3; l++)
+			//		{
+			//			for (unsigned char m = 0; m < 3; m++)
+			//			{
+			//				U(m, l) *= hatFInv[l];
+			//			}
+			//		}
+			//	}
+			//	//5. Check if U is also a rotation and correct
+			//	if (U.determinant() < 0)
+			//	{
+			//		//find minimal element of U
+			//		int minElementFhat = 0;
+			//		float minElementFhatValue = Fhat(0, 0);
+			//		for (int e = 0; e < 3; ++e)
+			//		{
+			//			if (Fhat(e, e) < minElementFhatValue)
+			//			{
+			//				minElementFhat = e;
+			//				minElementFhatValue = Fhat(e, e);
+			//			}
+			//		}
+			//		Fhat(minElementFhat, minElementFhat) *= -1.0;
+			//		U.col(minElementFhat) *= -1.0;
+			//	}
+			//}
 
 			FInverseTranspose = F.inverse().transpose();
 			FTransposeF = F.transpose() * F;
@@ -1745,19 +1728,16 @@ PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tet
 			float logI3 = log(I3);
 
 			//Compute Stress tensor
-			if (isInverted)
-			{
-				PF = settings.mu * Fhat - settings.mu * Fhat.inverse().transpose()
-					+ ((settings.lambda * logI3) / 2.0) * Fhat.inverse().transpose();
-
-				PF = U * PF * V;
-
-				I1 = (Fhat.transpose() * Fhat).trace();
-				I3 = (Fhat.transpose() * Fhat).determinant();
-
-				logI3 = log(I3);
-			}
-			else
+			//if (isInverted)
+			//{
+			//	PF = settings.mu * Fhat - settings.mu * Fhat.inverse().transpose()
+			//		+ ((settings.lambda * logI3) / 2.0) * Fhat.inverse().transpose();
+			//	PF = U * PF * V;
+			//	I1 = (Fhat.transpose() * Fhat).trace();
+			//	I3 = (Fhat.transpose() * Fhat).determinant();
+			//	logI3 = log(I3);
+			//}
+			//else
 			{
 				PF = settings.mu * F - settings.mu * FInverseTranspose
 					+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
@@ -1853,7 +1833,7 @@ PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tet
 			//	//lagrangeM = 0.0;
 			//}
 
-			if (std::isnan(lagrangeM) || std::isinf(lagrangeM))
+			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted || std::abs(lagrangeM) > 0.5f)
 			{
 				w1 = tetrahedra[t].get_x(0).inverseMass();
 				x1 = tetrahedra[t].get_x(0).position();
