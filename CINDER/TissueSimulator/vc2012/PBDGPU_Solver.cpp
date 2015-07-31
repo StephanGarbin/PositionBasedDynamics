@@ -81,15 +81,27 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 	}
 
 	//4. Reference Shape Matrices
-	Eigen::Matrix3f temp;
+	//for (int i = 0; i < tetrahedra.size(); ++i)
+	//{
+	//	for (int row = 0; row < 3; ++row)
+	//	{
+	//		for (int col = 0; col < 3; ++col)
+	//		{
+	//			m_referenceShapeMatrices.push_back(tetrahedra[i].getReferenceShapeMatrixInverseTranspose().transpose()(row, col));
+	//		}
+	//	}
+	//}
+
 	for (int i = 0; i < tetrahedra.size(); ++i)
 	{
-		temp = tetrahedra[i].getReferenceShapeMatrixInverseTranspose().transpose();
 		for (int row = 0; row < 3; ++row)
 		{
 			for (int col = 0; col < 3; ++col)
 			{
-				m_referenceShapeMatrices.push_back(temp(row, col));
+				for (int i = 0; i < tetrahedra.size(); ++i)
+				{
+					m_referenceShapeMatrices.push_back(tetrahedra[i].getReferenceShapeMatrixInverseTranspose().transpose()(row, col));
+				}
 			}
 		}
 	}

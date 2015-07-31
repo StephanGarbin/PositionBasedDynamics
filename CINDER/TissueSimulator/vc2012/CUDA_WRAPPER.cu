@@ -47,7 +47,7 @@ __device__ float determinantF(int idx)
 		* (F[idx][1][0] * F[idx][2][1] - F[idx][1][1] * F[idx][2][0]);
 }
 
-__device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse)
+__device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse, int trueNumConstraints)
 {
 	//1. Calculate Deformed Shape Matrix
 	FirstPiolaKirchoffTensor[idx][0][0] = positions[LocalIndices[idx][0] * 3 + 0] - positions[LocalIndices[idx][3] * 3 + 0];
@@ -71,7 +71,7 @@ __device__ void calculateF(int globalIdx, int idx, float* positions, float* refS
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += FirstPiolaKirchoffTensor[idx][row][i] * refShapeMatrixInverse[globalIdx * 9 + i * 3 + col];
+				sum += FirstPiolaKirchoffTensor[idx][row][i] * refShapeMatrixInverse[(i * 3 + col) * trueNumConstraints + globalIdx];
 			}
 
 			F[idx][row][col] = sum;
@@ -114,7 +114,7 @@ __device__ float calculateStrainEnergy_NEO_HOOKEAN(float volume, float lambda, f
 	return volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3)));
 }
 
-__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx, float volume, float* refShapeMatrixInverse)
+__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints)
 {
 	//1. Copy refShapeMatrixInverse from global memory
 	for (int row = 0; row < 3; ++row)
@@ -122,7 +122,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN(int globalIdx, int idx
 		for (int col = 0; col < 3; ++col)
 		{
 			//We need the TRANSPOSE of the reference shape matrix inverse
-			Gradient[idx][row][col] = refShapeMatrixInverse[globalIdx * 9 + col * 3 + row];
+			Gradient[idx][row][col] = refShapeMatrixInverse[(col * 3 + row) * trueNumConstraints + globalIdx];
 		}
 	}
 
@@ -422,7 +422,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//getMasses(idx, inverseMass, trueNumConstraints);
 
 	//1. Calculate Deformation Gradient F
-	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse);
+	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse, trueNumConstraints);
 
 	//if (idx == 47)
 	//{
@@ -504,7 +504,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//printf("StrainEnergy = %4.8f \n", strainEnergy);
 
 	//6. Calculate Strain Energy Gradient
-	calculateStrainEnergyGradient_NEO_HOOKEAN(idx, threadIdx.x, volume[idx], refShapeMatrixInverse);
+	calculateStrainEnergyGradient_NEO_HOOKEAN(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints);
 
 
 	//7. Calculate Lagrange Multiplier
