@@ -109,7 +109,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);C:\TOOLS\Eigen;..\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\boost</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);..\..\..\..\..\..\..\..\TOOLS\Eigen\;..\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\boost</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;NOMINMAX;_WIN32_WINNT=0x0502;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -124,7 +124,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>cudart.lib;cinder-$(PlatformToolset)_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\lib\msw\$(PlatformTarget)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\lib\msw\$(PlatformTarget)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -142,7 +142,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\include;"..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\include";"..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\boost"</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include;..\..\..\..\..\..\..\..\TOOLS\Eigen\;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\boost</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;NOMINMAX;_WIN32_WINNT=0x0502;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader />
@@ -171,7 +171,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir);C:\TOOLS\Eigen;..\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\boost</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);..\..\..\..\..\..\..\..\TOOLS\Eigen\;..\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\include;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\boost</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;NOMINMAX;_WIN32_WINNT=0x0502;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
@@ -193,7 +193,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>cudart.lib;cinder-$(PlatformToolset).lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\lib\msw\$(PlatformTarget)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\..\..\..\..\..\..\..\CINDER\cinder_0.8.6_vc2013\lib\msw\$(PlatformTarget)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <GenerateMapFile>true</GenerateMapFile>
       <SubSystem>Windows</SubSystem>
