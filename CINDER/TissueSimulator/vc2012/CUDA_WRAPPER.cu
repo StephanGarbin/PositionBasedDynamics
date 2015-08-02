@@ -278,6 +278,10 @@ __device__ void updatePositions(int globalIdx, int idx, float lagrangeMultiplier
 	localIndices[1] = indices[globalIdx + trueNumConstraints * 1] * 3;
 	localIndices[2] = indices[globalIdx + trueNumConstraints * 2] * 3;
 	localIndices[3] = indices[globalIdx + trueNumConstraints * 3] * 3;
+	//localIndices[0] = indices[globalIdx + trueNumConstraints * 0];
+	//localIndices[1] = indices[globalIdx + trueNumConstraints * 1];
+	//localIndices[2] = indices[globalIdx + trueNumConstraints * 2];
+	//localIndices[3] = indices[globalIdx + trueNumConstraints * 3];
 
 	for (int i = 0; i < 4; ++i)
 	{

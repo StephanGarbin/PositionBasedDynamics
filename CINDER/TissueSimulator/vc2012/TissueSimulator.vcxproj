@@ -220,6 +220,7 @@
     <ClCompile Include="PBDParticle.cpp" />
     <ClCompile Include="PBDTetrahedra3d.cpp" />
     <ClCompile Include="TetGenIO.cpp" />
+    <ClCompile Include="CUDAMemoryOptimiser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\Resources.h" />
@@ -231,6 +232,7 @@
     <ClInclude Include="PBDParticle.h" />
     <ClInclude Include="PBDTetrahedra3d.h" />
     <ClInclude Include="TetGenIO.h" />
+    <ClInclude Include="CUDAMemoryOptimiser.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="CUDA_WRAPPER.cu" />

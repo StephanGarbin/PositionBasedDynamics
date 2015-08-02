@@ -24,6 +24,7 @@
 #include "TetGenIO.h"
 
 #include "PBDGPU_Solver.h"
+#include "CUDAMemoryOptimiser.h"
 
 using namespace ci;
 using namespace ci::app;
@@ -233,6 +234,9 @@ void TissueSimulatorApp::handleIO()
 	{
 		m_data.getParticles()[m_data.getPositionConstraints()[i]].inverseMass() = 0.0;
 	}
+
+	//OPTIMISE MEMORY LAYOUT FOR CUDA
+	//CUDAMemoryOptimiser::optimiseTetrahedralIndexingBasedOnNodeMemory(m_data.getParticles(), m_data.getTets());
 }
 
 CINDER_APP_NATIVE( TissueSimulatorApp, RendererGl )
