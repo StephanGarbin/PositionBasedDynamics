@@ -57,6 +57,11 @@ __device__ void calculateF(int globalIdx, int idx, float* positions, float* refS
 
 	float temp[3][3];
 
+	//float node3[3];
+	//node3[0] = positions[localIndices[3] + 0];
+	//node3[1] = positions[localIndices[3] + 1];
+	//node3[2] = positions[localIndices[3] + 2];
+
 	//1. Calculate Deformed Shape Matrix
 	temp[0][0] = positions[localIndices[0] + 0] - positions[localIndices[3] + 0];
 	temp[1][0] = positions[localIndices[0] + 1] - positions[localIndices[3] + 1];
