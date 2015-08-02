@@ -45,7 +45,7 @@ int numMilliseconds = 1000;
 double sumExecutionTime;
 int timingPrintInterval = 100;
 int currentFrame = 1;
-int maxFrames = 2000;
+int maxFrames = 10000;
 
 int globalHeight;
 int globalWidth;
@@ -67,6 +67,9 @@ bool useGPUSolver = false;
 bool useFEMSolver = false;
 bool writeToAlembic = true;
 bool printStrainEnergyToFile = false;
+
+bool testingInversionHandling = true;
+int dimToCollapse = 1;
 
 
 std::string nodes("barout.node");
@@ -321,6 +324,7 @@ void mainLoop()
 		glutLeaveMainLoop();
 	}
 
+	Sleep(numMilliseconds);
 	//std::cout << "Current Frame: " << currentFrame << std::endl;
 }
 
@@ -349,6 +353,29 @@ void TerminateAll(void)
 	TwTerminate();
 }
 
+void collapseMesh()
+{
+	float minDimValue = -100000000;
+
+	for (int p = 0; p < particles->size(); ++p)
+	{
+		if ((*particles)[p].position()[dimToCollapse] > minDimValue)
+		{
+			minDimValue = (*particles)[p].position()[dimToCollapse];
+		}
+	}
+
+	for (int p = 0; p < particles->size(); ++p)
+	{
+		if ((*particles)[p].inverseMass() != 0.0f)
+		{
+			(*particles)[p].position()[dimToCollapse] = minDimValue;
+			(*particles)[p].previousPosition()[dimToCollapse] = minDimValue;
+		}
+	}
+
+	getCurrentPositionFromParticles();
+}
 
 int main(int argc, char* argv[])
 {
@@ -488,10 +515,10 @@ int main(int argc, char* argv[])
 	helper.setIdleFunc(idleLoopGlut);
 
 	determineLookAt();
-	rotation[0] = 0.0;
-	rotation[1] = 128.0;
-	rotation[2] = 0.0;
-	zoom = 1.0 / 12.0f;
+	rotation[0] = 0.0f;
+	rotation[1] = 128.0f;
+	rotation[2] = 0.0f;
+	zoom = 0.254f;
 
 	if (useFEMSolver)
 	{
@@ -519,6 +546,12 @@ int main(int argc, char* argv[])
 	{
 		smHandler->initTopology(*particles, tetrahedra);
 		std::cout << "Initialised Topology for Alembic Output!" << std::endl;
+	}
+
+	if (testingInversionHandling)
+	{
+		collapseMesh();
+		std::cout << "Collapsed mesh to test inversion Handling!" << std::endl;
 	}
 
 	//TweakBar Interface

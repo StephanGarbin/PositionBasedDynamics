@@ -41,7 +41,10 @@ FEMSimulator::FEMSimulator()
 
 FEMSimulator::~FEMSimulator()
 {
-	delete m_data;
+	if (m_data != nullptr)
+	{
+		delete m_data;
+	}
 }
 
 void

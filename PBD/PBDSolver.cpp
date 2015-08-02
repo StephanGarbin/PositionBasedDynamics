@@ -43,9 +43,10 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
 	//projectConstraintsOLD(tetrahedra, particles, settings);
-	projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
+	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
-	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+	projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+	//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -2342,10 +2343,10 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 
 			//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
-			if (tetrahedra[t].getVolume() < 0.00001)
-			{
-				std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
-			}
+			//if (tetrahedra[t].getVolume() < 0.00001)
+			//{
+			//	std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
+			//}
 
 			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
 			gradient.col(0) = gradientTemp.col(0);
@@ -2419,7 +2420,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//	//lagrangeM = 0.0;
 			//}
 
-			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted || std::abs(lagrangeM) > 0.5f)
+			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted || std::abs(lagrangeM) > 0.01f || std::abs(F.determinant()) < 1e-06f)
 			{
 				if (isInverted)
 				{
@@ -2494,6 +2495,33 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 							* lagrangeM) * gradient.col(cI);
 
 						tetrahedra[t].get_x(cI).position() += deltaX;
+
+						if (std::isnan(deltaX[0]) || std::isinf(deltaX[0])
+							|| std::isnan(deltaX[1]) || std::isinf(deltaX[1])
+							|| std::isnan(deltaX[2]) || std::isinf(deltaX[2]))
+						{
+								std::cout << "Deformation Gradient" << std::endl;
+								std::cout << F << std::endl;
+								std::cout << "Inverse of deformation gradient:" << std::endl;
+								std::cout << F.inverse().transpose() << std::endl;
+								std::cout << "Stress Tensor" << std::endl;
+								std::cout << PF << std::endl;
+								std::cout << "Tensor Gradient " << std::endl;
+								std::cout << gradient << std::endl;
+								std::cout << "Strain Energy: " << strainEnergy << std::endl;
+								std::cout << "Denominator: " << denominator << std::endl;
+								std::cout << "Lagrange Multiplier: " << lagrangeM << std::endl;
+								std::cout << "Inverse Mass: " << tetrahedra[t].get_x(cI).inverseMass() << std::endl;
+								std::cout << "Undeformed Volume: " << V << std::endl;
+								
+								std::cout << "STEPS: " << std::endl;
+
+								std::cout << (settings.mu * F) << std::endl;
+								std::cout << settings.mu * F.inverse().transpose() << std::endl;
+								std::cout << log(I3) << std::endl;
+								std::cout << F.inverse().transpose() << std::endl;
+
+						}
 
 						//std::cout << "[ " << cI << "] : " << std::endl;
 						//std::cout << deltaX << std::endl;
