@@ -2252,3 +2252,272 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 	}
 }
 
+
+void
+PBDSolver::projectConstraintsGeometricInversionHandling(std::vector<PBDTetrahedra3d>& tetrahedra,
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+{
+	float w1;
+	float w2;
+	float restDistance;
+
+	Eigen::Vector3f x1;
+	Eigen::Vector3f x2;
+
+	Eigen::Vector3f temp;
+
+
+	Eigen::Matrix3f F;
+	Eigen::Matrix3f FInverseTranspose;
+	Eigen::Matrix3f FTransposeF;
+
+	Eigen::Matrix3f PF;
+	Eigen::Matrix3f gradientTemp;
+	Eigen::MatrixXf gradient; gradient.resize(3, 4);
+
+	Eigen::Matrix3f U;
+	Eigen::Matrix3f V;
+	bool isInverted;
+
+	Eigen::Matrix3f S;
+	Eigen::Matrix3f Fhat;
+
+	Eigen::Vector3f deltaX;
+
+	std::ofstream strainEnergyfile;
+
+	if (settings.printStrainEnergyToFile)
+	{
+		std::stringstream ss;
+		ss << "C:/Users/Stephan/Documents/MATLAB/dissertation/pbd/strainEnergyDebug/strainEnergy_" << m_currentFrame << ".txt";
+		strainEnergyfile.open(ss.str());
+		ss.clear();
+	}
+
+	if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+	{
+		calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
+	}
+	bool inversionHandled = false;
+
+	//projectConstraintsDistance(tetrahedra, particles, 10, 1);
+
+	for (int it = 0; it < settings.numConstraintIts; ++it)
+	{
+		//if (it == 10)
+		//{
+		//	projectConstraintsDistance(tetrahedra, particles, 1);
+		//}
+
+		for (int t = 0; t < settings.numTetrahedra; ++t)
+		{
+			float lagrangeM;
+
+			//Get deformation gradient
+			F = tetrahedra[t].getDeformationGradient();
+
+			if (F.isIdentity())
+			{
+				continue;
+			}
+
+			isInverted = F.determinant() < 0.0;
+
+			FInverseTranspose = F.inverse().transpose();
+			FTransposeF = F.transpose() * F;
+
+			//Compute Isotropic Invariants
+			float I1 = (FTransposeF).trace();
+			float I3 = (FTransposeF).determinant();
+
+			float logI3 = log(I3);
+
+			//Compute Stress tensor
+			
+			PF = settings.mu * F - settings.mu * FInverseTranspose
+				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+
+			//Compute volume
+			float Volume = tetrahedra[t].getUndeformedVolume();
+
+
+			//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
+			if (tetrahedra[t].getVolume() < 0.00001)
+			{
+				std::cout << "Degenerate/Inverted Tetrahedron at " << t << "; V =  " << Volume << std::endl;
+			}
+
+			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
+			gradient.col(0) = gradientTemp.col(0);
+			gradient.col(1) = gradientTemp.col(1);
+			gradient.col(2) = gradientTemp.col(2);
+			gradient.col(3) = -gradientTemp.rowwise().sum();
+
+			//Compute Strain Energy density field
+			float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+
+			//Compute Lagrange Multiplier
+
+			float denominator = 0.0;
+
+			for (int cI = 0; cI < 4; ++cI)
+			{
+				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+				{
+					denominator += tetrahedra[t].get_x(cI).inverseMass()
+						* gradient.col(cI).lpNorm<2>();
+
+					//if (std::fabs(denominator) > 1e-06)
+					//{
+					//	std::cout << "Condition met!" << std::endl;
+					//}
+				}
+			}
+
+			//if (std::fabs(denominator) < 1e-06)
+			//{
+			//	//std::cout << "Skipping!" << std::endl;
+			//	continue;
+			//}
+			//else
+			{
+				lagrangeM = -(strainEnergy / denominator);
+			}
+
+			//if (std::isnan(lagrangeM))
+			//{
+			//	//if (isInverted)
+			//	//{
+			//	//	std::cout << "NAN! ";
+			//	//}
+			//	//else
+			//	//{
+			//	//	std::cout << "NON-INV NAN! ";
+			//	//}
+			//	//
+			//	//std::cout << "Deformation Gradient" << std::endl;
+			//	//std::cout << F << std::endl;
+			//	//std::cout << "Inverse of deformation gradient:" << std::endl;
+			//	//std::cout << F.inverse().transpose() << std::endl;
+			//	//std::cout << "Stress Tensor" << std::endl;
+			//	//std::cout << PF << std::endl;
+			//	//std::cout << "Tensor Gradient " << std::endl;
+			//	//std::cout << gradient << std::endl;
+			//	//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+			//	//std::cout << "Denominator: " << denominator << std::endl;
+			//	//std::cout << "Lagrange Multiplier: " << lagrangeM << std::endl;
+			//	////std::cout << "Inverse Mass: " << tetrahedra[t].get_x(c).inverseMass() << std::endl;
+			//	//std::cout << "Undeformed Volume: " << V << std::endl;
+			//	//
+			//	//std::cout << "STEPS: " << std::endl;
+
+			//	//std::cout << (settings.mu * F) << std::endl;
+			//	//std::cout << settings.mu * F.inverse().transpose() << std::endl;
+			//	//std::cout << log(I3) << std::endl;
+			//	//std::cout << F.inverse().transpose() << std::endl;
+
+			//	//lagrangeM = 0.0;
+			//}
+
+			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted || std::abs(lagrangeM) > 0.5f)
+			{
+				if (isInverted)
+				{
+
+				}
+				else
+				{
+					w1 = tetrahedra[t].get_x(0).inverseMass();
+					x1 = tetrahedra[t].get_x(0).position();
+
+					w2 = tetrahedra[t].get_x(2).inverseMass();
+					x2 = tetrahedra[t].get_x(2).position();
+					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(0),
+						x1, x2, temp, deltaX);
+					tetrahedra[t].get_x(0).position() += -deltaX * w1;
+					tetrahedra[t].get_x(2).position() += deltaX * w2;
+
+					w2 = tetrahedra[t].get_x(3).inverseMass();
+					x2 = tetrahedra[t].get_x(3).position();
+					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(1),
+						x1, x2, temp, deltaX);
+					tetrahedra[t].get_x(0).position() += -deltaX * w1;
+					tetrahedra[t].get_x(3).position() += deltaX * w2;
+
+					w2 = tetrahedra[t].get_x(1).inverseMass();
+					x2 = tetrahedra[t].get_x(1).position();
+					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(2),
+						x1, x2, temp, deltaX);
+					tetrahedra[t].get_x(0).position() += -deltaX * w1;
+					tetrahedra[t].get_x(1).position() += deltaX * w2;
+
+					//---------------------------------------------------
+
+					w1 = tetrahedra[t].get_x(2).inverseMass();
+					x1 = tetrahedra[t].get_x(2).position();
+
+					w2 = tetrahedra[t].get_x(3).inverseMass();
+					x2 = tetrahedra[t].get_x(3).position();
+					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(3),
+						x1, x2, temp, deltaX);
+					tetrahedra[t].get_x(2).position() += -deltaX * w1;
+					tetrahedra[t].get_x(3).position() += deltaX * w2;
+
+
+					w2 = tetrahedra[t].get_x(1).inverseMass();
+					x2 = tetrahedra[t].get_x(1).position();
+					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(4),
+						x1, x2, temp, deltaX);
+					tetrahedra[t].get_x(2).position() += -deltaX * w1;
+					tetrahedra[t].get_x(1).position() += deltaX * w2;
+
+					//---------------------------------------------------
+
+					w1 = tetrahedra[t].get_x(3).inverseMass();
+					x1 = tetrahedra[t].get_x(3).position();
+
+					w2 = tetrahedra[t].get_x(1).inverseMass();
+					x2 = tetrahedra[t].get_x(1).position();
+					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(5),
+						x1, x2, temp, deltaX);
+					tetrahedra[t].get_x(3).position() += -deltaX * w1;
+					tetrahedra[t].get_x(1).position() += deltaX * w2;
+				}
+			}
+			else
+			{
+				for (int cI = 0; cI < 4; ++cI)
+				{
+					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+					{
+						deltaX = (tetrahedra[t].get_x(cI).inverseMass()
+							* lagrangeM) * gradient.col(cI);
+
+						tetrahedra[t].get_x(cI).position() += deltaX;
+
+						//std::cout << "[ " << cI << "] : " << std::endl;
+						//std::cout << deltaX << std::endl;
+					}
+				}
+			}
+
+		}
+
+
+		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+		{
+			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
+		}
+
+	}
+
+	if (settings.printStrainEnergyToFile)
+	{
+		strainEnergyfile.close();
+	}
+
+	if (inversionHandled)
+	{
+		std::cout << "Inversion handled successfully!" << std::endl;
+	}
+}
