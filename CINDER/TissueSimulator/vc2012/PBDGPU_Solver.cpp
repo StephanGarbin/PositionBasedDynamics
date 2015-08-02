@@ -133,25 +133,26 @@ Parameters& settings)
 	advancePositions(particles, settings);
 
 	//1. Get Positions
-	//for (int i = 0; i < particles->size(); ++i)
-	//{
-	//	for (int j = 0; j < 3; ++j)
-	//	{
-	//		m_positions[i * 3 + j] = (*particles)[i].position()[j];
-	//	}
-	//}
-	for (int j = 0; j < 3; ++j)
+	for (int i = 0; i < particles->size(); ++i)
 	{
-		for (int i = 0; i < particles->size(); ++i)
+		for (int j = 0; j < 3; ++j)
 		{
-			m_positions[i + j * particles->size()] = (*particles)[i].position()[j];
+			m_positions[i * 3 + j] = (*particles)[i].position()[j];
 		}
 	}
+	//for (int j = 0; j < 3; ++j)
+	//{
+	//	for (int i = 0; i < particles->size(); ++i)
+	//	{
+	//		m_positions[i + j * particles->size()] = (*particles)[i].position()[j];
+	//	}
+	//}
 
 	//2. Determine Settings
 	settings.numBlocks = m_CUDA_NUM_BLOCKS;
 	settings.numThreadsPerBlock = m_CUDA_NUM_THREADS_PER_BLOCK;
 	settings.trueNumberOfConstraints = m_CUDA_TRUE_NUM_CONSTRAINTS;
+	settings.numParticles = particles->size();
 
 	//3. Advance System
 	settings.calculateMu();
@@ -165,20 +166,20 @@ Parameters& settings)
 	CUDA_getBuffers(m_device_positions, m_positions);
 
 	//4. Copy Positions back
-	//for (int i = 0; i < particles->size(); ++i)
-	//{
-	//	for (int j = 0; j < 3; ++j)
-	//	{
-	//		(*particles)[i].position()[j] = m_positions[i * 3 + j];
-	//	}
-	//}
-	for (int j = 0; j < 3; ++j)
+	for (int i = 0; i < particles->size(); ++i)
 	{
-		for (int i = 0; i < particles->size(); ++i)
+		for (int j = 0; j < 3; ++j)
 		{
-			(*particles)[i].position()[j] = m_positions[i + j * particles->size()];
+			(*particles)[i].position()[j] = m_positions[i * 3 + j];
 		}
 	}
+	//for (int j = 0; j < 3; ++j)
+	//{
+	//	for (int i = 0; i < particles->size(); ++i)
+	//	{
+	//		(*particles)[i].position()[j] = m_positions[i + j * particles->size()];
+	//	}
+	//}
 
 	//Update Velocities
 	updateVelocities(particles, settings);

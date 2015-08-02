@@ -47,17 +47,18 @@ __device__ float determinantF(int idx)
 		* (F[idx][1][0] * F[idx][2][1] - F[idx][1][1] * F[idx][2][0]);
 }
 
-__device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse, int* indices, int trueNumConstraints)
+__device__ void calculateF(int globalIdx, int idx, float* positions, float* refShapeMatrixInverse,
+	int* indices, int trueNumConstraints, int numParticles)
 {
 	int localIndices[4];
-	//localIndices[0] = indices[globalIdx + trueNumConstraints * 0] * 3;
-	//localIndices[1] = indices[globalIdx + trueNumConstraints * 1] * 3;
-	//localIndices[2] = indices[globalIdx + trueNumConstraints * 2] * 3;
-	//localIndices[3] = indices[globalIdx + trueNumConstraints * 3] * 3;
-	localIndices[0] = indices[globalIdx + trueNumConstraints * 0];
-	localIndices[1] = indices[globalIdx + trueNumConstraints * 1];
-	localIndices[2] = indices[globalIdx + trueNumConstraints * 2];
-	localIndices[3] = indices[globalIdx + trueNumConstraints * 3];
+	localIndices[0] = indices[globalIdx + trueNumConstraints * 0] * 3;
+	localIndices[1] = indices[globalIdx + trueNumConstraints * 1] * 3;
+	localIndices[2] = indices[globalIdx + trueNumConstraints * 2] * 3;
+	localIndices[3] = indices[globalIdx + trueNumConstraints * 3] * 3;
+	//localIndices[0] = indices[globalIdx + trueNumConstraints * 0];
+	//localIndices[1] = indices[globalIdx + trueNumConstraints * 1];
+	//localIndices[2] = indices[globalIdx + trueNumConstraints * 2];
+	//localIndices[3] = indices[globalIdx + trueNumConstraints * 3];
 
 	float temp[3][3];
 
@@ -67,25 +68,25 @@ __device__ void calculateF(int globalIdx, int idx, float* positions, float* refS
 	//node3[2] = positions[localIndices[3] + 2];
 
 	//1. Calculate Deformed Shape Matrix
-	//temp[0][0] = positions[localIndices[0] + 0] - positions[localIndices[3] + 0];
-	//temp[1][0] = positions[localIndices[0] + 1] - positions[localIndices[3] + 1];
-	//temp[2][0] = positions[localIndices[0] + 2] - positions[localIndices[3] + 2];
-	//temp[0][1] = positions[localIndices[1] + 0] - positions[localIndices[3] + 0];
-	//temp[1][1] = positions[localIndices[1] + 1] - positions[localIndices[3] + 1];
-	//temp[2][1] = positions[localIndices[1] + 2] - positions[localIndices[3] + 2];
-	//temp[0][2] = positions[localIndices[2] + 0] - positions[localIndices[3] + 0];
-	//temp[1][2] = positions[localIndices[2] + 1] - positions[localIndices[3] + 1];
-	//temp[2][2] = positions[localIndices[2] + 2] - positions[localIndices[3] + 2];
+	temp[0][0] = positions[localIndices[0] + 0] - positions[localIndices[3] + 0];
+	temp[1][0] = positions[localIndices[0] + 1] - positions[localIndices[3] + 1];
+	temp[2][0] = positions[localIndices[0] + 2] - positions[localIndices[3] + 2];
+	temp[0][1] = positions[localIndices[1] + 0] - positions[localIndices[3] + 0];
+	temp[1][1] = positions[localIndices[1] + 1] - positions[localIndices[3] + 1];
+	temp[2][1] = positions[localIndices[1] + 2] - positions[localIndices[3] + 2];
+	temp[0][2] = positions[localIndices[2] + 0] - positions[localIndices[3] + 0];
+	temp[1][2] = positions[localIndices[2] + 1] - positions[localIndices[3] + 1];
+	temp[2][2] = positions[localIndices[2] + 2] - positions[localIndices[3] + 2];
 
-	temp[0][0] = positions[localIndices[0] + 0 * trueNumConstraints] - positions[localIndices[3] + 0 * trueNumConstraints];
-	temp[0][1] = positions[localIndices[1] + 0 * trueNumConstraints] - positions[localIndices[3] + 0 * trueNumConstraints];
-	temp[0][2] = positions[localIndices[2] + 0 * trueNumConstraints] - positions[localIndices[3] + 0 * trueNumConstraints];
-	temp[1][0] = positions[localIndices[0] + 1 * trueNumConstraints] - positions[localIndices[3] + 1 * trueNumConstraints];
-	temp[1][1] = positions[localIndices[1] + 1 * trueNumConstraints] - positions[localIndices[3] + 1 * trueNumConstraints];
-	temp[1][2] = positions[localIndices[2] + 1 * trueNumConstraints] - positions[localIndices[3] + 1 * trueNumConstraints];
-	temp[2][0] = positions[localIndices[0] + 2 * trueNumConstraints] - positions[localIndices[3] + 2 * trueNumConstraints];
-	temp[2][1] = positions[localIndices[1] + 2 * trueNumConstraints] - positions[localIndices[3] + 2 * trueNumConstraints];
-	temp[2][2] = positions[localIndices[2] + 2 * trueNumConstraints] - positions[localIndices[3] + 2 * trueNumConstraints];
+	//temp[0][0] = positions[localIndices[0] + 0 * numParticles] - positions[localIndices[3] + 0 * numParticles];
+	//temp[0][1] = positions[localIndices[1] + 0 * numParticles] - positions[localIndices[3] + 0 * numParticles];
+	//temp[0][2] = positions[localIndices[2] + 0 * numParticles] - positions[localIndices[3] + 0 * numParticles];
+	//temp[1][0] = positions[localIndices[0] + 1 * numParticles] - positions[localIndices[3] + 1 * numParticles];
+	//temp[1][1] = positions[localIndices[1] + 1 * numParticles] - positions[localIndices[3] + 1 * numParticles];
+	//temp[1][2] = positions[localIndices[2] + 1 * numParticles] - positions[localIndices[3] + 1 * numParticles];
+	//temp[2][0] = positions[localIndices[0] + 2 * numParticles] - positions[localIndices[3] + 2 * numParticles];
+	//temp[2][1] = positions[localIndices[1] + 2 * numParticles] - positions[localIndices[3] + 2 * numParticles];
+	//temp[2][2] = positions[localIndices[2] + 2 * numParticles] - positions[localIndices[3] + 2 * numParticles];
 
 
 	//2. Multiply 
@@ -269,19 +270,21 @@ __device__ float calculateLagrangeMultiplierDenominator(int globalIdx, int idx, 
 	return denominator;
 }
 
-__device__ void updatePositions(int globalIdx, int idx, float lagrangeMultiplier, float* positions, float* masses, int* indices, int trueNumConstraints)
+__device__ void updatePositions(int globalIdx, int idx, float lagrangeMultiplier, float* positions,
+	float* masses, int* indices, int trueNumConstraints, int numParticles)
 {
 	int localIndices[4];
-	localIndices[0] = indices[globalIdx + trueNumConstraints * 0];
-	localIndices[1] = indices[globalIdx + trueNumConstraints * 1];
-	localIndices[2] = indices[globalIdx + trueNumConstraints * 2];
-	localIndices[3] = indices[globalIdx + trueNumConstraints * 3];
+	localIndices[0] = indices[globalIdx + trueNumConstraints * 0] * 3;
+	localIndices[1] = indices[globalIdx + trueNumConstraints * 1] * 3;
+	localIndices[2] = indices[globalIdx + trueNumConstraints * 2] * 3;
+	localIndices[3] = indices[globalIdx + trueNumConstraints * 3] * 3;
 
 	for (int i = 0; i < 4; ++i)
 	{
 		for (int j = 0; j < 3; ++j)
 		{
-			atomicAdd(&positions[localIndices[i] + j * trueNumConstraints], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * Gradient[idx][j][i]);
+			atomicAdd(&positions[localIndices[i] + j], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * Gradient[idx][j][i]);
+			//atomicAdd(&positions[localIndices[i] + j * numParticles], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * Gradient[idx][j][i]);
 			//atomicAdd(&positions[LocalIndices[threadIdx.x][i] * 3 + j], 0.0001f);
 			//printf("%d, ", LocalIndices[threadIdx.x][i] * 3 + j);
 			//printf("Position Update %4.8f \n", LocalMasses[idx][i] * lagrangeMultiplier * Gradient[idx][j][i]);
@@ -538,7 +541,7 @@ __device__ bool isFIdentity()
 }
 
 __global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
-	float lambda, float mu, int trueNumConstraints)
+	float lambda, float mu, int trueNumConstraints, int numParticles)
 {
 	if (IDX > trueNumConstraints)
 	{
@@ -551,7 +554,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	//getMasses(idx, inverseMass, trueNumConstraints);
 
 	//1. Calculate Deformation Gradient F
-	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse, indices, trueNumConstraints);
+	calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse, indices, trueNumConstraints, numParticles);
 
 	//if (idx == 47)
 	//{
@@ -652,7 +655,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	}
 
 	//8. Update Positions
-	updatePositions(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints);
+	updatePositions(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles);
 }
 
 
@@ -764,7 +767,8 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 		solveFEMConstraint << <numBlocks, numThreads >> >(
 			device_positions, device_indices, device_inverseMasses,
 			device_volumes, device_refShapeMatrixInverses,
-			settings.lambda, settings.mu, settings.trueNumberOfConstraints);
+			settings.lambda, settings.mu, settings.trueNumberOfConstraints,
+			settings.numParticles);
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
 	}

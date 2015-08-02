@@ -20,6 +20,7 @@ struct Parameters
 	int numThreadsPerBlock;
 	int numBlocks;
 	int trueNumberOfConstraints;
+	int numParticles;
 
 	void initialiseToDefaults()
 	{
