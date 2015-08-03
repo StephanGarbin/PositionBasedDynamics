@@ -45,8 +45,9 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//projectConstraintsOLD(tetrahedra, particles, settings);
 	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
-	projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 	//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
+	projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -2420,114 +2421,89 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			//	//lagrangeM = 0.0;
 			//}
 
-			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted || std::abs(lagrangeM) > 0.01f || std::abs(F.determinant()) < 1e-06f)
+			//if (true)
+			//if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted || std::abs(lagrangeM) > 0.01f || std::abs(F.determinant()) < 1e-06f)
 			{
-				if (isInverted)
-				{
+				Eigen::Vector3f p0 = tetrahedra[t].get_x(0).position();
+				Eigen::Vector3f p1 = tetrahedra[t].get_x(1).position();
+				Eigen::Vector3f p2 = tetrahedra[t].get_x(2).position();
+				Eigen::Vector3f p3 = tetrahedra[t].get_x(3).position();
+				gradient.col(0) = (p1 - p2).cross(p3 - p2);
+				gradient.col(1) = (p2 - p0).cross(p3 - p0);
+				gradient.col(2) = (p0 - p1).cross(p3 - p1);
+				gradient.col(3) = (p1 - p0).cross(p2 - p0);
 
-				}
-				else
-				{
-					w1 = tetrahedra[t].get_x(0).inverseMass();
-					x1 = tetrahedra[t].get_x(0).position();
-
-					w2 = tetrahedra[t].get_x(2).inverseMass();
-					x2 = tetrahedra[t].get_x(2).position();
-					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(0),
-						x1, x2, temp, deltaX);
-					tetrahedra[t].get_x(0).position() += -deltaX * w1;
-					tetrahedra[t].get_x(2).position() += deltaX * w2;
-
-					w2 = tetrahedra[t].get_x(3).inverseMass();
-					x2 = tetrahedra[t].get_x(3).position();
-					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(1),
-						x1, x2, temp, deltaX);
-					tetrahedra[t].get_x(0).position() += -deltaX * w1;
-					tetrahedra[t].get_x(3).position() += deltaX * w2;
-
-					w2 = tetrahedra[t].get_x(1).inverseMass();
-					x2 = tetrahedra[t].get_x(1).position();
-					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(2),
-						x1, x2, temp, deltaX);
-					tetrahedra[t].get_x(0).position() += -deltaX * w1;
-					tetrahedra[t].get_x(1).position() += deltaX * w2;
-
-					//---------------------------------------------------
-
-					w1 = tetrahedra[t].get_x(2).inverseMass();
-					x1 = tetrahedra[t].get_x(2).position();
-
-					w2 = tetrahedra[t].get_x(3).inverseMass();
-					x2 = tetrahedra[t].get_x(3).position();
-					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(3),
-						x1, x2, temp, deltaX);
-					tetrahedra[t].get_x(2).position() += -deltaX * w1;
-					tetrahedra[t].get_x(3).position() += deltaX * w2;
-
-
-					w2 = tetrahedra[t].get_x(1).inverseMass();
-					x2 = tetrahedra[t].get_x(1).position();
-					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(4),
-						x1, x2, temp, deltaX);
-					tetrahedra[t].get_x(2).position() += -deltaX * w1;
-					tetrahedra[t].get_x(1).position() += deltaX * w2;
-
-					//---------------------------------------------------
-
-					w1 = tetrahedra[t].get_x(3).inverseMass();
-					x1 = tetrahedra[t].get_x(3).position();
-
-					w2 = tetrahedra[t].get_x(1).inverseMass();
-					x2 = tetrahedra[t].get_x(1).position();
-					computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(5),
-						x1, x2, temp, deltaX);
-					tetrahedra[t].get_x(3).position() += -deltaX * w1;
-					tetrahedra[t].get_x(1).position() += deltaX * w2;
-				}
-			}
-			else
-			{
+				//gradient.col(0) = (tetrahedra[t].get_x(1).position() - tetrahedra[t].get_x(2).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(2).position());
+				//gradient.col(1) = (tetrahedra[t].get_x(2).position() - tetrahedra[t].get_x(0).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(0).position());
+				//gradient.col(2) = (tetrahedra[t].get_x(0).position() - tetrahedra[t].get_x(1).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(1).position());
+				//gradient.col(3) = (tetrahedra[t].get_x(1).position() - tetrahedra[t].get_x(0).position()).cross(tetrahedra[t].get_x(2).position() - tetrahedra[t].get_x(0).position());
+				lagrangeM = 0.0f;
 				for (int cI = 0; cI < 4; ++cI)
 				{
-					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
-					{
-						deltaX = (tetrahedra[t].get_x(cI).inverseMass()
-							* lagrangeM) * gradient.col(cI);
-
-						tetrahedra[t].get_x(cI).position() += deltaX;
-
-						if (std::isnan(deltaX[0]) || std::isinf(deltaX[0])
-							|| std::isnan(deltaX[1]) || std::isinf(deltaX[1])
-							|| std::isnan(deltaX[2]) || std::isinf(deltaX[2]))
-						{
-								std::cout << "Deformation Gradient" << std::endl;
-								std::cout << F << std::endl;
-								std::cout << "Inverse of deformation gradient:" << std::endl;
-								std::cout << F.inverse().transpose() << std::endl;
-								std::cout << "Stress Tensor" << std::endl;
-								std::cout << PF << std::endl;
-								std::cout << "Tensor Gradient " << std::endl;
-								std::cout << gradient << std::endl;
-								std::cout << "Strain Energy: " << strainEnergy << std::endl;
-								std::cout << "Denominator: " << denominator << std::endl;
-								std::cout << "Lagrange Multiplier: " << lagrangeM << std::endl;
-								std::cout << "Inverse Mass: " << tetrahedra[t].get_x(cI).inverseMass() << std::endl;
-								std::cout << "Undeformed Volume: " << V << std::endl;
-								
-								std::cout << "STEPS: " << std::endl;
-
-								std::cout << (settings.mu * F) << std::endl;
-								std::cout << settings.mu * F.inverse().transpose() << std::endl;
-								std::cout << log(I3) << std::endl;
-								std::cout << F.inverse().transpose() << std::endl;
-
-						}
-
-						//std::cout << "[ " << cI << "] : " << std::endl;
-						//std::cout << deltaX << std::endl;
-					}
+					lagrangeM += gradient.col(cI).squaredNorm() * tetrahedra[t].get_x(cI).inverseMass();
 				}
+
+				if (std::abs(lagrangeM) < 1e-9f)
+				{
+					continue;
+				}
+
+
+				//float volume = 1.0f / 6.0f * (p1 - p0).cross(p2 - p0).dot(p3 - p0);
+
+				lagrangeM = (tetrahedra[t].getVolume() - tetrahedra[t].getUndeformedVolume()) / lagrangeM;
+
+				for (int cI = 0; cI < 4; ++cI)
+				{
+					deltaX = -lagrangeM * tetrahedra[t].get_x(cI).inverseMass() * gradient.col(cI);
+
+					tetrahedra[t].get_x(cI).position() += deltaX;
+				}
+
 			}
+			//else
+			//{
+			//	for (int cI = 0; cI < 4; ++cI)
+			//	{
+			//		if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+			//		{
+			//			deltaX = (tetrahedra[t].get_x(cI).inverseMass()
+			//				* lagrangeM) * gradient.col(cI);
+
+			//			tetrahedra[t].get_x(cI).position() += deltaX;
+
+			//			if (std::isnan(deltaX[0]) || std::isinf(deltaX[0])
+			//				|| std::isnan(deltaX[1]) || std::isinf(deltaX[1])
+			//				|| std::isnan(deltaX[2]) || std::isinf(deltaX[2]))
+			//			{
+			//					std::cout << "Deformation Gradient" << std::endl;
+			//					std::cout << F << std::endl;
+			//					std::cout << "Inverse of deformation gradient:" << std::endl;
+			//					std::cout << F.inverse().transpose() << std::endl;
+			//					std::cout << "Stress Tensor" << std::endl;
+			//					std::cout << PF << std::endl;
+			//					std::cout << "Tensor Gradient " << std::endl;
+			//					std::cout << gradient << std::endl;
+			//					std::cout << "Strain Energy: " << strainEnergy << std::endl;
+			//					std::cout << "Denominator: " << denominator << std::endl;
+			//					std::cout << "Lagrange Multiplier: " << lagrangeM << std::endl;
+			//					std::cout << "Inverse Mass: " << tetrahedra[t].get_x(cI).inverseMass() << std::endl;
+			//					std::cout << "Undeformed Volume: " << V << std::endl;
+			//					
+			//					std::cout << "STEPS: " << std::endl;
+
+			//					std::cout << (settings.mu * F) << std::endl;
+			//					std::cout << settings.mu * F.inverse().transpose() << std::endl;
+			//					std::cout << log(I3) << std::endl;
+			//					std::cout << F.inverse().transpose() << std::endl;
+
+			//			}
+
+			//			//std::cout << "[ " << cI << "] : " << std::endl;
+			//			//std::cout << deltaX << std::endl;
+			//		}
+			//	}
+			//}
 
 		}
 
@@ -2548,4 +2524,83 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 	{
 		std::cout << "Inversion handled successfully!" << std::endl;
 	}
+}
+
+
+void
+PBDSolver::projectConstraintsVolume(std::vector<PBDTetrahedra3d>& tetrahedra,
+std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k)
+{
+	Eigen::MatrixXf gradient; gradient.resize(3, 4);
+
+	Eigen::Vector3f x1;
+	Eigen::Vector3f x2;
+
+	Eigen::Vector3f deltaX;
+
+	Eigen::Vector3f temp;
+
+	float stiffnessMultiplier;
+	float lagrangeM;
+
+
+	if (k == 1.0f)
+	{
+		stiffnessMultiplier = 1.0f;
+	}
+	else
+	{
+		if (k > 1.0f)
+		{
+			stiffnessMultiplier = 1.0f;
+		}
+		else
+		{
+			stiffnessMultiplier = 1.0f - std::pow((1.0f - k), 1.0f / (float)numIterations);
+		}
+	}
+
+
+	for (int it = 0; it < numIterations; ++it)
+	{
+		for (int t = 0; t < tetrahedra.size(); ++t)
+		{
+			Eigen::Vector3f p0 = tetrahedra[t].get_x(0).position();
+			Eigen::Vector3f p1 = tetrahedra[t].get_x(1).position();
+			Eigen::Vector3f p2 = tetrahedra[t].get_x(2).position();
+			Eigen::Vector3f p3 = tetrahedra[t].get_x(3).position();
+			gradient.col(0) = (p1 - p2).cross(p3 - p2);
+			gradient.col(1) = (p2 - p0).cross(p3 - p0);
+			gradient.col(2) = (p0 - p1).cross(p3 - p1);
+			gradient.col(3) = (p1 - p0).cross(p2 - p0);
+
+			//gradient.col(0) = (tetrahedra[t].get_x(1).position() - tetrahedra[t].get_x(2).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(2).position());
+			//gradient.col(1) = (tetrahedra[t].get_x(2).position() - tetrahedra[t].get_x(0).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(0).position());
+			//gradient.col(2) = (tetrahedra[t].get_x(0).position() - tetrahedra[t].get_x(1).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(1).position());
+			//gradient.col(3) = (tetrahedra[t].get_x(1).position() - tetrahedra[t].get_x(0).position()).cross(tetrahedra[t].get_x(2).position() - tetrahedra[t].get_x(0).position());
+			lagrangeM = 0.0f;
+			for (int cI = 0; cI < 4; ++cI)
+			{
+				lagrangeM += gradient.col(cI).squaredNorm() * tetrahedra[t].get_x(cI).inverseMass();
+			}
+
+			if (std::abs(lagrangeM) < 1e-9f)
+			{
+				continue;
+			}
+
+
+			//float volume = 1.0f / 6.0f * (p1 - p0).cross(p2 - p0).dot(p3 - p0);
+
+			lagrangeM = (tetrahedra[t].getVolume() - tetrahedra[t].getUndeformedVolume()) / lagrangeM;
+
+			for (int cI = 0; cI < 4; ++cI)
+			{
+				deltaX = -lagrangeM * tetrahedra[t].get_x(cI).inverseMass() * gradient.col(cI);
+
+				tetrahedra[t].get_x(cI).position() += deltaX;
+			}
+		}
+	}
+
 }

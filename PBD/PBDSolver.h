@@ -53,6 +53,9 @@ private:
 	void projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k);
 
+	void projectConstraintsVolume(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k);
+
 	void projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 

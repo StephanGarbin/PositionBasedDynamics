@@ -40,7 +40,7 @@ std::shared_ptr<SurfaceMeshHandler> smHandler;
 
 PBDSolverSettings settings;
 
-int numMilliseconds = 1000;
+int numMilliseconds = 0;
 
 double sumExecutionTime;
 int timingPrintInterval = 100;
@@ -68,7 +68,7 @@ bool useFEMSolver = false;
 bool writeToAlembic = true;
 bool printStrainEnergyToFile = false;
 
-bool testingInversionHandling = true;
+bool testingInversionHandling = false;
 int dimToCollapse = 1;
 
 
