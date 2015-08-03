@@ -16,27 +16,44 @@ __shared__ float Gradient[NUM_THREADS_PER_BLOCK][3][4];
 //__shared__ int LocalIndices[NUM_THREADS_PER_BLOCK][4];
 
 __shared__ float localPositions[500 * 3];
-__shared__ float localPositionsUPDATES[500 * 3];
+//__shared__ float localPositionsUPDATES[500 * 3];
 
+
+__device__ void resetLocalPositions(int TrueNumNodes)
+{
+	int numFloats2Read = TrueNumNodes * 3;
+	for (int i = 0; i < (numFloats2Read / NUM_THREADS_PER_BLOCK) + 1; ++i)
+	{
+		localPositions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read] = 0.0f;
+	}
+}
 __device__ void loadPositionsFromGlobal(float* positions, int TrueNumNodes)
 {
 	int numFloats2Read = TrueNumNodes * 3;
 
 	for (int i = 0; i < (numFloats2Read / NUM_THREADS_PER_BLOCK) + 1; ++i)
 	{
-		if (threadIdx.x + i * NUM_THREADS_PER_BLOCK < numFloats2Read)
+		//if (threadIdx.x + i * NUM_THREADS_PER_BLOCK < numFloats2Read)
+		//{
+		//	localPositions[threadIdx.x + i * NUM_THREADS_PER_BLOCK] = positions[threadIdx.x + i * NUM_THREADS_PER_BLOCK];
+		//}
+		//if (threadIdx.x + i * NUM_THREADS_PER_BLOCK < numFloats2Read)
 		{
-			localPositions[threadIdx.x + i * NUM_THREADS_PER_BLOCK] = positions[threadIdx.x + i * NUM_THREADS_PER_BLOCK];
+			localPositions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read] = positions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read];
 		}
 	}
 
-	for (int i = 0; i < (numFloats2Read / NUM_THREADS_PER_BLOCK) + 1; ++i)
-	{
-		if (threadIdx.x + i * NUM_THREADS_PER_BLOCK < numFloats2Read)
-		{
-			localPositionsUPDATES[threadIdx.x + i * NUM_THREADS_PER_BLOCK] = localPositions[threadIdx.x + i * NUM_THREADS_PER_BLOCK];
-		}
-	}
+	//for (int i = 0; i < (numFloats2Read / NUM_THREADS_PER_BLOCK) + 1; ++i)
+	//{
+	//	//if (threadIdx.x + i * NUM_THREADS_PER_BLOCK < numFloats2Read)
+	//	//{
+	//	//	localPositionsUPDATES[threadIdx.x + i * NUM_THREADS_PER_BLOCK] = localPositions[threadIdx.x + i * NUM_THREADS_PER_BLOCK];
+	//	//}
+
+	//	{
+	//		localPositionsUPDATES[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read] = localPositions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read];
+	//	}
+	//}
 
 	//for (int i = 0; i < (TrueNumNodes / NUM_THREADS_PER_BLOCK) + 1; ++i)
 	//{
@@ -58,10 +75,18 @@ __device__ void storePositionsInGlobal(float * positions, int TrueNumNodes)
 
 		for (int i = 0; i < (numFloats2Read / NUM_THREADS_PER_BLOCK) + 1; ++i)
 		{
+			//if (threadIdx.x + i * NUM_THREADS_PER_BLOCK < numFloats2Read)
+			//{
+			//	atomicAdd(&positions[threadIdx.x + i * NUM_THREADS_PER_BLOCK],
+			//		localPositions[threadIdx.x + i * NUM_THREADS_PER_BLOCK] - localPositionsUPDATES[threadIdx.x + i * NUM_THREADS_PER_BLOCK]);
+			//}
+
 			if (threadIdx.x + i * NUM_THREADS_PER_BLOCK < numFloats2Read)
 			{
-				atomicAdd(&positions[threadIdx.x + i * NUM_THREADS_PER_BLOCK],
-					localPositions[threadIdx.x + i * NUM_THREADS_PER_BLOCK] - localPositionsUPDATES[threadIdx.x + i * NUM_THREADS_PER_BLOCK]);
+				atomicAdd(&positions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read],
+					localPositions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read]);
+				/*atomicAdd(&positions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read],
+					localPositions[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read] - localPositionsUPDATES[(threadIdx.x + i * NUM_THREADS_PER_BLOCK) % numFloats2Read]);*/
 			}
 		}
 	}
@@ -643,141 +668,148 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	loadPositionsFromGlobal(positions, numParticles);
 	syncthreads();
 
+	//if (IDX > trueNumConstraints)
+	//{
+	//	return;
+	//}
+
 	for (int it = 0; it < numGPUBlockIterations; ++it)
 	{
-
-		if (IDX > trueNumConstraints)
+		//if (IDX < trueNumConstraints)
 		{
-			continue;
-		}
 
-		int idx = IDX;
+			int idx = IDX % trueNumConstraints;
 
-		//getIndices(idx, indices, trueNumConstraints);
-		//getMasses(idx, inverseMass, trueNumConstraints);
-		/*loadPositionsFromGlobal(positions, numParticles);
+			//getIndices(idx, indices, trueNumConstraints);
+			//getMasses(idx, inverseMass, trueNumConstraints);
+			/*loadPositionsFromGlobal(positions, numParticles);
 
-		syncthreads();*/
+			syncthreads();*/
 
 
-		//1. Calculate Deformation Gradient F
-		calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse, indices, trueNumConstraints, numParticles);
+			//1. Calculate Deformation Gradient F
+			calculateF(idx, threadIdx.x, positions, refShapeMatrixInverse, indices, trueNumConstraints, numParticles);
 
-		//if (idx == 47)
-		//{
-		//	printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
-		//		F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
-		//		F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
-		//		F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
-		//	printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
-		//	refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
-		//	refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
-		//	refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);
-		//	printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-		//		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
-		//		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
-		//		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
-		//}
-		//printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
-		//	F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
-		//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
-		//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
-		/*printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
-		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
-		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);*/
-		/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
-		refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
-		//if (isFIdentity())
-		//{
-		//	return;
-		//}
-		//printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-		//	FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
-		//	FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
-		//	FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
-		//printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-		//	F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
-		//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
-		//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
-		/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
-		refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
-		refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
+			syncthreads();
+			resetLocalPositions(numParticles);
+			syncthreads();
+
+			//if (idx == 47)
+			//{
+			//	printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+			//		F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
+			//		F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
+			//		F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
+			//	printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+			//	refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+			//	refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+			//	refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);
+			//	printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+			//		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+			//		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+			//		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+			//}
+			//printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+			//	F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
+			//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
+			//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
+			/*printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+			FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+			FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+			FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);*/
+			/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", idx,
+			refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+			refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+			refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
+			//if (isFIdentity())
+			//{
+			//	return;
+			//}
+			//printf("Deformed Shape [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+			//	FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+			//	FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+			//	FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+			//printf("F [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+			//	F[threadIdx.x][0][0], F[threadIdx.x][0][1], F[threadIdx.x][0][2],
+			//	F[threadIdx.x][1][0], F[threadIdx.x][1][1], F[threadIdx.x][1][2],
+			//	F[threadIdx.x][2][0], F[threadIdx.x][2][1], F[threadIdx.x][2][2]);
+			/*printf("RefShapeInverse [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n,%4.8f, %4.8f, %4.8f \n", threadIdx.x,
+			refShapeMatrixInverse[idx * 9 + 0 * 3 + 0], refShapeMatrixInverse[idx * 9 + 0 * 3 + 1], refShapeMatrixInverse[idx * 9 + 0 * 3 + 2],
+			refShapeMatrixInverse[idx * 9 + 1 * 3 + 0], refShapeMatrixInverse[idx * 9 + 1 * 3 + 1], refShapeMatrixInverse[idx * 9 + 1 * 3 + 2],
+			refShapeMatrixInverse[idx * 9 + 2 * 3 + 0], refShapeMatrixInverse[idx * 9 + 2 * 3 + 1], refShapeMatrixInverse[idx * 9 + 2 * 3 + 2]);*/
 
 
-		//2. Compute Cauchy Tensors
-		//calculateFTransposeF(threadIdx.x);
+			//2. Compute Cauchy Tensors
+			//calculateFTransposeF(threadIdx.x);
 
-		//3. Compute Invariants
-		//float I1 = traceFTransposeF(threadIdx.x);
-		//float I3 = determinantFTransposeF(threadIdx.x);
-		float I3 = calculatedeterminantFTransposeF_INPLACE();
-		float I1 = calculateTraceFTransposeF_INPLACE();
+			//3. Compute Invariants
+			//float I1 = traceFTransposeF(threadIdx.x);
+			//float I3 = determinantFTransposeF(threadIdx.x);
+			float I3 = calculatedeterminantFTransposeF_INPLACE();
+			float I1 = calculateTraceFTransposeF_INPLACE();
 
-		//printf("I1 = %4.8f \n", I1);
-		//printf("I3 = %4.8f \n", I3);
+			//printf("I1 = %4.8f \n", I1);
+			//printf("I3 = %4.8f \n", I3);
 
-		//calculateFInverseTranspose(threadIdx.x);
+			//calculateFInverseTranspose(threadIdx.x);
 
-		//4. Calculate First Piola-Kirchoff Stress Tensor
-		//calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(threadIdx.x, mu, lambda, I3);
-		//calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN_INPLACE(threadIdx.x, mu, lambda, I3);
+			//4. Calculate First Piola-Kirchoff Stress Tensor
+			//calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN(threadIdx.x, mu, lambda, I3);
+			//calculateFirstPiolaKirchoffTensor_NEO_HOOKEAN_INPLACE(threadIdx.x, mu, lambda, I3);
 
-		//5. Calculate StrainEnergy
-		float strainEnergy = calculateStrainEnergy_NEO_HOOKEAN(volume[idx], lambda, mu, I1, I3);
+			//5. Calculate StrainEnergy
+			float strainEnergy = calculateStrainEnergy_NEO_HOOKEAN(volume[idx], lambda, mu, I1, I3);
 
-		//printf("StrainEnergy = %4.8f \n", strainEnergy);
+			//printf("StrainEnergy = %4.8f \n", strainEnergy);
 
-		//6. Calculate Strain Energy Gradient
-		//calculateStrainEnergyGradient_NEO_HOOKEAN(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints);
-		calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3);
+			//6. Calculate Strain Energy Gradient
+			//calculateStrainEnergyGradient_NEO_HOOKEAN(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints);
+			calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(idx, threadIdx.x, volume[idx], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3);
 
-		//7. Calculate Lagrange Multiplier
-		float denominator = calculateLagrangeMultiplierDenominator(idx, threadIdx.x, inverseMass, trueNumConstraints);
+			//7. Calculate Lagrange Multiplier
+			float denominator = calculateLagrangeMultiplierDenominator(idx, threadIdx.x, inverseMass, trueNumConstraints);
 
-		float lagrangeMultiplier = -(strainEnergy / denominator);
-		//if (idx == 47)
-		//{
-		//	printf("[%d]: I1 = %8.16f \n", idx, I1);
-		//	printf("[%d]: I3 = %8.16f \n", idx, I3);
-		//	printf("[%d]: lagrangeMultiplier = %8.16f \n", idx, lagrangeMultiplier);
-		//	printf("[%d]: strainEnergy = %8.16f \n", idx, strainEnergy);
-		//	printf("[%d]: denominator = %8.16f \n", idx, denominator);
-		//	printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", idx,
-		//		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
-		//		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
-		//		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
-		//	printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", idx,
-		//		Gradient[threadIdx.x][0][0], Gradient[threadIdx.x][0][1], Gradient[threadIdx.x][0][2], Gradient[threadIdx.x][0][3],
-		//		Gradient[threadIdx.x][1][0], Gradient[threadIdx.x][1][1], Gradient[threadIdx.x][1][2], Gradient[threadIdx.x][1][3],
-		//		Gradient[threadIdx.x][2][0], Gradient[threadIdx.x][2][1], Gradient[threadIdx.x][2][2], Gradient[threadIdx.x][2][3]);
-		//}
+			float lagrangeMultiplier = -(strainEnergy / denominator);
+			//if (idx == 47)
+			//{
+			//	printf("[%d]: I1 = %8.16f \n", idx, I1);
+			//	printf("[%d]: I3 = %8.16f \n", idx, I3);
+			//	printf("[%d]: lagrangeMultiplier = %8.16f \n", idx, lagrangeMultiplier);
+			//	printf("[%d]: strainEnergy = %8.16f \n", idx, strainEnergy);
+			//	printf("[%d]: denominator = %8.16f \n", idx, denominator);
+			//	printf("PF [%d]: \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f \n", idx,
+			//		FirstPiolaKirchoffTensor[threadIdx.x][0][0], FirstPiolaKirchoffTensor[threadIdx.x][0][1], FirstPiolaKirchoffTensor[threadIdx.x][0][2],
+			//		FirstPiolaKirchoffTensor[threadIdx.x][1][0], FirstPiolaKirchoffTensor[threadIdx.x][1][1], FirstPiolaKirchoffTensor[threadIdx.x][1][2],
+			//		FirstPiolaKirchoffTensor[threadIdx.x][2][0], FirstPiolaKirchoffTensor[threadIdx.x][2][1], FirstPiolaKirchoffTensor[threadIdx.x][2][2]);
+			//	printf("Gradient [%d]: \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n %4.8f, %4.8f, %4.8f, %4.8f \n", idx,
+			//		Gradient[threadIdx.x][0][0], Gradient[threadIdx.x][0][1], Gradient[threadIdx.x][0][2], Gradient[threadIdx.x][0][3],
+			//		Gradient[threadIdx.x][1][0], Gradient[threadIdx.x][1][1], Gradient[threadIdx.x][1][2], Gradient[threadIdx.x][1][3],
+			//		Gradient[threadIdx.x][2][0], Gradient[threadIdx.x][2][1], Gradient[threadIdx.x][2][2], Gradient[threadIdx.x][2][3]);
+			//}
 
-		if (isnan(lagrangeMultiplier))
-		{
-			continue;
-		}
-
-		//8. Update Positions
-		//updatePositions(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles);
-		updatePositions_SHARED(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles);
-
-		if (it > 0)
-		{
-			if (it % 3 == 0)
+			if (isnan(lagrangeMultiplier))
 			{
-				//syncthreads();
-				storePositionsInGlobal(positions, numParticles);
-
-				//syncthreads();
-				loadPositionsFromGlobal(positions, numParticles);
-
-				syncthreads();
+				continue;
 			}
+
+			//8. Update Positions
+			//updatePositions(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles);
+			updatePositions_SHARED(idx, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles);
 		}
+
+		//if (it > 0)
+		//{
+		//	if (it % 3 == 0)
+		//	{
+		//		//syncthreads();
+		//		storePositionsInGlobal(positions, numParticles);
+
+		//		//syncthreads();
+		//		loadPositionsFromGlobal(positions, numParticles);
+
+		//		syncthreads();
+		//	}
+		//}
 	}
 
 	//if ((numGPUBlockIterations - 1) % 3 != 0)

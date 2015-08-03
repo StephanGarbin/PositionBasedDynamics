@@ -30,7 +30,7 @@ struct Parameters
 		inverseMass = 1.0f;
 		timeStep = 0.005f;
 		numConstraintIterations = 25;
-		numGPUBlockIterations = 2;
+		numGPUBlockIterations = 1;
 
 		gravity = -9.8f;
 
