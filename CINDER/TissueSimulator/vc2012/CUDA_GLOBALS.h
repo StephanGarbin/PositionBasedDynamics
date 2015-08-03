@@ -1,3 +1,3 @@
 #pragma once
 
-const int NUM_THREADS_PER_BLOCK = 64;
+const int NUM_THREADS_PER_BLOCK = 256;

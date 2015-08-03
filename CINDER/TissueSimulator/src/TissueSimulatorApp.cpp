@@ -26,6 +26,8 @@
 #include "PBDGPU_Solver.h"
 #include "CUDAMemoryOptimiser.h"
 
+#include "CUDA_GLOBALS.h"
+
 using namespace ci;
 using namespace ci::app;
 using namespace std;
@@ -216,7 +218,8 @@ TissueSimulatorApp::setupInterface()
 	m_interfaceParams->addParam("Inverse Mass", &m_params.inverseMass).min(0.0f).max(100000.0f).precision(4).step(1.0f);
 	m_interfaceParams->addSeparator();
 	m_interfaceParams->addParam("Timestep", &m_params.timeStep).min(0.000001f).max(1.0f).precision(4).step(0.05f);
-	m_interfaceParams->addParam("Num Constraint Iterations", &m_params.numConstraintIterations).min(0).max(1000).precision(1).step(1);
+	m_interfaceParams->addParam("Num Constraint Iterations", &m_params.numConstraintIterations).min(2).max(1000).precision(1).step(1);
+	m_interfaceParams->addParam("Num GPU Block Iterations", &m_params.numGPUBlockIterations).min(1).max(1000).precision(1).step(1);
 }
 
 void TissueSimulatorApp::handleIO()
@@ -237,6 +240,7 @@ void TissueSimulatorApp::handleIO()
 
 	//OPTIMISE MEMORY LAYOUT FOR CUDA
 	//CUDAMemoryOptimiser::optimiseTetrahedralIndexingBasedOnNodeMemory(m_data.getParticles(), m_data.getTets());
+	//CUDAMemoryOptimiser::optimiseTetrahedralIndexingBasedOnMemoryChunks(m_data.getParticles(), m_data.getTets(), NUM_THREADS_PER_BLOCK);
 }
 
 CINDER_APP_NATIVE( TissueSimulatorApp, RendererGl )
