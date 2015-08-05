@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 struct IOParameters
 {
@@ -8,11 +9,18 @@ struct IOParameters
 	std::string elementFile;
 	std::string constraintFile;
 
+	std::vector<std::string> trackerFiles;
+
 	void initializeToDefaults()
 	{
 		nodeFile = ("barout.node");
 		elementFile = ("barout.ele");
 		constraintFile = ("barLowVertexConstraints.txt");
+
+		trackerFiles.push_back("def1_constrainedEdgeBottom.txt");
+		trackerFiles.push_back("def1_constrainedEdgeTop.txt");
+		trackerFiles.push_back("def1_freeEdgeTop.txt");
+		trackerFiles.push_back("def1_movingPin.txt");
 
 		//nodeFile = ("liver_processed.1.node");
 		//elementFile = ("liver_processed.1.ele");

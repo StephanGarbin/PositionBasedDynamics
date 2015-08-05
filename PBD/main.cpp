@@ -277,6 +277,33 @@ void collapseMesh()
 	getCurrentPositionFromParticles();
 }
 
+void doIO(float inverseMass)
+{
+	Eigen::Vector3f initialVelocity;
+	initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
+	std::vector<int> vertexConstraintIndices;
+
+	if (!parameters.generateMeshInsteadOfDoingIO)
+	{
+		//1. MESH
+		TetGenIO::readNodes(ioParameters.nodeFile, *particles, inverseMass, initialVelocity);
+		TetGenIO::readTetrahedra(ioParameters.elementFile, tetrahedra, particles);
+
+		//2. VERTEX CONSTRAINTS
+		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, ioParameters.constraintFile);
+		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+		{
+			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+		}
+
+		std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
+	}
+	else
+	{
+		MeshCreator::generateTetBar(particles, tetrahedra, 10, 5, 5);
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	float youngsModulus;
@@ -341,9 +368,6 @@ int main(int argc, char* argv[])
 		smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMesh.abc");
 	}
 
-	Eigen::Vector3f initialVelocity;
-	initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
-
 	settings.youngsModulus = youngsModulus;
 	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
@@ -360,26 +384,7 @@ int main(int argc, char* argv[])
 
 	parameters.initialiseToDefaults();
 
-	std::vector<int> vertexConstraintIndices;
-	
-	if (!parameters.generateMeshInsteadOfDoingIO)
-	{
-		TetGenIO::readNodes(ioParameters.nodeFile, *particles, invM, initialVelocity);
-		TetGenIO::readTetrahedra(ioParameters.elementFile, tetrahedra, particles);
-
-		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, ioParameters.constraintFile);
-
-		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
-		{
-			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
-		}
-
-		std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
-	}
-	else
-	{
-		MeshCreator::generateTetBar(particles, tetrahedra, 10, 5, 5);
-	}
+	doIO(invM);
 
 	settings.numTetrahedra = tetrahedra.size();
 	std::cout << "Num Tets: " << tetrahedra.size() << "; Num Nodes: " << particles->size() << std::endl;
