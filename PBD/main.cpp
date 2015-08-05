@@ -89,14 +89,16 @@ void getCurrentPositionFromParticles()
 
 void updateProbabilisticConstraints()
 {
-	Eigen::Vector3f currentConstraintPosition;
-	TrackerIO::getInterpolatedConstraintPosition(trackingData[3], 1.0f / 24.0f, settings.deltaT, parameters.currentFrame * settings.deltaT);
+	Eigen::Vector3f currentConstraintPosition = 
+		TrackerIO::getInterpolatedConstraintPosition(trackingData[3], 1.0f / 24.0f, settings.deltaT, parameters.currentFrame * settings.deltaT);
 
 	float scaleFactor = 0.01;
 
 	//1. subtract displacement
 	float widthSubtraction = trackingData[0][0].x();
 	float heightSubtraction = trackingData[0][0].y();
+
+	std::cout << widthSubtraction << ", " << heightSubtraction << std::endl;
 
 	currentConstraintPosition[0] -= widthSubtraction;
 	currentConstraintPosition[2] -= heightSubtraction;
@@ -111,7 +113,7 @@ void createProabilisticConstraints()
 {
 	probabilisticConstraints.resize(1);
 	updateProbabilisticConstraints();
-	probabilisticConstraints[0].initialise(*particles, 10.1);
+	probabilisticConstraints[0].initialise(*particles, 1000.1);
 }
 
 void setCamera()

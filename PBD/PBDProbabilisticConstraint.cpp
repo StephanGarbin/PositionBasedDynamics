@@ -42,10 +42,12 @@ PBDProbabilisticConstraint::project(std::vector<PBDParticle>& particles)
 void
 PBDProbabilisticConstraint::initialise(std::vector<PBDParticle>& particles, float radius)
 {
+	std::cout << "Initialising Prob Constraint" << std::endl;
+	std::cout << m_constraintPosition << std::endl;
 	for (int p = 0; p < particles.size(); ++p)
 	{
 		float distance = (particles[p].position() - m_constraintPosition).squaredNorm();
-
+		std::cout << distance << std::endl;
 		if (distance <= radius)
 		{
 			m_particleInfluences.push_back(p);
