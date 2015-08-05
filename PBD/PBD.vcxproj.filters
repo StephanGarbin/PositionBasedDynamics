@@ -48,13 +48,16 @@
     <ClCompile Include="SurfaceMeshHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GPUPBD_Solver.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="main2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MeshCreator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PBDProbabilisticConstraint.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackerIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -107,14 +110,20 @@
     <ClInclude Include="CUDAPBD_SolverSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GPUPBD_Solver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MeshCreator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="CUDA_WRAPPER.cu" />
+    <ClInclude Include="PBDProbabilisticConstraint.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackerIO.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Parameters.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IOParameters.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

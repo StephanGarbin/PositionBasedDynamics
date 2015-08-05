@@ -56,9 +56,7 @@
     <UseIntelMKL>No</UseIntelMKL>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 6.5.props" />
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -179,7 +177,6 @@
     <ClCompile Include="AbcWriter.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
     <ClCompile Include="FEMSimulator.cpp" />
-    <ClCompile Include="GPUPBD_Solver.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
@@ -190,11 +187,13 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MeshCreator.cpp" />
+    <ClCompile Include="PBDProbabilisticConstraint.cpp" />
     <ClCompile Include="PBDTetrahedra3d.cpp" />
     <ClCompile Include="PBDParticle.cpp" />
     <ClCompile Include="PBDSolver.cpp" />
     <ClCompile Include="SurfaceMeshHandler.cpp" />
     <ClCompile Include="TetGenIO.cpp" />
+    <ClCompile Include="TrackerIO.cpp" />
     <ClCompile Include="VegaIO.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -206,22 +205,20 @@
     <ClInclude Include="EnergyConstraint.h" />
     <ClInclude Include="FEMSimulator.h" />
     <ClInclude Include="GLUTHelper.h" />
-    <ClInclude Include="GPUPBD_Solver.h" />
+    <ClInclude Include="IOParameters.h" />
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="MeshCreator.h" />
+    <ClInclude Include="Parameters.h" />
+    <ClInclude Include="PBDProbabilisticConstraint.h" />
     <ClInclude Include="PBDSolverSettings.h" />
     <ClInclude Include="PBDTetrahedra3d.h" />
     <ClInclude Include="PBDParticle.h" />
     <ClInclude Include="PBDSolver.h" />
     <ClInclude Include="SurfaceMeshHandler.h" />
     <ClInclude Include="TetGenIO.h" />
+    <ClInclude Include="TrackerIO.h" />
     <ClInclude Include="VegaIO.h" />
   </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="CUDA_WRAPPER.cu" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 6.5.targets" />
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

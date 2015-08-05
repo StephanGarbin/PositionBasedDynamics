@@ -59,4 +59,14 @@ struct PBDSolverSettings
 	{
 		return youngsModulus / (2.0f * (1.0f + poissonRatio));
 	}
+
+	void calculateLambda()
+	{
+		lambda =  (youngsModulus * poissonRatio) / ((1.0f + poissonRatio) * (1.0f - 2.0f * poissonRatio));
+	}
+
+	void calculateMu()
+	{
+		mu = (2.0f * (1.0f + poissonRatio));
+	}
 };

@@ -7,7 +7,7 @@
 class TrackerIO
 {
 public:
-	static void readTrackerAnimationNuke(const std::string& fileName, std::vector<Eigen::Vector2f>& trackingData);
+	static bool readTrackerAnimationNuke(const std::string& fileName, std::vector<Eigen::Vector2f>& trackingData);
 
 private:
 	TrackerIO();

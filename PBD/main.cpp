@@ -8,6 +8,7 @@
 #include "TetGenIO.h"
 #include "ConstraintsIO.h"
 #include "VegaIO.h"
+#include "TrackerIO.h"
 
 #include "AbcWriter.h"
 #include "SurfaceMeshHandler.h"
@@ -17,76 +18,31 @@
 #include "PBDSolver.h"
 #include "PBDSolverSettings.h"
 
-#include "GPUPBD_Solver.h"
-
 #include "GLUTHelper.h"
 #include "AntTweakBar.h"
 
-#include "lodepng.h"
-
 #include "FEMSimulator.h"
-
 #include "MeshCreator.h"
+
+#include "Parameters.h"
+#include "IOParameters.h"
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
 std::vector<Eigen::Vector3f> currentPositions;
 std::vector<Eigen::Vector3f> initialPositions;
-
 std::vector<int> numConstraintInfluences;
+
 PBDSolver solver;
-GPUPBD_Solver GPUsolver;
 FEMSimulator FEMsolver;
 
 std::shared_ptr<SurfaceMeshHandler> smHandler;
 
 PBDSolverSettings settings;
-
-int numMilliseconds = 0;
-
-double sumExecutionTime;
-int timingPrintInterval = 100;
-int currentFrame = 1;
-int maxFrames = 10000;
-
-int globalHeight;
-int globalWidth;
-
-float baryCentre[3];
-float radius;
-float rotation[3];
-float zoom;
+Parameters parameters;
+IOParameters ioParameters;
 
 void mainLoop();
-
-float youngsModulus;
-float poissonRatio;
-
-float lambda;
-float mu;
-
-bool useGPUSolver = false;
-bool useFEMSolver = false;
-bool writeToAlembic = true;
-bool printStrainEnergyToFile = false;
-
-bool testingInversionHandling = false;
-int dimToCollapse = 1;
-
-bool generateMeshInsteadOfDoingIO = true;
-
-
-std::string nodes("barout.node");
-std::string tets("barout.ele");
-std::string constraints1("barLowVertexConstraints.txt");
-
-//std::string nodes("liver_processed.1.node");
-//std::string tets("liver_processed.1.ele");
-//std::string constraints1("pigLiver2VertexConstraints.txt");
-
-//std::string nodes("liver_processedD.1.node");
-//std::string tets("liver_processedD.1.ele");
-//std::string constraints1("pigLiver4VertexConstraints.txt");
 
 
 void applyFEMDisplacementsToParticles()
@@ -128,50 +84,6 @@ void getCurrentPositionFromParticles()
 	}
 }
 
-void saveFrameBufferAsPng()
-{
-	unsigned width = globalWidth;
-	unsigned height = globalHeight;
-	
-
-	std::stringstream ss;
-	ss << "images/solverOutput_" << currentFrame << ".png";
-	
-	std::vector<double> RawImage;
-	RawImage.resize(globalWidth * globalHeight * 4);
-
-	glReadPixels(0, 0, width, height, GL_RGBA, GL_DOUBLE, &RawImage[0]);
-
-
-	std::vector<unsigned char> image;
-	image.resize(globalWidth * globalHeight * 4);
-	for (int i = 0; i < globalHeight * globalWidth * 4; ++i)
-	{
-		image[i] = (unsigned char)(RawImage[i] * 255.0f);
-	}
-
-	std::vector<unsigned char> png;
-
-	unsigned error = lodepng::encode(png, image, width, height);
-	if (!error) lodepng::save_file(png, ss.str().c_str());
-
-	//if there's an error, display it
-	if (error) std::cout << "encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
-
-	ss.clear();
-}
-
-void calculateLambdaAndMu()
-{
-	mu = youngsModulus / (2.0 * (1.0 + poissonRatio));
-	lambda = (youngsModulus * poissonRatio) / ((1.0 + poissonRatio) * (1.0 - 2.0 * poissonRatio));
-
-	settings.lambda = lambda;
-	settings.mu = mu;
-
-	settings.youngsModulus = youngsModulus;
-	settings.poissonRatio = poissonRatio;
-}
 
 void setCamera()
 {
@@ -191,15 +103,17 @@ void setCamera()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity;
 
-	gluLookAt(-(baryCentre[0] + radius * zoom), baryCentre[1] + radius * zoom, -(baryCentre[2] + radius * zoom),  /* eye is at (0,0,5) */
-		baryCentre[0], baryCentre[1], baryCentre[2],      /* center is at (0,0,0) */
+	gluLookAt(-(parameters.baryCentre[0] + parameters.radius * parameters.zoom),
+		parameters.baryCentre[1] + parameters.radius * parameters.zoom,
+		-(parameters.baryCentre[2] + parameters.radius * parameters.zoom),  /* eye is at (0,0,5) */
+		parameters.baryCentre[0], parameters.baryCentre[1], parameters.baryCentre[2],      /* center is at (0,0,0) */
 		0.0, 1.0, 0.0);      /* up is in positive Y direction */
 
-	glTranslated(baryCentre[0], baryCentre[1], baryCentre[2]);
-	glRotated(rotation[0], 1.0, 0.0, 0.0);
-	glRotated(rotation[1], 0.0, 1.0, 0.0);
-	glRotated(rotation[2], 0.0, 0.0, 1.0);
-	glTranslated(-baryCentre[0], -baryCentre[1], -baryCentre[2]);
+	glTranslated(parameters.baryCentre[0], parameters.baryCentre[1], parameters.baryCentre[2]);
+	glRotated(parameters.rotation[0], 1.0, 0.0, 0.0);
+	glRotated(parameters.rotation[1], 0.0, 1.0, 0.0);
+	glRotated(parameters.rotation[2], 0.0, 0.0, 1.0);
+	glTranslated(-parameters.baryCentre[0], -parameters.baryCentre[1], -parameters.baryCentre[2]);
 }
 
 void determineLookAt()
@@ -214,9 +128,9 @@ void determineLookAt()
 	}
 
 	baryCentreTemp /= (float)particles->size();
-	baryCentre[0] = baryCentreTemp[0];
-	baryCentre[1] = baryCentreTemp[1];
-	baryCentre[2] = baryCentreTemp[2];
+	parameters.baryCentre[0] = baryCentreTemp[0];
+	parameters.baryCentre[1] = baryCentreTemp[1];
+	parameters.baryCentre[2] = baryCentreTemp[2];
 
 	//2. Compute Radius
 	float radiusTemp = 0;
@@ -229,22 +143,12 @@ void determineLookAt()
 		}
 	}
 
-	radius = radiusTemp;
+	parameters.radius = radiusTemp;
 
 	//std::cout << "Barycentre: " << std::endl;
 	//std::cout << baryCentreTemp << std::endl;
 	//std::cout << "Radius: " << std::endl;
 	//std::cout << radius << std::endl << std::endl;
-}
-
-void LookAtMesh()
-{
-	//gluLookAt(5, 5, 5, 0.0, 0.0, 0.0, 0, 1, 0);
-	//glTranslatef(0, 0.6f, -1);
-
-	//gluLookAt(baryCentre[0] + radius, baryCentre[1] + radius, baryCentre[2] - radius,
-	//	baryCentre[0], baryCentre[1], baryCentre[2], 0.0, 1.0, 0.0);
-
 }
 
 void idleLoopGlut(void)
@@ -259,7 +163,8 @@ void mainLoopGlut(void)
 
 void mainLoop()
 {
-	calculateLambdaAndMu();
+	settings.calculateLambda();
+	settings.calculateMu();
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
 
@@ -284,16 +189,9 @@ void mainLoop()
 
 	//Advance Solver
 	tbb::tick_count start = tbb::tick_count::now();
-	if (!useFEMSolver)
+	if (!parameters.useFEMSolver)
 	{
-		if (!useGPUSolver)
-		{
-			solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences);
-		}
-		else
-		{
-			GPUsolver.advanceSystem(particles, settings);
-		}
+		solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences);
 	}
 	else
 	{
@@ -301,10 +199,10 @@ void mainLoop()
 		applyFEMDisplacementsToParticles();
 	}
 	tbb::tick_count end = tbb::tick_count::now();
-	sumExecutionTime += (end - start).seconds();
-	if (currentFrame % timingPrintInterval == 0)
+	parameters.executionTimeSum += (end - start).seconds();
+	if (parameters.currentFrame % parameters.timingPrintInterval == 0)
 	{
-		std::cout << "Average simulation Time: " << sumExecutionTime / currentFrame << "s." << std::endl;
+		std::cout << "Average simulation Time: " << parameters.executionTimeSum / parameters.currentFrame << "s." << std::endl;
 	}
 
 	glPopMatrix();
@@ -314,21 +212,21 @@ void mainLoop()
 
 	TwDraw();
 	glutSwapBuffers();
-	++currentFrame;
+	++parameters.currentFrame;
 
-	if (writeToAlembic)
+	if (parameters.writeToAlembic)
 	{
 		getCurrentPositionFromParticles();
 		smHandler->setSample(currentPositions);
 	}
 
-	if (maxFrames <= currentFrame)
+	if (parameters.maxFrames <= parameters.currentFrame)
 	{
 		std::cout << "Leaving Glut Main Loop..." << std::endl;
 		glutLeaveMainLoop();
 	}
 
-	Sleep(numMilliseconds);
+	Sleep(parameters.numMillisecondsToWaitBetweenFrames);
 	//std::cout << "Current Frame: " << currentFrame << std::endl;
 }
 
@@ -347,8 +245,6 @@ void Reshape(int width, int height)
 
 	// Send the new window size to AntTweakBar
 	TwWindowSize(width, height);
-	globalHeight = height;
-	globalWidth = width;
 }
 
 // Function called at exit
@@ -363,9 +259,9 @@ void collapseMesh()
 
 	for (int p = 0; p < particles->size(); ++p)
 	{
-		if ((*particles)[p].position()[dimToCollapse] > minDimValue)
+		if ((*particles)[p].position()[parameters.dimToCollapse] > minDimValue)
 		{
-			minDimValue = (*particles)[p].position()[dimToCollapse];
+			minDimValue = (*particles)[p].position()[parameters.dimToCollapse];
 		}
 	}
 
@@ -373,8 +269,8 @@ void collapseMesh()
 	{
 		if ((*particles)[p].inverseMass() != 0.0f)
 		{
-			(*particles)[p].position()[dimToCollapse] = minDimValue;
-			(*particles)[p].previousPosition()[dimToCollapse] = minDimValue;
+			(*particles)[p].position()[parameters.dimToCollapse] = minDimValue;
+			(*particles)[p].previousPosition()[parameters.dimToCollapse] = minDimValue;
 		}
 	}
 
@@ -383,20 +279,13 @@ void collapseMesh()
 
 int main(int argc, char* argv[])
 {
-	//Young's modulus
-	float k;
+	float youngsModulus;
 
-	//Poisson ratio
-	float v;
+	float poissonRatio;
 
-	//constraint iterations
 	int numConstraintIts;
 
-	//Inverse Mass
 	float invM;
-
-	bool useFEM;
-	bool useSOR = false;
 
 	float timeStep;
 
@@ -416,9 +305,9 @@ int main(int argc, char* argv[])
 	if (argc > 1)
 	{
 		//Young's modulus
-		k = std::stof(std::string(argv[1]));
+		youngsModulus = std::stof(std::string(argv[1]));
 		//Poisson ratio
-		v = std::stof(std::string(argv[2]));
+		poissonRatio = std::stof(std::string(argv[2]));
 		//Inverse Mass
 		invM = std::stof(std::string(argv[3]));
 
@@ -426,38 +315,25 @@ int main(int argc, char* argv[])
 
 		timeStep = std::stof(std::string(argv[5]));
 
-		useFEM = std::string(argv[6]) == "USE_FEM";
+		parameters.useFEMSolver = std::string(argv[6]) == "USE_FEM";
 
 		if (argc > 7)
 		{
 			if (std::string(argv[7]) == "SAVE_MESH")
 			{
-				writeToAlembic = true;
+				parameters.writeToAlembic = true;
 				std::cout << "Saving output mesh..." << std::endl;
 			}
 		}
-
-		youngsModulus = k;
-		poissonRatio = v;
 	}
 	else
 	{
-		k = 1.0;
-		v = 0.4333;
-		numConstraintIts = 5;
-		invM = 1;
-		useSOR = false;
-		timeStep = 0.005;
+		std::cout << "ERROR! Not enough paramters found..." << std::endl;
+		return 0;
 	}
 
-	if (useSOR)
+	if (parameters.useFEMSolver)
 	{
-		std::cout << "Using SOR Solver..." << std::endl;
-	}
-
-	if (useFEM)
-	{
-		useFEMSolver = true;
 		smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMeshFEM.abc");
 	}
 	else
@@ -468,31 +344,30 @@ int main(int argc, char* argv[])
 	Eigen::Vector3f initialVelocity;
 	initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
 
-	calculateLambdaAndMu();
-
 	settings.youngsModulus = youngsModulus;
 	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
 	settings.gravity = -9.81f;
-	settings.lambda = lambda;
-	settings.mu = mu;
 	settings.numConstraintIts = numConstraintIts;
 	settings.w = 1.0;
 	settings.printStrainEnergy = false;
-	settings.printStrainEnergyToFile = printStrainEnergyToFile;
-	settings.useSOR = useSOR;
+	settings.printStrainEnergyToFile = parameters.printStrainEnergyToFile;
 	settings.correctStrongForcesWithSubteps = false;
 	settings.numTetrahedraIterations = 1;
+	settings.calculateLambda();
+	settings.calculateMu();
 	settings.print();
+
+	parameters.initialiseToDefaults();
 
 	std::vector<int> vertexConstraintIndices;
 	
-	if (!generateMeshInsteadOfDoingIO)
+	if (!parameters.generateMeshInsteadOfDoingIO)
 	{
-		TetGenIO::readNodes(nodes, *particles, invM, initialVelocity);
-		TetGenIO::readTetrahedra(tets, tetrahedra, particles);
+		TetGenIO::readNodes(ioParameters.nodeFile, *particles, invM, initialVelocity);
+		TetGenIO::readTetrahedra(ioParameters.elementFile, tetrahedra, particles);
 
-		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, constraints1);
+		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, ioParameters.constraintFile);
 
 		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
 		{
@@ -526,13 +401,13 @@ int main(int argc, char* argv[])
 	helper.setIdleFunc(idleLoopGlut);
 
 	determineLookAt();
-	rotation[0] = 0.0f;
+	parameters.rotation[0] = 0.0f;
 	//rotation[1] = 128.0f;
-	rotation[1] = 227.0f;
-	rotation[2] = 0.0f;
-	zoom = 0.254f;
+	parameters.rotation[1] = 227.0f;
+	parameters.rotation[2] = 0.0f;
+	parameters.zoom = 0.254f;
 
-	if (useFEMSolver)
+	if (parameters.useFEMSolver)
 	{
 		std::cout << "Writing .veg file..." << std::endl;
 		VegaIO::writeVegFile(tetrahedra, particles, "FEMMesh.veg");
@@ -547,20 +422,13 @@ int main(int argc, char* argv[])
 		std::cout << "Entering simulation loop..." << std::endl;
 	}
 
-	if (useGPUSolver)
-	{
-		std::cout << "Setting up GPU Solver..." << std::endl;
-		GPUsolver.setup(tetrahedra, particles);
-		std::cout << "Initialised GPU Solver..." << std::endl;
-	}
-
-	if (writeToAlembic)
+	if (parameters.writeToAlembic)
 	{
 		smHandler->initTopology(*particles, tetrahedra);
 		std::cout << "Initialised Topology for Alembic Output!" << std::endl;
 	}
 
-	if (testingInversionHandling)
+	if (parameters.testingInversionHandling)
 	{
 		collapseMesh();
 		std::cout << "Collapsed mesh to test inversion Handling!" << std::endl;
@@ -583,20 +451,20 @@ int main(int argc, char* argv[])
 	//TwBar* materialSettings;
 	//materialSettings = TwNewBar("Material Settings");
 
-	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &youngsModulus,
+	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &settings.youngsModulus,
 		" label='Youngs Modulus' min=0.0 max=1000.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
 
-	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &poissonRatio,
+	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &settings.poissonRatio,
 		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");
 
-	TwAddVarRW(solverSettings, "rotationX", TW_TYPE_FLOAT, &rotation[0],
+	TwAddVarRW(solverSettings, "rotationX", TW_TYPE_FLOAT, &parameters.rotation[0],
 		" label='Cam Rotation X' min=0.0 max=360.0 step=1 keyIncr=s keyDecr=S help='Rotation about X' ");
-	TwAddVarRW(solverSettings, "rotationY", TW_TYPE_FLOAT, &rotation[1],
+	TwAddVarRW(solverSettings, "rotationY", TW_TYPE_FLOAT, &parameters.rotation[1],
 		" label='Cam Rotation Y' min=0.0 max=360.0 step=1 keyIncr=s keyDecr=S help='Rotation about X' ");
-	TwAddVarRW(solverSettings, "rotationZ", TW_TYPE_FLOAT, &rotation[2],
+	TwAddVarRW(solverSettings, "rotationZ", TW_TYPE_FLOAT, &parameters.rotation[2],
 		" label='Cam Rotation Z' min=0.0 max=360.0 step=1 keyIncr=s keyDecr=S help='Rotation about X' ");
 
-	TwAddVarRW(solverSettings, "zoom", TW_TYPE_FLOAT, &zoom,
+	TwAddVarRW(solverSettings, "zoom", TW_TYPE_FLOAT, &parameters.zoom,
 		" label='Cam Zoom' min=0.0 max=100 step=0.001 keyIncr=s keyDecr=S help='Zoom' ");
 
 
