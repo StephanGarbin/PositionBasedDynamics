@@ -1,6 +1,9 @@
 #pragma once
 #include <vector>
+#include <memory>
 #include <Eigen\Dense>
+
+#include "PBDParticle.h"
 
 
 class PBDProbabilisticConstraint
@@ -19,11 +22,19 @@ public:
 		return m_covariance;
 	}
 
-	void project();
+	void project(std::vector<PBDParticle>& particles);
 
-	void initialise(float radius);
+	void initialise(std::vector<PBDParticle>& particles, float radius);
+
+	Eigen::Vector3f& getConstraintPosition()
+	{
+		return m_constraintPosition;
+	}
 
 private:
+
+	Eigen::Vector3f m_constraintPosition;
+
 	Eigen::Matrix3f m_covariance;
 
 	std::vector<int> m_particleInfluences;

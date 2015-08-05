@@ -48,9 +48,6 @@
     <ClCompile Include="SurfaceMeshHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MeshCreator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -25,7 +25,8 @@ PBDSolver::~PBDSolver()
 void
 PBDSolver::advanceSystem(std::vector<PBDTetrahedra3d>& tetrahedra,
 std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
-std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences)
+std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
+std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 {
 	//Advance Velocities
 	advanceVelocities(tetrahedra, particles, settings);
@@ -43,11 +44,11 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
 	//projectConstraintsOLD(tetrahedra, particles, settings);
-	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings);
+	projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings, probabilisticConstraints);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
 	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 	//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
-	projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+	//projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -1532,7 +1533,8 @@ PBDSolver::projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 void
 PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tetrahedra,
-	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+	std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 {
 	float w1;
 	float w2;
@@ -1919,6 +1921,11 @@ PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tet
 			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
 		}
 
+	}
+
+	for (int pC = 0; pC < probabilisticConstraints.size(); ++pC)
+	{
+		probabilisticConstraints[pC].project(*particles);
 	}
 
 	if (settings.printStrainEnergyToFile)

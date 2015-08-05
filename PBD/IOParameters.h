@@ -11,7 +11,7 @@ struct IOParameters
 
 	std::vector<std::string> trackerFiles;
 
-	void initializeToDefaults()
+	void initialiseToDefaults()
 	{
 		nodeFile = ("barout.node");
 		elementFile = ("barout.ele");

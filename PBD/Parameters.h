@@ -28,15 +28,23 @@ struct Parameters
 
 	bool generateMeshInsteadOfDoingIO;
 
+	bool generateMeshFromTrackingData;
+
+	bool readVertexConstraintData;
+
+	bool disableSolver;
+
 	void initialiseToDefaults()
 	{
+		disableSolver = false;
+
 		numMillisecondsToWaitBetweenFrames = 0;
 		executionTimeSum = 0.0f;
 
 
 		timingPrintInterval = 100;
 		currentFrame = 1;
-		maxFrames = 10000;
+		maxFrames = 100000;
 
 		useFEMSolver = false;
 		writeToAlembic = true;
@@ -46,5 +54,16 @@ struct Parameters
 		dimToCollapse = 1;
 
 		generateMeshInsteadOfDoingIO = true;
+		generateMeshFromTrackingData = true;
+
+		readVertexConstraintData = false;
+	}
+
+	void initialiseCamera()
+	{
+		rotation[0] = 90.0f;
+		rotation[1] = 360.0f;
+		rotation[2] = 120.0f;
+		zoom = 0.0f;
 	}
 };

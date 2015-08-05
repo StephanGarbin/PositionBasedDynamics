@@ -9,6 +9,7 @@
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
 #include "PBDSolverSettings.h"
+#include "PBDProbabilisticConstraint.h"
 
 #include <boost/thread.hpp>
 
@@ -17,12 +18,11 @@ class PBDSolver
 public:
 	void advanceSystem(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
-		std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences);
+		std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints);
 	PBDSolver();
 
 	~PBDSolver();
-
-private:
 
 	void advanceVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
@@ -57,12 +57,12 @@ private:
 		std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k);
 
 	void projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tetrahedra,
-		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints);
 
 	void projectConstraintsMooneyRivlin(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 
-private:
 	bool correctInversion(Eigen::Matrix3f& F, 
 		Eigen::Matrix3f& FTransposeF,
 		Eigen::Matrix3f& FInverseTranspose, Eigen::Matrix3f& PF,

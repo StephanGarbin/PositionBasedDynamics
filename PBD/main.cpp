@@ -17,6 +17,7 @@
 #include "PBDTetrahedra3d.h"
 #include "PBDSolver.h"
 #include "PBDSolverSettings.h"
+#include "PBDProbabilisticConstraint.h"
 
 #include "GLUTHelper.h"
 #include "AntTweakBar.h"
@@ -32,6 +33,8 @@ std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vect
 std::vector<Eigen::Vector3f> currentPositions;
 std::vector<Eigen::Vector3f> initialPositions;
 std::vector<int> numConstraintInfluences;
+std::vector<PBDProbabilisticConstraint> probabilisticConstraints;
+std::vector<std::vector<Eigen::Vector2f>> trackingData;
 
 PBDSolver solver;
 FEMSimulator FEMsolver;
@@ -84,6 +87,32 @@ void getCurrentPositionFromParticles()
 	}
 }
 
+void updateProbabilisticConstraints()
+{
+	Eigen::Vector3f currentConstraintPosition;
+	TrackerIO::getInterpolatedConstraintPosition(trackingData[3], 1.0f / 24.0f, settings.deltaT, parameters.currentFrame * settings.deltaT);
+
+	float scaleFactor = 0.01;
+
+	//1. subtract displacement
+	float widthSubtraction = trackingData[0][0].x();
+	float heightSubtraction = trackingData[0][0].y();
+
+	currentConstraintPosition[0] -= widthSubtraction;
+	currentConstraintPosition[2] -= heightSubtraction;
+
+	//2. Rescale
+	currentConstraintPosition *= scaleFactor;
+
+	probabilisticConstraints[0].getConstraintPosition() = currentConstraintPosition;
+}
+
+void createProabilisticConstraints()
+{
+	probabilisticConstraints.resize(1);
+	updateProbabilisticConstraints();
+	probabilisticConstraints[0].initialise(*particles, 10.1);
+}
 
 void setCamera()
 {
@@ -145,10 +174,10 @@ void determineLookAt()
 
 	parameters.radius = radiusTemp;
 
-	//std::cout << "Barycentre: " << std::endl;
-	//std::cout << baryCentreTemp << std::endl;
-	//std::cout << "Radius: " << std::endl;
-	//std::cout << radius << std::endl << std::endl;
+	std::cout << "Barycentre: " << std::endl;
+	std::cout << baryCentreTemp << std::endl;
+	std::cout << "Radius: " << std::endl;
+	std::cout << parameters.radius << std::endl << std::endl;
 }
 
 void idleLoopGlut(void)
@@ -189,14 +218,20 @@ void mainLoop()
 
 	//Advance Solver
 	tbb::tick_count start = tbb::tick_count::now();
-	if (!parameters.useFEMSolver)
+	if (!parameters.disableSolver)
 	{
-		solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences);
-	}
-	else
-	{
-		FEMsolver.doTimeStep(true);
-		applyFEMDisplacementsToParticles();
+		if (!parameters.useFEMSolver)
+		{
+			updateProbabilisticConstraints();
+
+			solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences,
+				probabilisticConstraints);
+		}
+		else
+		{
+			FEMsolver.doTimeStep(true);
+			applyFEMDisplacementsToParticles();
+		}
 	}
 	tbb::tick_count end = tbb::tick_count::now();
 	parameters.executionTimeSum += (end - start).seconds();
@@ -212,7 +247,10 @@ void mainLoop()
 
 	TwDraw();
 	glutSwapBuffers();
-	++parameters.currentFrame;
+	if (!parameters.disableSolver)
+	{
+		++parameters.currentFrame;
+	}
 
 	if (parameters.writeToAlembic)
 	{
@@ -277,30 +315,46 @@ void collapseMesh()
 	getCurrentPositionFromParticles();
 }
 
-void doIO(float inverseMass)
+void doIO(float inverseMass, std::vector<int>& vertexConstraintIndices)
 {
 	Eigen::Vector3f initialVelocity;
 	initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
-	std::vector<int> vertexConstraintIndices;
 
-	if (!parameters.generateMeshInsteadOfDoingIO)
+	// HARD VERTEX CONSTRAINTS
+	if (parameters.readVertexConstraintData)
 	{
-		//1. MESH
-		TetGenIO::readNodes(ioParameters.nodeFile, *particles, inverseMass, initialVelocity);
-		TetGenIO::readTetrahedra(ioParameters.elementFile, tetrahedra, particles);
-
-		//2. VERTEX CONSTRAINTS
 		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, ioParameters.constraintFile);
 		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
 		{
 			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
 		}
+	}
 
-		std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
+	// TRACKING DATA
+	trackingData.resize(ioParameters.trackerFiles.size());
+	for (int i = 0; i < ioParameters.trackerFiles.size(); ++i)
+	{
+		TrackerIO::readTrackerAnimationNuke(ioParameters.trackerFiles[i], trackingData[i]);
+	}
+
+	if (!parameters.generateMeshInsteadOfDoingIO)
+	{
+		// MESH
+		TetGenIO::readNodes(ioParameters.nodeFile, *particles, inverseMass, initialVelocity);
+		TetGenIO::readTetrahedra(ioParameters.elementFile, tetrahedra, particles);
 	}
 	else
 	{
-		MeshCreator::generateTetBar(particles, tetrahedra, 10, 5, 5);
+		//GENERATE the mesh data
+		if (parameters.generateMeshFromTrackingData)
+		{
+			MeshCreator::generateTetBarToFit(particles, tetrahedra, 10, 7, 3,
+				trackingData[0][0], trackingData[1][0], trackingData[2][0], 20.0f);
+		}
+		else
+		{
+			MeshCreator::generateTetBar(particles, tetrahedra, 10, 6, 6);
+		}
 	}
 }
 
@@ -371,7 +425,8 @@ int main(int argc, char* argv[])
 	settings.youngsModulus = youngsModulus;
 	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
-	settings.gravity = -9.81f;
+	//settings.gravity = -9.81f;
+	settings.gravity = 0.0f;
 	settings.numConstraintIts = numConstraintIts;
 	settings.w = 1.0;
 	settings.printStrainEnergy = false;
@@ -383,14 +438,18 @@ int main(int argc, char* argv[])
 	settings.print();
 
 	parameters.initialiseToDefaults();
+	ioParameters.initialiseToDefaults();
 
-	doIO(invM);
+	std::vector<int> vertexConstraintIndices;
+	doIO(invM, vertexConstraintIndices);
 
 	settings.numTetrahedra = tetrahedra.size();
 	std::cout << "Num Tets: " << tetrahedra.size() << "; Num Nodes: " << particles->size() << std::endl;
 
 	numConstraintInfluences.resize(particles->size());
 	currentPositions.resize(particles->size());
+
+	createProabilisticConstraints();
 
 	GLUTSettings glutSettings;
 	glutSettings.height = 500;
@@ -406,11 +465,7 @@ int main(int argc, char* argv[])
 	helper.setIdleFunc(idleLoopGlut);
 
 	determineLookAt();
-	parameters.rotation[0] = 0.0f;
-	//rotation[1] = 128.0f;
-	parameters.rotation[1] = 227.0f;
-	parameters.rotation[2] = 0.0f;
-	parameters.zoom = 0.254f;
+	parameters.initialiseCamera();
 
 	if (parameters.useFEMSolver)
 	{

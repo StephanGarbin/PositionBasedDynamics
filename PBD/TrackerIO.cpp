@@ -66,9 +66,45 @@ TrackerIO::readTrackerAnimationNuke(const std::string& fileName, std::vector<Eig
 	for (int i = 2; i < xEntries.size(); ++i)
 	{
 		trackingData.push_back(Eigen::Vector2f(std::stof(xEntries[i]), std::stof(yEntries[i])));
+		//std::cout << std::stof(xEntries[i]) << ", " << std::stof(yEntries[i]) << std::endl;
 	}
 
 	std::cout << "Successfully read " << trackingData.size() << " frames of constraint animation from [ " << fileName << " ]. " << std::endl;
 
 	return true;
+}
+
+
+Eigen::Vector3f
+TrackerIO::getInterpolatedConstraintPosition(const std::vector<Eigen::Vector2f>& trackingData,
+	float timeStepTracker, float timeStepSolver, float currentSystemTime)
+{
+	Eigen::Vector3f result;
+
+	if (currentSystemTime == 0.0f)
+	{
+		return Eigen::Vector3f(trackingData[0].x(), 0.0f, trackingData[0].y());
+	}
+
+	//1. Determine previous and current frame
+	float timeToReturn = currentSystemTime * (timeStepTracker / timeStepTracker);
+
+	//2. Check this is in range
+	if (timeToReturn >= timeStepTracker * (float)trackingData.size())
+	{
+		return Eigen::Vector3f(trackingData[trackingData.size() - 1].x(), 0.0f, trackingData[trackingData.size() - 1].y());
+	}
+
+	//3. Interpolate if necessary
+	int previousFrame = std::floor(timeToReturn / timeStepTracker);
+	int nextFrame = std::ceil(timeToReturn / timeStepTracker);
+
+	float factor = (timeToReturn - ((float)previousFrame * timeStepTracker)) / timeStepTracker;
+
+	Eigen::Vector3f prev(trackingData[previousFrame].x(), 0.0f, trackingData[previousFrame].y());
+	Eigen::Vector3f next(trackingData[nextFrame].x(), 0.0f, trackingData[previousFrame].y());
+
+	result = factor * prev + (1.0f - factor) * next;
+
+	return result;
 }
