@@ -33,8 +33,11 @@ AbcWriter::AbcWriter(const std::string& fileName, const std::string& objectName)
 
 AbcWriter::~AbcWriter()
 {
-	std::cout << "Writing [ " << m_data->archive->getName() << " ]" << std::endl;
-	std::cout << "Num Samples Saved: " << m_data->mesh->getSchema().getNumSamples() << std::endl;
+	if (m_fileIsOpen)
+	{
+		std::cout << "Writing [ " << m_data->archive->getName() << " ]" << std::endl;
+		std::cout << "Num Samples Saved: " << m_data->mesh->getSchema().getNumSamples() << std::endl;
+	}
 }
 
 

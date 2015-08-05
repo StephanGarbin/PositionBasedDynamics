@@ -29,6 +29,11 @@ public:
 		return m_undeformedVolume;
 	}
 
+	float getUndeformedVolumeAlternative()
+	{
+		return m_undeformedVolumeAlternative;
+	}
+
 	float getUndeformedSideLength(int idx);
 
 	PBDParticle& get_x(int index);
@@ -53,5 +58,7 @@ private:
 	float m_undeformedVolume;
 
 	std::vector<float> m_undeformedSideLengths;
+
+	float m_undeformedVolumeAlternative;
 };
 

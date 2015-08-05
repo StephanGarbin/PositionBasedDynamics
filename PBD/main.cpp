@@ -26,6 +26,8 @@
 
 #include "FEMSimulator.h"
 
+#include "MeshCreator.h"
+
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
 std::vector<Eigen::Vector3f> currentPositions;
@@ -70,6 +72,8 @@ bool printStrainEnergyToFile = false;
 
 bool testingInversionHandling = false;
 int dimToCollapse = 1;
+
+bool generateMeshInsteadOfDoingIO = true;
 
 
 std::string nodes("barout.node");
@@ -469,7 +473,7 @@ int main(int argc, char* argv[])
 	settings.youngsModulus = youngsModulus;
 	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
-	settings.gravity = -9.8f;
+	settings.gravity = -9.81f;
 	settings.lambda = lambda;
 	settings.mu = mu;
 	settings.numConstraintIts = numConstraintIts;
@@ -480,22 +484,29 @@ int main(int argc, char* argv[])
 	settings.correctStrongForcesWithSubteps = false;
 	settings.numTetrahedraIterations = 1;
 	settings.print();
-	
-	TetGenIO::readNodes(nodes, *particles, invM, initialVelocity);
-	TetGenIO::readTetrahedra(tets, tetrahedra, particles);
-
-
-	settings.numTetrahedra = tetrahedra.size();
 
 	std::vector<int> vertexConstraintIndices;
-	ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, constraints1);
-
-	for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+	
+	if (!generateMeshInsteadOfDoingIO)
 	{
-		(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+		TetGenIO::readNodes(nodes, *particles, invM, initialVelocity);
+		TetGenIO::readTetrahedra(tets, tetrahedra, particles);
+
+		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, constraints1);
+
+		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+		{
+			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+		}
+
+		std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
+	}
+	else
+	{
+		MeshCreator::generateTetBar(particles, tetrahedra, 10, 5, 5);
 	}
 
-	std::cout << "Finished Reading Data From Disk, starting simulation ... " << std::endl;
+	settings.numTetrahedra = tetrahedra.size();
 	std::cout << "Num Tets: " << tetrahedra.size() << "; Num Nodes: " << particles->size() << std::endl;
 
 	numConstraintInfluences.resize(particles->size());
@@ -516,7 +527,8 @@ int main(int argc, char* argv[])
 
 	determineLookAt();
 	rotation[0] = 0.0f;
-	rotation[1] = 128.0f;
+	//rotation[1] = 128.0f;
+	rotation[1] = 227.0f;
 	rotation[2] = 0.0f;
 	zoom = 0.254f;
 

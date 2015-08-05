@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 struct FEMSimulatorData;
 
@@ -27,7 +28,7 @@ public:
 
 private:
 	std::string m_meshfileName;
-	FEMSimulatorData* m_data;
+	std::shared_ptr<FEMSimulatorData> m_data;
 	std::vector<double> m_displacements;
 	std::vector<double> m_externalForces;
 	int m_numIts;

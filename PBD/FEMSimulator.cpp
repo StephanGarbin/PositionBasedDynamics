@@ -35,16 +35,13 @@ struct FEMSimulatorData
 
 FEMSimulator::FEMSimulator()
 {
-	m_data = new FEMSimulatorData();
+	m_data = std::make_shared<FEMSimulatorData>();
 }
 
 
 FEMSimulator::~FEMSimulator()
 {
-	if (m_data != nullptr)
-	{
-		delete m_data;
-	}
+
 }
 
 void

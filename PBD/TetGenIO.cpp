@@ -118,6 +118,10 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 
 		int add = 0;
 
+		//vertexIndices[0] = std::stoi(inputs[1 + add]);
+		//vertexIndices[1] = std::stoi(inputs[4 + add]);
+		//vertexIndices[2] = std::stoi(inputs[2 + add]);
+		//vertexIndices[3] = std::stoi(inputs[3 + add]);
 		vertexIndices[0] = std::stoi(inputs[1 + add]);
 		vertexIndices[1] = std::stoi(inputs[4 + add]);
 		vertexIndices[2] = std::stoi(inputs[2 + add]);

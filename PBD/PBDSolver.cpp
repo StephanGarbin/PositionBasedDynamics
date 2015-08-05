@@ -55,6 +55,7 @@ std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstrain
 	//swap particles states
 	for (auto& p : *particles)
 	{
+		//std::cout << p.previousPosition() - p.position() << std::endl;
 		p.swapStates();
 	}
 
@@ -81,7 +82,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 {
 	for (auto& p : *particles)
 	{
-		p.position() = p.previousPosition() + settings.deltaT * p.velocity();
+		p.position() = p.previousPosition() + settings.deltaT * p.velocity() * p.inverseMass();
 		//std::cout << p.velocity().transpose() << std::endl;
 	}
 }
@@ -2527,11 +2528,23 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 }
 
 
+bool solveVolumeConstraint(
+	const Eigen::Vector3f &p0, float invMass0,
+	const Eigen::Vector3f &p1, float invMass1,
+	const Eigen::Vector3f &p2, float invMass2,
+	const Eigen::Vector3f &p3, float invMass3,
+	const float restVolume,
+	const float negVolumeStiffness,
+	const float posVolumeStiffness,
+	Eigen::Vector3f &corr0, Eigen::Vector3f &corr1, Eigen::Vector3f &corr2, Eigen::Vector3f &corr3);
+
 void
 PBDSolver::projectConstraintsVolume(std::vector<PBDTetrahedra3d>& tetrahedra,
 std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k)
 {
-	Eigen::MatrixXf gradient; gradient.resize(3, 4);
+	float w1;
+	float w2;
+	float restDistance;
 
 	Eigen::Vector3f x1;
 	Eigen::Vector3f x2;
@@ -2539,10 +2552,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k
 	Eigen::Vector3f deltaX;
 
 	Eigen::Vector3f temp;
-
 	float stiffnessMultiplier;
-	float lagrangeM;
-
 
 	if (k == 1.0f)
 	{
@@ -2560,47 +2570,197 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k
 		}
 	}
 
+	std::vector<int> idxs = { 0, 1, 2, 3 };
 
 	for (int it = 0; it < numIterations; ++it)
 	{
 		for (int t = 0; t < tetrahedra.size(); ++t)
 		{
+
+			w1 = tetrahedra[t].get_x(0).inverseMass();
+			x1 = tetrahedra[t].get_x(0).position();
+
+			w2 = tetrahedra[t].get_x(2).inverseMass();
+			x2 = tetrahedra[t].get_x(2).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(0),
+				x1, x2, temp, deltaX);
+			tetrahedra[t].get_x(0).position() += -deltaX * w1 * stiffnessMultiplier;
+			tetrahedra[t].get_x(2).position() += deltaX * w2 * stiffnessMultiplier;
+
+			w2 = tetrahedra[t].get_x(3).inverseMass();
+			x2 = tetrahedra[t].get_x(3).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(1),
+				x1, x2, temp, deltaX);
+			tetrahedra[t].get_x(0).position() += -deltaX * w1 * stiffnessMultiplier;
+			tetrahedra[t].get_x(3).position() += deltaX * w2 * stiffnessMultiplier;
+
+			w2 = tetrahedra[t].get_x(1).inverseMass();
+			x2 = tetrahedra[t].get_x(1).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(2),
+				x1, x2, temp, deltaX);
+			tetrahedra[t].get_x(0).position() += -deltaX * w1 * stiffnessMultiplier;
+			tetrahedra[t].get_x(1).position() += deltaX * w2 * stiffnessMultiplier;
+
+			//---------------------------------------------------
+
+			w1 = tetrahedra[t].get_x(2).inverseMass();
+			x1 = tetrahedra[t].get_x(2).position();
+
+			w2 = tetrahedra[t].get_x(3).inverseMass();
+			x2 = tetrahedra[t].get_x(3).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(3),
+				x1, x2, temp, deltaX);
+			tetrahedra[t].get_x(2).position() += -deltaX * w1 * stiffnessMultiplier;
+			tetrahedra[t].get_x(3).position() += deltaX * w2 * stiffnessMultiplier;
+
+
+			w2 = tetrahedra[t].get_x(1).inverseMass();
+			x2 = tetrahedra[t].get_x(1).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(4),
+				x1, x2, temp, deltaX);
+			tetrahedra[t].get_x(2).position() += -deltaX * w1 * stiffnessMultiplier;
+			tetrahedra[t].get_x(1).position() += deltaX * w2 * stiffnessMultiplier;
+
+			//---------------------------------------------------
+
+			w1 = tetrahedra[t].get_x(3).inverseMass();
+			x1 = tetrahedra[t].get_x(3).position();
+
+			w2 = tetrahedra[t].get_x(1).inverseMass();
+			x2 = tetrahedra[t].get_x(1).position();
+			computeDeltaXPositionConstraint(w1, w2, tetrahedra[t].getUndeformedSideLength(5),
+				x1, x2, temp, deltaX);
+			tetrahedra[t].get_x(3).position() += -deltaX * w1 * stiffnessMultiplier;
+			tetrahedra[t].get_x(1).position() += deltaX * w2 * stiffnessMultiplier;
+		}
+
+		for (int t = 0; t < tetrahedra.size(); ++t)
+		{
+			//if (std::abs(tetrahedra[t].getVolume() - tetrahedra[t].getUndeformedVolume()) < 1e-12f)
+			//{
+			//	continue;
+			//}
+
+			Eigen::Vector3f	 corr0;
+			Eigen::Vector3f	 corr1;
+			Eigen::Vector3f	 corr2;
+			Eigen::Vector3f	 corr3;
+
 			Eigen::Vector3f p0 = tetrahedra[t].get_x(0).position();
 			Eigen::Vector3f p1 = tetrahedra[t].get_x(1).position();
 			Eigen::Vector3f p2 = tetrahedra[t].get_x(2).position();
 			Eigen::Vector3f p3 = tetrahedra[t].get_x(3).position();
-			gradient.col(0) = (p1 - p2).cross(p3 - p2);
-			gradient.col(1) = (p2 - p0).cross(p3 - p0);
-			gradient.col(2) = (p0 - p1).cross(p3 - p1);
-			gradient.col(3) = (p1 - p0).cross(p2 - p0);
 
-			//gradient.col(0) = (tetrahedra[t].get_x(1).position() - tetrahedra[t].get_x(2).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(2).position());
-			//gradient.col(1) = (tetrahedra[t].get_x(2).position() - tetrahedra[t].get_x(0).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(0).position());
-			//gradient.col(2) = (tetrahedra[t].get_x(0).position() - tetrahedra[t].get_x(1).position()).cross(tetrahedra[t].get_x(3).position() - tetrahedra[t].get_x(1).position());
-			//gradient.col(3) = (tetrahedra[t].get_x(1).position() - tetrahedra[t].get_x(0).position()).cross(tetrahedra[t].get_x(2).position() - tetrahedra[t].get_x(0).position());
-			lagrangeM = 0.0f;
-			for (int cI = 0; cI < 4; ++cI)
+			float m1 = tetrahedra[t].get_x(0).inverseMass();
+			float m2 = tetrahedra[t].get_x(1).inverseMass();
+			float m3 = tetrahedra[t].get_x(2).inverseMass();
+			float m4 = tetrahedra[t].get_x(3).inverseMass();
+
+			//m1 = 1.0f;
+			//m2 = 1.0f;
+			//m3 = 1.0f;
+			//m4 = 1.0f;
+
+			if(solveVolumeConstraint(p0, m1, p1, m2, p2, m3, p3, m4, tetrahedra[t].getUndeformedVolumeAlternative(),
+				1.0f,
+				1.0f,
+				corr0, corr1, corr2, corr3))
 			{
-				lagrangeM += gradient.col(cI).squaredNorm() * tetrahedra[t].get_x(cI).inverseMass();
-			}
-
-			if (std::abs(lagrangeM) < 1e-9f)
-			{
-				continue;
-			}
-
-
-			//float volume = 1.0f / 6.0f * (p1 - p0).cross(p2 - p0).dot(p3 - p0);
-
-			lagrangeM = (tetrahedra[t].getVolume() - tetrahedra[t].getUndeformedVolume()) / lagrangeM;
-
-			for (int cI = 0; cI < 4; ++cI)
-			{
-				deltaX = -lagrangeM * tetrahedra[t].get_x(cI).inverseMass() * gradient.col(cI);
-
-				tetrahedra[t].get_x(cI).position() += deltaX;
+				if (m1 != 0.0f)
+				{
+					tetrahedra[t].get_x(0).position() += corr0;
+					//std::cout << corr0 << std::endl;
+				}
+				if (m2 != 0.0f)
+				{
+					tetrahedra[t].get_x(1).position() += corr1;
+				}
+				if (m3 != 0.0f)
+				{
+					tetrahedra[t].get_x(2).position() += corr2;
+				}
+				if (m4 != 0.0f)
+				{
+					tetrahedra[t].get_x(3).position() += corr3;
+				}
 			}
 		}
 	}
+}
 
+
+bool solveVolumeConstraint(
+	const Eigen::Vector3f &p0, float invMass0,
+	const Eigen::Vector3f &p1, float invMass1,
+	const Eigen::Vector3f &p2, float invMass2,
+	const Eigen::Vector3f &p3, float invMass3,
+	const float restVolume,
+	const float negVolumeStiffness,
+	const float posVolumeStiffness,
+	Eigen::Vector3f &corr0, Eigen::Vector3f &corr1, Eigen::Vector3f &corr2, Eigen::Vector3f &corr3)
+{
+	float volume = 1.0f / 6.0f * (p1 - p0).cross(p2 - p0).dot(p3 - p0);
+
+	//if (volume == restVolume)
+	//{
+	//	return false;
+	//}
+
+
+	//std::cout << "Points: " << std::endl;
+	//std::cout << p0 << std::endl;
+	//std::cout << p1 << std::endl;
+	//std::cout << p2 << std::endl;
+	//std::cout << p3 << std::endl;
+	//std::cout << "Inverse Masses: " << invMass0 << ", " << invMass1 << ", " << invMass2 << ", " << invMass3 << std::endl;
+
+	Eigen::Vector3f d1 = p1 - p0;
+	Eigen::Vector3f d2 = p2 - p0;
+	Eigen::Vector3f d3 = p3 - p0;
+
+	corr0.setZero(); corr1.setZero(); corr2.setZero(); corr3.setZero();
+
+	if (posVolumeStiffness == 0.0f && volume > 0.0f)
+		return false;
+
+	if (negVolumeStiffness == 0.0f && volume < 0.0f)
+		return false;
+
+
+	Eigen::Vector3f grad0 = (p1 - p2).cross(p3 - p2);
+	Eigen::Vector3f grad1 = (p2 - p0).cross(p3 - p0);
+	Eigen::Vector3f grad2 = (p0 - p1).cross(p3 - p1);
+	Eigen::Vector3f grad3 = (p1 - p0).cross(p2 - p0);
+
+	float lambda =
+		invMass0 * grad0.squaredNorm() +
+		invMass1 * grad1.squaredNorm() +
+		invMass2 * grad2.squaredNorm() +
+		invMass3 * grad3.squaredNorm();
+
+	if (fabs(lambda) < 1.0e-9)
+		return false;
+
+	//if (volume < 0.0f)
+	//	lambda = negVolumeStiffness * (volume - restVolume) / lambda;
+	//else
+	//	lambda = posVolumeStiffness * (volume - restVolume) / lambda;
+
+	lambda = 1.0f * (volume - restVolume) / lambda;
+
+	//std::cout << "Volume: " << volume << "; Undeformed Volume: " << restVolume << std::endl;
+
+	//corr0 = -lambda * invMass0 * grad0;
+	//corr1 = -lambda * invMass1 * grad1;
+	//corr2 = -lambda * invMass2 * grad2;
+	//corr3 = -lambda * invMass3 * grad3;
+
+	//std::cout << "Correction Terms: " << std::endl;
+	//std::cout << corr0 << std::endl;
+	//std::cout << corr1 << std::endl;
+	//std::cout << corr2 << std::endl;
+	//std::cout << corr3 << std::endl;
+	//std::cout << "___________________________________________" << std::endl;
+
+	return true;
 }

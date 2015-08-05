@@ -2,25 +2,30 @@
 
 #include <iostream>
 
-#define pbdX1 (*m_particles)[m_vertexIndices[0]].previousPosition()
-#define pbdX2 (*m_particles)[m_vertexIndices[1]].previousPosition()
-#define pbdX3 (*m_particles)[m_vertexIndices[2]].previousPosition()
-#define pbdX4 (*m_particles)[m_vertexIndices[3]].previousPosition()
+#define __idx1 0
+#define __idx2 1
+#define __idx3 2
+#define __idx4 3
 
-#define pbdx1 (*m_particles)[m_vertexIndices[0]].position() 
-#define pbdx2 (*m_particles)[m_vertexIndices[1]].position() 
-#define pbdx3 (*m_particles)[m_vertexIndices[2]].position() 
-#define pbdx4 (*m_particles)[m_vertexIndices[3]].position() 
+#define pbdX1 (*m_particles)[m_vertexIndices[__idx1]].previousPosition()
+#define pbdX2 (*m_particles)[m_vertexIndices[__idx2]].previousPosition()
+#define pbdX3 (*m_particles)[m_vertexIndices[__idx3]].previousPosition()
+#define pbdX4 (*m_particles)[m_vertexIndices[__idx4]].previousPosition()
 
-#define pbdX1_raw (*m_particles)[m_vertexIndices[0]]
-#define pbdX2_raw (*m_particles)[m_vertexIndices[1]]
-#define pbdX3_raw (*m_particles)[m_vertexIndices[2]]
-#define pbdX4_raw (*m_particles)[m_vertexIndices[3]]
+#define pbdx1 (*m_particles)[m_vertexIndices[__idx1]].position() 
+#define pbdx2 (*m_particles)[m_vertexIndices[__idx2]].position() 
+#define pbdx3 (*m_particles)[m_vertexIndices[__idx3]].position() 
+#define pbdx4 (*m_particles)[m_vertexIndices[__idx4]].position() 
 
-#define pbdx1_raw (*m_particles)[m_vertexIndices[0]] 
-#define pbdx2_raw (*m_particles)[m_vertexIndices[1]] 
-#define pbdx3_raw (*m_particles)[m_vertexIndices[2]] 
-#define pbdx4_raw (*m_particles)[m_vertexIndices[3]] 
+#define pbdX1_raw (*m_particles)[m_vertexIndices[__idx1]]
+#define pbdX2_raw (*m_particles)[m_vertexIndices[__idx2]]
+#define pbdX3_raw (*m_particles)[m_vertexIndices[__idx3]]
+#define pbdX4_raw (*m_particles)[m_vertexIndices[__idx4]]
+
+#define pbdx1_raw (*m_particles)[m_vertexIndices[__idx1]] 
+#define pbdx2_raw (*m_particles)[m_vertexIndices[__idx2]] 
+#define pbdx3_raw (*m_particles)[m_vertexIndices[__idx3]] 
+#define pbdx4_raw (*m_particles)[m_vertexIndices[__idx4]] 
 
 #include <GL\glew.h>
 #include <gl\GL.h>
@@ -156,6 +161,12 @@ PBDTetrahedra3d::calculateUndeformedVolume()
 	temp(3, 3) = 1.0;
 
 	m_undeformedVolume = (1.0 / 6.0) * std::abs(temp.determinant());
+
+	m_undeformedVolumeAlternative = 1.0f / 6.0f * (pbdX2 - pbdX1).cross(pbdX3 - pbdX1).dot(pbdX4 - pbdX1);
+	//std::cout << 1.0f / 6.0f * (pbdX2 - pbdX1).cross(pbdX3 - pbdX1).dot(pbdX4 - pbdX1) << ", ";
+	//std::cout << (pbdX2 - pbdX1).cross(pbdX3 - pbdX1).dot(pbdX4 - pbdX1) << std::endl;
+	//std::cout << (pbdX3 - pbdX2).cross(pbdX4 - pbdX2).dot(pbdX1 - pbdX2) << std::endl;
+
 }
 
 PBDParticle&
