@@ -21,6 +21,7 @@ struct IOParameters
 		trackerFiles.push_back("def1_constrainedEdgeTop.txt");
 		trackerFiles.push_back("def1_freeEdgeTop.txt");
 		trackerFiles.push_back("def1_movingPin.txt");
+		//trackerFiles.push_back("def1_freeEdgeBottom.txt");
 
 		//nodeFile = ("liver_processed.1.node");
 		//elementFile = ("liver_processed.1.ele");

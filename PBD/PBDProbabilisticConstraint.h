@@ -31,6 +31,11 @@ public:
 		return m_constraintPosition;
 	}
 
+	float getInitialRadius()
+	{
+		return m_initialRadius;
+	}
+
 private:
 
 	Eigen::Vector3f m_constraintPosition;
@@ -39,5 +44,7 @@ private:
 
 	std::vector<int> m_particleInfluences;
 	std::vector<float> m_initialDistances;
+
+	float m_initialRadius;
 };
 

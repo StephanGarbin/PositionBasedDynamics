@@ -32,6 +32,11 @@ PBDProbabilisticConstraint::project(std::vector<PBDParticle>& particles)
 		w2 = particles[m_particleInfluences[i]].inverseMass();
 		p2 = particles[m_particleInfluences[i]].position();
 
+		if ((p1 - p2).squaredNorm() <= m_initialDistances[i])
+		{
+			continue;
+		}
+
 		solver.computeDeltaXPositionConstraint(w1, w2, m_initialDistances[i], p1, p2, temp, deltaX);
 
 		particles[m_particleInfluences[i]].position() += deltaX * w2;
@@ -42,12 +47,14 @@ PBDProbabilisticConstraint::project(std::vector<PBDParticle>& particles)
 void
 PBDProbabilisticConstraint::initialise(std::vector<PBDParticle>& particles, float radius)
 {
+	m_initialRadius = radius;
+
 	std::cout << "Initialising Prob Constraint" << std::endl;
 	std::cout << m_constraintPosition << std::endl;
 	for (int p = 0; p < particles.size(); ++p)
 	{
 		float distance = (particles[p].position() - m_constraintPosition).squaredNorm();
-		std::cout << distance << std::endl;
+		//std::cout << distance << std::endl;
 		if (distance <= radius)
 		{
 			m_particleInfluences.push_back(p);

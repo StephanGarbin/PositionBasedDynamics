@@ -89,31 +89,36 @@ void getCurrentPositionFromParticles()
 
 void updateProbabilisticConstraints()
 {
-	Eigen::Vector3f currentConstraintPosition = 
-		TrackerIO::getInterpolatedConstraintPosition(trackingData[3], 1.0f / 24.0f, settings.deltaT, parameters.currentFrame * settings.deltaT);
+	std::vector<int> activeConstraintIndices = { 0, 1 };
+	std::vector<int> trackingDataIndices = { 3, 2 };
 
-	float scaleFactor = 0.01;
+	for (int i = 0; i < activeConstraintIndices.size(); ++i)
+	{
+		Eigen::Vector3f currentConstraintPosition =
+			TrackerIO::getInterpolatedConstraintPosition(trackingData[trackingDataIndices[i]], 1.0f / 24.0f, settings.deltaT, parameters.currentFrame * settings.deltaT);
 
-	//1. subtract displacement
-	float widthSubtraction = trackingData[0][0].x();
-	float heightSubtraction = trackingData[0][0].y();
+		float scaleFactor = 0.01;
 
-	std::cout << widthSubtraction << ", " << heightSubtraction << std::endl;
+		//1. subtract displacement
+		float widthSubtraction = trackingData[0][0].x();
+		float heightSubtraction = trackingData[0][0].y();
 
-	currentConstraintPosition[0] -= widthSubtraction;
-	currentConstraintPosition[2] -= heightSubtraction;
+		currentConstraintPosition[0] -= widthSubtraction;
+		currentConstraintPosition[2] -= heightSubtraction;
 
-	//2. Rescale
-	currentConstraintPosition *= scaleFactor;
+		//2. Rescale
+		currentConstraintPosition *= scaleFactor;
 
-	probabilisticConstraints[0].getConstraintPosition() = currentConstraintPosition;
+		probabilisticConstraints[activeConstraintIndices[i]].getConstraintPosition() = currentConstraintPosition;
+	}
 }
 
 void createProabilisticConstraints()
 {
-	probabilisticConstraints.resize(1);
+	probabilisticConstraints.resize(2);
 	updateProbabilisticConstraints();
-	probabilisticConstraints[0].initialise(*particles, 1000.1);
+	probabilisticConstraints[0].initialise(*particles, 0.1f);
+	probabilisticConstraints[1].initialise(*particles, 0.2f);
 }
 
 void setCamera()
@@ -217,6 +222,17 @@ void mainLoop()
 		tetrahedra[t].glRender(1.0, 1.0, 1.0);
 	}
 	glDisable(GL_POLYGON_OFFSET_LINE);
+
+	for (int i = 0; i < probabilisticConstraints.size(); ++i)
+	{
+		glPushMatrix();
+		glTranslated(probabilisticConstraints[i].getConstraintPosition().x(),
+			probabilisticConstraints[i].getConstraintPosition().y(),
+			probabilisticConstraints[i].getConstraintPosition().z());
+
+		glutWireSphere(probabilisticConstraints[i].getInitialRadius(), 8, 8);
+		glPopMatrix();
+	}
 
 	//Advance Solver
 	tbb::tick_count start = tbb::tick_count::now();
@@ -347,10 +363,10 @@ void doIO(float inverseMass, std::vector<int>& vertexConstraintIndices)
 	}
 	else
 	{
-		//GENERATE the mesh data
+		//GENERATE the mesh datasnuk
 		if (parameters.generateMeshFromTrackingData)
 		{
-			MeshCreator::generateTetBarToFit(particles, tetrahedra, 10, 7, 3,
+			MeshCreator::generateTetBarToFit(particles, tetrahedra, 13, 7, 3,
 				trackingData[0][0], trackingData[1][0], trackingData[2][0], 20.0f);
 		}
 		else

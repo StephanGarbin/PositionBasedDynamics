@@ -87,7 +87,7 @@ TrackerIO::getInterpolatedConstraintPosition(const std::vector<Eigen::Vector2f>&
 	}
 
 	//1. Determine previous and current frame
-	float timeToReturn = currentSystemTime * (timeStepTracker / timeStepTracker);
+	float timeToReturn = currentSystemTime * (timeStepTracker / timeStepSolver);
 
 	//2. Check this is in range
 	if (timeToReturn >= timeStepTracker * (float)trackingData.size())
@@ -104,7 +104,8 @@ TrackerIO::getInterpolatedConstraintPosition(const std::vector<Eigen::Vector2f>&
 	Eigen::Vector3f prev(trackingData[previousFrame].x(), 0.0f, trackingData[previousFrame].y());
 	Eigen::Vector3f next(trackingData[nextFrame].x(), 0.0f, trackingData[previousFrame].y());
 
-	result = factor * prev + (1.0f - factor) * next;
+	//result = factor * prev + (1.0f - factor) * next;
+	result = (1.0f - factor) * prev + factor * next;
 
 	return result;
 }
