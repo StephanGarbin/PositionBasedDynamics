@@ -39,8 +39,16 @@ public:
 	PBDParticle& get_x(int index);
 	PBDParticle& get_X(int index);
 
+	Eigen::Matrix3f& getUpsilon()
+	{
+		return m_upsilon;
+	}
+
 	void glRender(double r, double g, double b);
 private:
+
+	void initialise(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles);
+
 	void calculateUndeformedVolume();
 	void calculateReferenceShapeMatrix();
 	void calculateReferenceShapeMatrixInverseTranspose();
@@ -60,5 +68,10 @@ private:
 	std::vector<float> m_undeformedSideLengths;
 
 	float m_undeformedVolumeAlternative;
+
+
+	//viscoelasticity
+	Eigen::Matrix3f m_upsilon;
+
 };
 

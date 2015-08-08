@@ -22,6 +22,10 @@ struct PBDSolverSettings
 	float youngsModulus;
 	float poissonRatio;
 
+	//Viscoelasticity
+	float alpha;
+	float rho;
+
 	//For SOR
 	float w;
 
@@ -67,6 +71,6 @@ struct PBDSolverSettings
 
 	void calculateMu()
 	{
-		mu = (2.0f * (1.0f + poissonRatio));
+		mu = youngsModulus / (2.0f * (1.0f + poissonRatio));
 	}
 };

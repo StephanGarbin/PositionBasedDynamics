@@ -33,21 +33,13 @@
 PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>&& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles)
 {
 	m_vertexIndices = std::move(vertexIndices);
-	m_particles = particles;
-	calculateReferenceShapeMatrix();
-	calculateReferenceShapeMatrixInverseTranspose();
-	calculateUndeformedVolume();
-	calculateUndeformedSideLengths();
+	initialise(vertexIndices, particles);
 }
 
 PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles)
 {
 	m_vertexIndices = vertexIndices;
-	m_particles = particles;
-	calculateReferenceShapeMatrix();
-	calculateReferenceShapeMatrixInverseTranspose();
-	calculateUndeformedVolume();
-	calculateUndeformedSideLengths();
+	initialise(vertexIndices, particles);
 }
 
 
@@ -55,6 +47,16 @@ PBDTetrahedra3d::~PBDTetrahedra3d()
 {
 }
 
+void
+PBDTetrahedra3d::initialise(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles)
+{
+	m_particles = particles;
+	calculateReferenceShapeMatrix();
+	calculateReferenceShapeMatrixInverseTranspose();
+	calculateUndeformedVolume();
+	calculateUndeformedSideLengths();
+	m_upsilon.setZero();
+}
 
 const Eigen::Matrix3f&
 PBDTetrahedra3d::getDeformedShapeMatrix()

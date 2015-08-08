@@ -388,12 +388,17 @@ int main(int argc, char* argv[])
 
 	float timeStep;
 
+	float alpha;
+	float rho;
+
 	if (argc == 1)
 	{
 		std::cout << "Please provide the following: " << std::endl;
 		std::cout << "	- Youngs Modulus" << std::endl;
 		std::cout << "	- Poisson Ratio" << std::endl;
 		std::cout << "	- Inverse Mass" << std::endl;
+		std::cout << "	- Alpha" << std::endl;
+		std::cout << "	- Rho" << std::endl;
 		std::cout << "	- Num Constraint Its" << std::endl;
 		std::cout << "	- Time Step Size" << std::endl;
 		std::cout << "	- USE_FEM" << std::endl;
@@ -410,15 +415,18 @@ int main(int argc, char* argv[])
 		//Inverse Mass
 		invM = std::stof(std::string(argv[3]));
 
-		numConstraintIts = std::stoi(std::string(argv[4]));
+		alpha = std::stof(std::string(argv[4]));
+		rho = std::stof(std::string(argv[5]));
 
-		timeStep = std::stof(std::string(argv[5]));
+		numConstraintIts = std::stoi(std::string(argv[6]));
 
-		parameters.useFEMSolver = std::string(argv[6]) == "USE_FEM";
+		timeStep = std::stof(std::string(argv[7]));
 
-		if (argc > 7)
+		parameters.useFEMSolver = std::string(argv[8]) == "USE_FEM";
+
+		if (argc > 8)
 		{
-			if (std::string(argv[7]) == "SAVE_MESH")
+			if (std::string(argv[9]) == "SAVE_MESH")
 			{
 				parameters.writeToAlembic = true;
 				std::cout << "Saving output mesh..." << std::endl;
@@ -431,20 +439,11 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	if (parameters.useFEMSolver)
-	{
-		smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMeshFEM.abc");
-	}
-	else
-	{
-		smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMesh.abc");
-	}
-
 	settings.youngsModulus = youngsModulus;
 	settings.poissonRatio = poissonRatio;
 	settings.deltaT = timeStep;
-	//settings.gravity = -9.81f;
-	settings.gravity = 0.0f;
+	settings.gravity = -9.81f;
+	//settings.gravity = 0.0f;
 	settings.numConstraintIts = numConstraintIts;
 	settings.w = 1.0;
 	settings.printStrainEnergy = false;
@@ -454,6 +453,8 @@ int main(int argc, char* argv[])
 	settings.calculateLambda();
 	settings.calculateMu();
 	settings.print();
+	settings.alpha = alpha;
+	settings.rho = rho;
 
 	parameters.initialiseToDefaults();
 	ioParameters.initialiseToDefaults();
@@ -502,6 +503,14 @@ int main(int argc, char* argv[])
 
 	if (parameters.writeToAlembic)
 	{
+		if (parameters.useFEMSolver)
+		{
+			smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMeshFEM.abc");
+		}
+		else
+		{
+			smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMesh.abc");
+		}
 		smHandler->initTopology(*particles, tetrahedra);
 		std::cout << "Initialised Topology for Alembic Output!" << std::endl;
 	}
@@ -534,6 +543,15 @@ int main(int argc, char* argv[])
 
 	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &settings.poissonRatio,
 		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");
+
+	TwAddSeparator(solverSettings, NULL, NULL);
+
+	TwAddVarRW(solverSettings, "Alpha", TW_TYPE_FLOAT, &settings.alpha,
+		" label='Alpha' min=0.0 max=1.0 step=0.01 keyIncr=s keyDecr=S help='Alpha' ");
+	TwAddVarRW(solverSettings, "Rho", TW_TYPE_FLOAT, &settings.rho,
+		" label='Rho' min=0.0 max=100 step=0.01 keyIncr=s keyDecr=S help='Rho' ");
+
+	TwAddSeparator(solverSettings, NULL, NULL);
 
 	TwAddVarRW(solverSettings, "rotationX", TW_TYPE_FLOAT, &parameters.rotation[0],
 		" label='Cam Rotation X' min=0.0 max=360.0 step=1 keyIncr=s keyDecr=S help='Rotation about X' ");

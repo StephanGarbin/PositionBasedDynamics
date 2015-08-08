@@ -44,11 +44,12 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
 	//}
 	//projectConstraintsOLD(tetrahedra, particles, settings);
-	projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings, probabilisticConstraints);
+	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings, probabilisticConstraints);
 	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
 	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 	//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
 	//projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+	projectConstraintsVISCOELASTIC(tetrahedra, particles, settings);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -2770,4 +2771,202 @@ bool solveVolumeConstraint(
 	//std::cout << "___________________________________________" << std::endl;
 
 	return true;
+}
+
+
+void
+PBDSolver::projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahedra,
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+{
+	float mu = 6567.0f;
+	float k = 326210.0f;
+	float eta = 16.0f * mu;
+
+	Eigen::Vector3f a(0.0f, 1.0f, 0.0f);
+
+	float w1;
+	float w2;
+	float restDistance;
+
+	Eigen::Vector3f x1;
+	Eigen::Vector3f x2;
+
+	Eigen::Vector3f temp;
+
+
+	Eigen::Matrix3f F;
+	Eigen::Matrix3f FInverseTranspose;
+	Eigen::Matrix3f FTransposeF;
+
+	Eigen::Matrix3f PF;
+	Eigen::Matrix3f gradientTemp;
+	Eigen::MatrixXf gradient; gradient.resize(3, 4);
+
+	Eigen::Matrix3f U;
+	Eigen::Matrix3f V;
+	bool isInverted;
+
+	Eigen::Matrix3f S;
+	Eigen::Matrix3f Fhat;
+
+	Eigen::Vector3f deltaX;
+
+	std::ofstream strainEnergyfile;
+
+	if (settings.printStrainEnergyToFile)
+	{
+		std::stringstream ss;
+		ss << "C:/Users/Stephan/Documents/MATLAB/dissertation/pbd/strainEnergyDebug/strainEnergy_" << m_currentFrame << ".txt";
+		strainEnergyfile.open(ss.str());
+		ss.clear();
+	}
+
+	if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+	{
+		calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
+	}
+	bool inversionHandled = false;
+
+	for (int it = 0; it < settings.numConstraintIts; ++it)
+	{
+		for (int t = 0; t < settings.numTetrahedra; ++t)
+		{
+			float lagrangeM;
+
+			//Get deformation gradient
+			F = tetrahedra[t].getDeformationGradient();
+
+			//Compute volume
+			float Volume = tetrahedra[t].getUndeformedVolume();
+
+			if (F.isIdentity())
+			{
+				continue;
+			}
+
+			isInverted = F.determinant() < 0.0;
+
+			FInverseTranspose = F.inverse().transpose();
+			FTransposeF = F.transpose() * F;
+
+			//Compute Isotropic Invariants
+			float I1 = (FTransposeF).trace();
+			float I3 = (FTransposeF).determinant();
+
+			float logI3 = log(I3);
+
+
+
+
+			PF = settings.mu * F - settings.mu * FInverseTranspose
+				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+
+			PF *= FInverseTranspose.transpose();
+
+			//Compute Strain Energy density field
+			float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+
+			Eigen::Matrix3f vMult = tetrahedra[t].getUpsilon();
+
+			vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
+
+			tetrahedra[t].getUpsilon() = vMult;
+			PF = PF * 2.0f - vMult;
+
+			PF *= F;
+
+			//Eigen::Matrix3f C = FTransposeF;
+
+
+			//Eigen::Matrix3f C_bar = C * std::powf(F.determinant(), 2.0f / 3.0f);
+
+			//float I1 = C_bar.trace();
+			//float I4 = (C_bar * a).dot(a);
+			//float J = F.determinant();
+
+			//float energyISO = (mu / 2.0f) * (I1 - 3.0f) + (eta / 2.0f) * (std::powf(I4 - 1.0f, 2.0f));
+			//float energyVOLUME = (k / 2.0f) * std::powf(J - 1.0f, 2.0f);
+
+			//float strainEnergy = energyISO + energyVOLUME;
+
+			//Eigen::Matrix3f energyISODerivative = C * energyISO;
+			//Eigen::Matrix3f energVOLUMEDerivative = C * energyVOLUME;
+
+
+			//Eigen::Matrix3f vMult = tetrahedra[t].getUpsilon();
+
+			//vMult = (2.0f * settings.deltaT * alpha * energyISODerivative + rho * vMult) / (settings.deltaT + rho);
+
+			////-------------
+			//vMult.setZero();
+			////--------------
+
+
+			//Eigen::Matrix3f S = 2.0 * energyISODerivative + 2.0f * energVOLUMEDerivative - vMult;
+
+			//tetrahedra[t].getUpsilon() = vMult;
+			//PF = S * F.inverse();
+
+			//PF GRADIENT ---------------------------------------------------------------------------------------------------------------
+
+			gradientTemp = Volume * PF * tetrahedra[t].getReferenceShapeMatrixInverseTranspose();
+			gradient.col(0) = gradientTemp.col(0);
+			gradient.col(1) = gradientTemp.col(1);
+			gradient.col(2) = gradientTemp.col(2);
+			gradient.col(3) = -gradientTemp.rowwise().sum();
+
+
+			//PBD MAIN ROUTINE-----------------------------------------------------------------------------------------------------------
+
+			float denominator = 0.0;
+
+			for (int cI = 0; cI < 4; ++cI)
+			{
+				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+				{
+					denominator += tetrahedra[t].get_x(cI).inverseMass()
+						* gradient.col(cI).lpNorm<2>();
+				}
+			}
+
+			lagrangeM = -(strainEnergy / denominator);
+
+			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted)
+			{
+				std::cout << lagrangeM << "; ERROR!" << std::endl;
+				continue;
+			}
+			else
+			{
+				for (int cI = 0; cI < 4; ++cI)
+				{
+					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+					{
+						deltaX = (tetrahedra[t].get_x(cI).inverseMass()
+							* lagrangeM) * gradient.col(cI);
+
+						tetrahedra[t].get_x(cI).position() += deltaX;
+					}
+				}
+			}
+
+		}
+
+
+		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+		{
+			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
+		}
+
+	}
+
+	if (settings.printStrainEnergyToFile)
+	{
+		strainEnergyfile.close();
+	}
+
+	if (inversionHandled)
+	{
+		std::cout << "Inversion handled successfully!" << std::endl;
+	}
 }
