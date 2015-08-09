@@ -49,7 +49,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 	//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
 	//projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
-	projectConstraintsVISCOELASTIC(tetrahedra, particles, settings);
+	projectConstraintsVISCOELASTIC(tetrahedra, particles, settings, probabilisticConstraints);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -2776,7 +2776,8 @@ bool solveVolumeConstraint(
 
 void
 PBDSolver::projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahedra,
-std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 {
 	float mu = 6567.0f;
 	float k = 326210.0f;
@@ -2958,6 +2959,11 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
 		}
 
+	}
+
+	for (int pC = 0; pC < probabilisticConstraints.size(); ++pC)
+	{
+		probabilisticConstraints[pC].project(*particles);
 	}
 
 	if (settings.printStrainEnergyToFile)

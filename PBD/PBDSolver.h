@@ -40,7 +40,8 @@ public:
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
 
 	void projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahedra,
-		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints);
 
 	void projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,

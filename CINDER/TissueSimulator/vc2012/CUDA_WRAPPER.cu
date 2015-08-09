@@ -19,6 +19,7 @@ __shared__ float localPositions[500 * 3];
 //__shared__ float localPositionsUPDATES[500 * 3];
 
 
+
 __device__ void resetLocalPositions(int TrueNumNodes)
 {
 	int numFloats2Read = TrueNumNodes * 3;

@@ -54,7 +54,7 @@ struct Parameters
 		dimToCollapse = 1;
 
 		generateMeshInsteadOfDoingIO = true;
-		generateMeshFromTrackingData = false;
+		generateMeshFromTrackingData = true;
 
 		readVertexConstraintData = false;
 	}
@@ -68,9 +68,9 @@ struct Parameters
 		zoom = 0.0f;
 
 		//small generate bar side
-		rotation[0] = 115.0f;
-		rotation[1] = 265.0f;
-		rotation[2] = 129.0f;
-		zoom = 0.076f;
+		//rotation[0] = 115.0f;
+		//rotation[1] = 265.0f;
+		//rotation[2] = 129.0f;
+		//zoom = 0.076f;
 	}
 };

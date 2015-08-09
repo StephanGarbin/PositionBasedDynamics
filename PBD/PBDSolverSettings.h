@@ -38,6 +38,14 @@ struct PBDSolverSettings
 	//debug print
 	bool printStrainEnergy;
 	bool printStrainEnergyToFile;
+	bool printStressComponentsToFile;
+
+	void initialise()
+	{
+		printStrainEnergy = false;
+		printStrainEnergyToFile = false;
+		printStressComponentsToFile = false
+	}
 
 	void print()
 	{
