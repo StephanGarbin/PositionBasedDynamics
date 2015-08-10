@@ -194,6 +194,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AbcWriter.h" />
+    <ClInclude Include="AppHelper.h" />
     <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="CUDAPBD_SolverSettings.h" />
     <ClInclude Include="CUDA_WRAPPER.h" />
@@ -207,6 +208,7 @@
     <ClInclude Include="Parameters.h" />
     <ClInclude Include="PBDProbabilisticConstraint.h" />
     <ClInclude Include="PBDSolverSettings.h" />
+    <ClInclude Include="PBDSolverTracker.h" />
     <ClInclude Include="PBDTetrahedra3d.h" />
     <ClInclude Include="PBDParticle.h" />
     <ClInclude Include="PBDSolver.h" />

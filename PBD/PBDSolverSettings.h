@@ -2,18 +2,29 @@
 
 #include <iostream>
 
+#include "PBDSolverTracker.h"
 
 struct PBDSolverSettings
 {
+	bool disableConstraintProjection;
+
 	float deltaT;
 
+	int currentFrame;
+
+	//EXTERNAL GLOBAL FORCES
 	float gravity;
+	Eigen::Vector3f externalForce;
+
+	float forceMultiplicationFactor;
+
+	//EXTERNAL POSITION
+	Eigen::Vector3f externalPositionDelta;
+	float positionDeltaMultiplicationFactor;
 
 	int numConstraintIts;
 
 	int numTetrahedraIterations;
-
-	int numTetrahedra;
 
 	//Lame coefficients
 	float mu;
@@ -29,6 +40,8 @@ struct PBDSolverSettings
 	//For SOR
 	float w;
 
+	float inverseMass;
+
 	bool useSOR;
 
 
@@ -40,11 +53,25 @@ struct PBDSolverSettings
 	bool printStrainEnergyToFile;
 	bool printStressComponentsToFile;
 
+	//TRACKING
+
+	//Tracker for values in the solver
+	PBDSolverTracker tracker;
+
+	bool trackS;
+
 	void initialise()
 	{
+		externalForce.setZero();
+		forceMultiplicationFactor = 0.0f;
+		externalPositionDelta.setZero();
+		positionDeltaMultiplicationFactor = 0.0f;
+
+		disableConstraintProjection = false;
+
 		printStrainEnergy = false;
 		printStrainEnergyToFile = false;
-		printStressComponentsToFile = false
+		printStressComponentsToFile = false;
 	}
 
 	void print()
@@ -80,5 +107,10 @@ struct PBDSolverSettings
 	void calculateMu()
 	{
 		mu = youngsModulus / (2.0f * (1.0f + poissonRatio));
+	}
+
+	float getCurrentTime() const
+	{
+		return deltaT * (float)currentFrame;
 	}
 };

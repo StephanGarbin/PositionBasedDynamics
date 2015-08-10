@@ -58,6 +58,7 @@ AbcWriter::addSample(std::vector<Alembic::Abc::V3f>& vertices, std::vector<int>&
 	//create a sample
 	Alembic::AbcGeom::OPolyMeshSchema::Sample sample;
 
+
 	//POSITION
 	sample.setPositions(Alembic::Abc::P3fArraySample(&vertices[0], vertices.size()));
 
@@ -69,6 +70,8 @@ AbcWriter::addSample(std::vector<Alembic::Abc::V3f>& vertices, std::vector<int>&
 
 	//set mesh sample
 	schema.set(sample);
+
+
 
 	return true;
 }

@@ -24,7 +24,7 @@ PBDSolver::~PBDSolver()
 
 void
 PBDSolver::advanceSystem(std::vector<PBDTetrahedra3d>& tetrahedra,
-std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 {
@@ -34,22 +34,25 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 	//Advance Positions
 	advancePositions(tetrahedra, particles, settings);
 
-	//Project Constraints
-	//if (!settings.useSOR)
-	//{
-	//	projectConstraints(tetrahedra, particles, settings);
-	//}
-	//else
-	//{
-	//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
-	//}
-	//projectConstraintsOLD(tetrahedra, particles, settings);
-	//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings, probabilisticConstraints);
-	//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
-	//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
-	//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
-	//projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
-	projectConstraintsVISCOELASTIC(tetrahedra, particles, settings, probabilisticConstraints);
+	if (!settings.disableConstraintProjection)
+	{
+		//Project Constraints
+		//if (!settings.useSOR)
+		//{
+		//	projectConstraints(tetrahedra, particles, settings);
+		//}
+		//else
+		//{
+		//	projectConstraintsSOR(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences);
+		//}
+		//projectConstraintsOLD(tetrahedra, particles, settings);
+		//projectConstraintsNeoHookeanMixture(tetrahedra, particles, settings, probabilisticConstraints);
+		//projectConstraintsMooneyRivlin(tetrahedra, particles, settings);
+		//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+		//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
+		//projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
+		projectConstraintsVISCOELASTIC(tetrahedra, particles, settings, probabilisticConstraints);
+	}
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -67,24 +70,35 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 void
 PBDSolver::advanceVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
-std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings)
 {
 	for (auto& p : *particles)
 	{
+		//gravity
 		float temp = settings.deltaT * p.inverseMass() * settings.gravity;
 		p.velocity().x() = p.previousVelocity().x() + 0;
 		p.velocity().y() = p.previousVelocity().y() + temp;
 		p.velocity().z() = p.previousVelocity().z() + 0;
+
+		//other external forces
+		p.velocity() += settings.deltaT * settings.forceMultiplicationFactor * settings.externalForce;
 	}
 }
 
 void
 PBDSolver::advancePositions(std::vector<PBDTetrahedra3d>& tetrahedra,
-std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
+std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings)
 {
 	for (auto& p : *particles)
 	{
 		p.position() = p.previousPosition() + settings.deltaT * p.velocity() * p.inverseMass();
+		//std::cout << p.velocity().transpose() << std::endl;
+	}
+
+	for (auto& p : *particles)
+	{
+		//p.position() += settings.deltaT * settings.positionDeltaMultiplicationFactor * settings.externalPositionDelta;
+		p.position() += settings.getCurrentTime() * settings.positionDeltaMultiplicationFactor * settings.externalPositionDelta;
 		//std::cout << p.velocity().transpose() << std::endl;
 	}
 }
@@ -122,7 +136,7 @@ PBDSolver::calculateTotalStrainEnergy(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 	float strainEnergyTotal = 0.0;
 
-	for (int t = 0; t < settings.numTetrahedra; ++t)
+	for (int t = 0; t < tetrahedra.size(); ++t)
 	{
 		float lagrangeM;
 		float strainEnergy;
@@ -236,7 +250,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 		for (int it = 0; it < settings.numConstraintIts; ++it)
 		{
-			for (int t = 0; t < settings.numTetrahedra; ++t)
+			for (int t = 0; t < tetrahedra.size(); ++t)
 			//for (int t = settings.numTetrahedra - 1; t >= 0; --t)
 			{
 				for (int innerT = 0; innerT < settings.numTetrahedraIterations; ++innerT)
@@ -445,7 +459,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 	{
 		std::cout << "IT: " << it << std::endl;
 
-		for (int t = 0; t < settings.numTetrahedra; ++t)
+		for (int t = 0; t < tetrahedra.size(); ++t)
 		{
 			float lagrangeM;
 
@@ -833,15 +847,15 @@ PBDSolver::projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 			int numThreads = 4;
 
-			int stepSize = settings.numTetrahedra / numThreads;
+			int stepSize = tetrahedra.size() / numThreads;
 
 			mutexStruct mutexInstance;
 			//std::cout << settings.numTetrahedra << std::endl;
-			for (int t = 0; t < settings.numTetrahedra; t += stepSize)
+			for (int t = 0; t < tetrahedra.size(); t += stepSize)
 			{
 				threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
 					boost::ref(temporaryPositions), boost::ref(numConstraintInfluences),
-					0, settings.numTetrahedra - 1));
+					0, tetrahedra.size() - 1));
 				//if (t < settings.numTetrahedra - stepSize - 1)
 				//{
 				//	threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
@@ -861,7 +875,7 @@ PBDSolver::projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
 			
 			threads.join_all();
 
-			for (int t = 0; t < settings.numTetrahedra; ++t)
+			for (int t = 0; t < tetrahedra.size(); ++t)
 			{
 				for (int cI = 0; cI < 4; ++cI)
 				{
@@ -1589,7 +1603,7 @@ PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tet
 		//	projectConstraintsDistance(tetrahedra, particles, 1);
 		//}
 
-		for (int t = 0; t < settings.numTetrahedra; ++t)
+		for (int t = 0; t < tetrahedra.size(); ++t)
 		{
 			float lagrangeM;
 
@@ -1979,7 +1993,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 	for (int it = 0; it < settings.numConstraintIts; ++it)
 	{
-		for (int t = 0; t < settings.numTetrahedra; ++t)
+		for (int t = 0; t < tetrahedra.size(); ++t)
 		{
 			float lagrangeM;
 
@@ -2320,7 +2334,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 		//	projectConstraintsDistance(tetrahedra, particles, 1);
 		//}
 
-		for (int t = 0; t < settings.numTetrahedra; ++t)
+		for (int t = 0; t < tetrahedra.size(); ++t)
 		{
 			float lagrangeM;
 
@@ -2776,7 +2790,7 @@ bool solveVolumeConstraint(
 
 void
 PBDSolver::projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahedra,
-std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 {
 	float mu = 6567.0f;
@@ -2830,7 +2844,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 	for (int it = 0; it < settings.numConstraintIts; ++it)
 	{
-		for (int t = 0; t < settings.numTetrahedra; ++t)
+		for (int t = 0; t < tetrahedra.size(); ++t)
 		{
 			float lagrangeM;
 
@@ -2951,6 +2965,10 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				}
 			}
 
+			if (settings.trackS)
+			{
+				settings.tracker.S.push_back(PF * FInverseTranspose.transpose());
+			}
 		}
 
 
@@ -2961,10 +2979,10 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 	}
 
-	for (int pC = 0; pC < probabilisticConstraints.size(); ++pC)
-	{
-		probabilisticConstraints[pC].project(*particles);
-	}
+	//for (int pC = 0; pC < probabilisticConstraints.size(); ++pC)
+	//{
+	//	probabilisticConstraints[pC].project(*particles);
+	//}
 
 	if (settings.printStrainEnergyToFile)
 	{

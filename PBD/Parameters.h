@@ -1,12 +1,19 @@
 #pragma once
 
+#include "PBDSolverSettings.h"
 
 struct Parameters
 {
+	//Global Settings
+	bool disableSolver;
+	int TEST_IDX;
+	int TEST_VERSION;
+
+	//---------------------------------
+
 	int numMillisecondsToWaitBetweenFrames;
 
 	int timingPrintInterval;
-	int currentFrame;
 	int maxFrames;
 
 	int globalHeight;
@@ -14,25 +21,33 @@ struct Parameters
 
 	float executionTimeSum;
 
+	//Camera
 	float baryCentre[3];
 	float radius;
 	float rotation[3];
 	float zoom;
 
+	//Solver Type
 	bool useFEMSolver;
+
+	//Debug IO
 	bool writeToAlembic;
 	bool printStrainEnergyToFile;
 
+	//Inversion Handling Test
 	bool testingInversionHandling ;
 	int dimToCollapse;
 
+	//Mesh generation
 	bool generateMeshInsteadOfDoingIO;
-
 	bool generateMeshFromTrackingData;
+	bool useTrackingConstraints;
 
+	//Constraint IO
 	bool readVertexConstraintData;
 
-	bool disableSolver;
+	//Settings for the solver
+	PBDSolverSettings solverSettings;
 
 	void initialiseToDefaults()
 	{
@@ -43,8 +58,8 @@ struct Parameters
 
 
 		timingPrintInterval = 100;
-		currentFrame = 1;
-		maxFrames = 100000;
+		solverSettings.currentFrame = 1;
+		maxFrames = 1000;
 
 		useFEMSolver = false;
 		writeToAlembic = true;
@@ -54,7 +69,7 @@ struct Parameters
 		dimToCollapse = 1;
 
 		generateMeshInsteadOfDoingIO = true;
-		generateMeshFromTrackingData = true;
+		generateMeshFromTrackingData = false;
 
 		readVertexConstraintData = false;
 	}
@@ -68,9 +83,19 @@ struct Parameters
 		zoom = 0.0f;
 
 		//small generate bar side
-		//rotation[0] = 115.0f;
-		//rotation[1] = 265.0f;
-		//rotation[2] = 129.0f;
-		//zoom = 0.076f;
+		rotation[0] = 115.0f;
+		rotation[1] = 265.0f;
+		rotation[2] = 129.0f;
+		zoom = 0.076f;
+	}
+
+	int getCurrentFrame()
+	{
+		return solverSettings.currentFrame;
+	}
+
+	void increaseCurrentFrame()
+	{
+		++solverSettings.currentFrame;
 	}
 };

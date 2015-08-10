@@ -28,6 +28,8 @@
 #include "Parameters.h"
 #include "IOParameters.h"
 
+#include "AppHelper.h"
+
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
 std::vector<Eigen::Vector3f> currentPositions;
@@ -41,7 +43,6 @@ FEMSimulator FEMsolver;
 
 std::shared_ptr<SurfaceMeshHandler> smHandler;
 
-PBDSolverSettings settings;
 Parameters parameters;
 IOParameters ioParameters;
 
@@ -95,7 +96,8 @@ void updateProbabilisticConstraints()
 	for (int i = 0; i < activeConstraintIndices.size(); ++i)
 	{
 		Eigen::Vector3f currentConstraintPosition =
-			TrackerIO::getInterpolatedConstraintPosition(trackingData[trackingDataIndices[i]], 1.0f / 24.0f, settings.deltaT, parameters.currentFrame * settings.deltaT);
+			TrackerIO::getInterpolatedConstraintPosition(trackingData[trackingDataIndices[i]], 1.0f / 24.0f,
+			parameters.solverSettings.deltaT, parameters.getCurrentFrame() * parameters.solverSettings.deltaT);
 
 		float scaleFactor = 0.01;
 
@@ -199,8 +201,8 @@ void mainLoopGlut(void)
 
 void mainLoop()
 {
-	settings.calculateLambda();
-	settings.calculateMu();
+	parameters.solverSettings.calculateLambda();
+	parameters.solverSettings.calculateMu();
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
 
@@ -240,9 +242,11 @@ void mainLoop()
 	{
 		if (!parameters.useFEMSolver)
 		{
-			updateProbabilisticConstraints();
-
-			solver.advanceSystem(tetrahedra, particles, settings, currentPositions, numConstraintInfluences,
+			if (parameters.useTrackingConstraints)
+			{
+				updateProbabilisticConstraints();
+			}
+			solver.advanceSystem(tetrahedra, particles, parameters.solverSettings, currentPositions, numConstraintInfluences,
 				probabilisticConstraints);
 		}
 		else
@@ -253,9 +257,10 @@ void mainLoop()
 	}
 	tbb::tick_count end = tbb::tick_count::now();
 	parameters.executionTimeSum += (end - start).seconds();
-	if (parameters.currentFrame % parameters.timingPrintInterval == 0)
+	if (parameters.getCurrentFrame() % parameters.timingPrintInterval == 0)
 	{
-		std::cout << "Average simulation Time: " << parameters.executionTimeSum / parameters.currentFrame << "s." << std::endl;
+		std::cout << "Average simulation Time: " << parameters.executionTimeSum / parameters.getCurrentFrame() << "s."
+			<< "FRAME: [ " << parameters.getCurrentFrame() << " ]" << std::endl;
 	}
 
 	glPopMatrix();
@@ -267,7 +272,7 @@ void mainLoop()
 	glutSwapBuffers();
 	if (!parameters.disableSolver)
 	{
-		++parameters.currentFrame;
+		parameters.increaseCurrentFrame();
 	}
 
 	if (parameters.writeToAlembic)
@@ -276,14 +281,16 @@ void mainLoop()
 		smHandler->setSample(currentPositions);
 	}
 
-	if (parameters.maxFrames <= parameters.currentFrame)
+	if (parameters.maxFrames <= parameters.getCurrentFrame())
 	{
+		//Write all debug information
+		parameters.solverSettings.tracker.writeAll();
+
 		std::cout << "Leaving Glut Main Loop..." << std::endl;
 		glutLeaveMainLoop();
 	}
 
 	Sleep(parameters.numMillisecondsToWaitBetweenFrames);
-	//std::cout << "Current Frame: " << currentFrame << std::endl;
 }
 
 // Callback function called by GLUT when window size changes
@@ -333,142 +340,33 @@ void collapseMesh()
 	getCurrentPositionFromParticles();
 }
 
-void doIO(float inverseMass, std::vector<int>& vertexConstraintIndices)
-{
-	Eigen::Vector3f initialVelocity;
-	initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
-
-	// HARD VERTEX CONSTRAINTS
-	if (parameters.readVertexConstraintData)
-	{
-		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, ioParameters.constraintFile);
-		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
-		{
-			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
-		}
-	}
-
-	// TRACKING DATA
-	trackingData.resize(ioParameters.trackerFiles.size());
-	for (int i = 0; i < ioParameters.trackerFiles.size(); ++i)
-	{
-		TrackerIO::readTrackerAnimationNuke(ioParameters.trackerFiles[i], trackingData[i]);
-	}
-
-	if (!parameters.generateMeshInsteadOfDoingIO)
-	{
-		// MESH
-		TetGenIO::readNodes(ioParameters.nodeFile, *particles, inverseMass, initialVelocity);
-		TetGenIO::readTetrahedra(ioParameters.elementFile, tetrahedra, particles);
-	}
-	else
-	{
-		//GENERATE the mesh datasnuk
-		if (parameters.generateMeshFromTrackingData)
-		{
-			MeshCreator::generateTetBarToFit(particles, tetrahedra, 13, 7, 3,
-				trackingData[0][0], trackingData[1][0], trackingData[2][0], 20.0f);
-		}
-		else
-		{
-			MeshCreator::generateTetBar(particles, tetrahedra, 10, 6, 6);
-		}
-	}
-}
-
 int main(int argc, char* argv[])
 {
-	float youngsModulus;
-
-	float poissonRatio;
-
-	int numConstraintIts;
-
-	float invM;
-
-	float timeStep;
-
-	float alpha;
-	float rho;
-
-	if (argc == 1)
+	if (!parseTerminalParameters(argc, argv, parameters, ioParameters))
 	{
-		std::cout << "Please provide the following: " << std::endl;
-		std::cout << "	- Youngs Modulus" << std::endl;
-		std::cout << "	- Poisson Ratio" << std::endl;
-		std::cout << "	- Inverse Mass" << std::endl;
-		std::cout << "	- Alpha" << std::endl;
-		std::cout << "	- Rho" << std::endl;
-		std::cout << "	- Num Constraint Its" << std::endl;
-		std::cout << "	- Time Step Size" << std::endl;
-		std::cout << "	- USE_FEM" << std::endl;
-		std::cout << "	- SAVE_MESH" << std::endl;
 		return 0;
 	}
 
-	if (argc > 1)
-	{
-		//Young's modulus
-		youngsModulus = std::stof(std::string(argv[1]));
-		//Poisson ratio
-		poissonRatio = std::stof(std::string(argv[2]));
-		//Inverse Mass
-		invM = std::stof(std::string(argv[3]));
-
-		alpha = std::stof(std::string(argv[4]));
-		rho = std::stof(std::string(argv[5]));
-
-		numConstraintIts = std::stoi(std::string(argv[6]));
-
-		timeStep = std::stof(std::string(argv[7]));
-
-		parameters.useFEMSolver = std::string(argv[8]) == "USE_FEM";
-
-		if (argc > 8)
-		{
-			if (std::string(argv[9]) == "SAVE_MESH")
-			{
-				parameters.writeToAlembic = true;
-				std::cout << "Saving output mesh..." << std::endl;
-			}
-		}
-	}
-	else
-	{
-		std::cout << "ERROR! Not enough paramters found..." << std::endl;
-		return 0;
-	}
-
-	settings.youngsModulus = youngsModulus;
-	settings.poissonRatio = poissonRatio;
-	settings.deltaT = timeStep;
-	settings.gravity = -9.81f;
-	//settings.gravity = 0.0f;
-	settings.numConstraintIts = numConstraintIts;
-	settings.w = 1.0;
-	settings.printStrainEnergy = false;
-	settings.printStrainEnergyToFile = parameters.printStrainEnergyToFile;
-	settings.correctStrongForcesWithSubteps = false;
-	settings.numTetrahedraIterations = 1;
-	settings.calculateLambda();
-	settings.calculateMu();
-	settings.print();
-	settings.alpha = alpha;
-	settings.rho = rho;
-
-	parameters.initialiseToDefaults();
-	ioParameters.initialiseToDefaults();
-
+	//We potentially need these for the FEM solver
 	std::vector<int> vertexConstraintIndices;
-	doIO(invM, vertexConstraintIndices);
 
-	settings.numTetrahedra = tetrahedra.size();
+	if (!doIO(parameters, ioParameters, vertexConstraintIndices,
+		tetrahedra, particles, trackingData))
+	{
+		return 0;
+	}
+
+	std::cout << "MESH COMPLEXITY: " << std::endl;
 	std::cout << "Num Tets: " << tetrahedra.size() << "; Num Nodes: " << particles->size() << std::endl;
+	std::cout << "----------------------------------------------" << std::endl;
 
 	numConstraintInfluences.resize(particles->size());
 	currentPositions.resize(particles->size());
 
-	createProabilisticConstraints();
+	if (parameters.useTrackingConstraints)
+	{
+		createProabilisticConstraints();
+	}
 
 	GLUTSettings glutSettings;
 	glutSettings.height = 500;
@@ -484,10 +382,11 @@ int main(int argc, char* argv[])
 	helper.setIdleFunc(idleLoopGlut);
 
 	determineLookAt();
-	parameters.initialiseCamera();
+	//parameters.initialiseCamera();
 
 	if (parameters.useFEMSolver)
 	{
+		std::cout << "FEM SOLVER INIT:" << std::endl;
 		std::cout << "Writing .veg file..." << std::endl;
 		VegaIO::writeVegFile(tetrahedra, particles, "FEMMesh.veg");
 
@@ -495,10 +394,10 @@ int main(int argc, char* argv[])
 		setInitialPositionsFromParticles();
 
 		std::cout << "Initialising FEM solver..." << std::endl;
-		FEMsolver.initSolver("FEMMesh.veg", vertexConstraintIndices, settings.youngsModulus, settings.poissonRatio,
-			settings.deltaT);
-
-		std::cout << "Entering simulation loop..." << std::endl;
+		FEMsolver.initSolver("FEMMesh.veg", vertexConstraintIndices,
+			parameters.solverSettings.youngsModulus, parameters.solverSettings.poissonRatio,
+			parameters.solverSettings.deltaT);
+		std::cout << "----------------------------------------------" << std::endl;
 	}
 
 	if (parameters.writeToAlembic)
@@ -528,29 +427,30 @@ int main(int argc, char* argv[])
 	solverSettings = TwNewBar("Solver Settings");
 
 	TwDefine(" GLOBAL help='FEM based PBD Solver Demo.' ");
-	TwAddVarRW(solverSettings, "stepSize", TW_TYPE_FLOAT, &settings.deltaT,
+	TwAddVarRW(solverSettings, "stepSize", TW_TYPE_FLOAT, &parameters.solverSettings.deltaT,
 		" label='Step Size' min=0.0001 max=10 step=0.001 keyIncr=s keyDecr=S help='Internal Solver Step Size (0.005 is stable)' ");
 
-	TwAddVarRW(solverSettings, "constraintIts", TW_TYPE_INT32, &settings.numConstraintIts,
+	TwAddVarRW(solverSettings, "constraintIts", TW_TYPE_INT32, &parameters.solverSettings.numConstraintIts,
 		" label='Constraint Iterations' min=1 max=100 step=1 keyIncr=s keyDecr=S help='Internal Solver Constraint Iterations (5 is stable)' ");
 
-
-	//TwBar* materialSettings;
-	//materialSettings = TwNewBar("Material Settings");
-
-	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &settings.youngsModulus,
+	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &parameters.solverSettings.youngsModulus,
 		" label='Youngs Modulus' min=0.0 max=1000.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
 
-	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &settings.poissonRatio,
+	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &parameters.solverSettings.poissonRatio,
 		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");
 
 	TwAddSeparator(solverSettings, NULL, NULL);
 
-	TwAddVarRW(solverSettings, "Alpha", TW_TYPE_FLOAT, &settings.alpha,
+	TwAddVarRW(solverSettings, "Alpha", TW_TYPE_FLOAT, &parameters.solverSettings.alpha,
 		" label='Alpha' min=0.0 max=1.0 step=0.01 keyIncr=s keyDecr=S help='Alpha' ");
-	TwAddVarRW(solverSettings, "Rho", TW_TYPE_FLOAT, &settings.rho,
+	TwAddVarRW(solverSettings, "Rho", TW_TYPE_FLOAT, &parameters.solverSettings.rho,
 		" label='Rho' min=0.0 max=100 step=0.01 keyIncr=s keyDecr=S help='Rho' ");
 
+	TwAddSeparator(solverSettings, NULL, NULL);
+
+	TwAddVarRW(solverSettings, "Gravity", TW_TYPE_FLOAT, &parameters.solverSettings.gravity,
+		" label='Gravity' min=-100.0 max=100 step=0.01 keyIncr=s keyDecr=S help='Gravity' ");
+		
 	TwAddSeparator(solverSettings, NULL, NULL);
 
 	TwAddVarRW(solverSettings, "rotationX", TW_TYPE_FLOAT, &parameters.rotation[0],

@@ -268,3 +268,42 @@ MeshCreator::generateTetBarToFit(std::shared_ptr<std::vector<PBDParticle>>& part
 
 }
 
+void
+MeshCreator::generateSingleTet(std::shared_ptr<std::vector<PBDParticle>>& particles, std::vector<PBDTetrahedra3d>& tets,
+	int width, int height, int depth)
+{
+	//1. Generate 4 Nodes
+	Eigen::Vector3f position;
+	Eigen::Vector3f velocity;
+	velocity.setZero();
+	float invMass = 1.0f;
+
+	position[0] = 1.0f;
+	position[1] = 0.0f;
+	position[2] = 0.0f;
+	(*particles).push_back(PBDParticle(position, velocity, invMass));
+
+	position[0] = 0.0f;
+	position[1] = 1.0f;
+	position[2] = 0.0f;
+	(*particles).push_back(PBDParticle(position, velocity, invMass));
+
+	position[0] = 0.0f;
+	position[1] = 0.0f;
+	position[2] = 1.0f;
+	(*particles).push_back(PBDParticle(position, velocity, invMass));
+
+	position[0] = 0.0f;
+	position[1] = 0.0f;
+	position[2] = 0.0f;
+	(*particles).push_back(PBDParticle(position, velocity, invMass));
+
+	//2. Constrain one face
+	(*particles)[0].inverseMass() = 0.0f;
+	(*particles)[2].inverseMass() = 0.0f;
+	(*particles)[3].inverseMass() = 0.0f;
+
+	//3. Generate 1 Tet Element
+	std::vector<int> indices = { 0, 1, 2, 3 };
+	tets.push_back(PBDTetrahedra3d(std::move(indices), particles));
+}

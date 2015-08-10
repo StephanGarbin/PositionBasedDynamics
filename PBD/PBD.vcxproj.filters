@@ -122,5 +122,11 @@
     <ClInclude Include="IOParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AppHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PBDSolverTracker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

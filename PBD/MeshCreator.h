@@ -21,6 +21,9 @@ public:
 		Eigen::Vector2f bottomLeft_above, Eigen::Vector2f topLeft_above, Eigen::Vector2f topRight_above,
 		float thickness);
 
+	static void generateSingleTet(std::shared_ptr<std::vector<PBDParticle>>& particles, std::vector<PBDTetrahedra3d>& tets,
+		int width, int height, int depth);
+
 private:
 	MeshCreator();
 	~MeshCreator();
