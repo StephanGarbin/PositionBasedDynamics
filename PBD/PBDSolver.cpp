@@ -2887,7 +2887,22 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//VISCOELASTICIY -----------------------------------------------------------------------------------------------------------
 			Eigen::Matrix3f vMult = tetrahedra[t].getUpsilon();
 
-			vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
+			if (settings.useFullPronySeries)
+			{
+				Eigen::Matrix3f temp;
+				temp.setZero();
+
+				for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
+				{
+					temp  += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF + settings.fullRho[pComponent] * vMult);
+				}
+
+				vMult =  temp / (settings.deltaT + settings.rho);
+			}
+			else
+			{
+				vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
+			}
 
 			tetrahedra[t].getUpsilon() = vMult;
 			PF = PF * 2.0f - vMult;

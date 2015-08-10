@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
 
 #include "PBDSolverTracker.h"
 
@@ -38,6 +39,10 @@ struct PBDSolverSettings
 	float alpha;
 	float rho;
 
+	bool useFullPronySeries;
+	std::vector<float> fullAlpha;
+	std::vector<float> fullRho;
+
 	//For SOR
 	float w;
 
@@ -72,6 +77,7 @@ struct PBDSolverSettings
 
 		disableConstraintProjection = false;
 		disablePositionCorrection = false;
+		useFullPronySeries = false;
 
 		printStrainEnergy = false;
 		printStrainEnergyToFile = false;

@@ -364,20 +364,14 @@ void collapseMesh()
 
 void applyInitialDeformationToMesh()
 {
-	if (parameters.TEST_IDX == 1)
-	{
-		(*particles)[1].position().y() += 0.5f;
-		(*particles)[1].previousPosition().y() += 0.5f;
-	}
+	(*particles)[1].position().y() += 0.5f;
+	(*particles)[1].previousPosition().y() += 0.5f;
 }
 
 void disapplyInitialDeformationToMesh()
 {
-	if (parameters.TEST_IDX == 1)
-	{
-		(*particles)[1].position().y() -= 0.5f;
-		(*particles)[1].previousPosition().y() -= 0.5f;
-	}
+	(*particles)[1].position().y() -= 0.5f;
+	(*particles)[1].previousPosition().y() -= 0.5f;
 }
 
 void applyContinuousDeformationToMesh()
