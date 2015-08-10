@@ -11,20 +11,56 @@ struct PBDSolverTracker
 	PBDSolverTracker()
 	{
 		filenameS = "SecondPiolaKirchoffTensor.m";
+		filenamePF = "FirstPiolaKirchoffTensor.m";
+		filenameF = "DeformationGradient.m";
+	}
+
+	void generateFileNames(int idx, int version)
+	{
+		filenameS = generateSingleFileName("SecondPiolaKirchoffTensor", idx, version);
+		filenamePF = generateSingleFileName("FirstPiolaKirchoffTensor", idx, version);
+		filenameF = generateSingleFileName("DeformationGradient", idx, version);
+	}
+
+	std::string generateSingleFileName(std::string baseName, int idx, int version)
+	{
+		std::stringstream ss;
+		ss << baseName << "_" << idx << "_" << version << ".m";
+		std::string result = ss.str();
+		ss.clear();
+		
+		return result;
 	}
 
 	std::string filenameS;
+	std::string filenamePF;
+	std::string filenameF;
+
 	std::vector<Eigen::Matrix3f> S;
+	std::vector<Eigen::Matrix3f> PF;
+	std::vector<Eigen::Matrix3f> F;
 
 	void writeMatlabFile_S()
 	{
 		array3d_2_matlab(S, filenameS, "S");
 	}
 
+	void writeMatlabFile_F()
+	{
+		array3d_2_matlab(F, filenameF, "F");
+	}
+
+	void writeMatlabFile_PF()
+	{
+		array3d_2_matlab(PF, filenamePF, "PF");
+	}
+
 	void writeAll()
 	{
 		std::cout << "WRITING TRACKED SOLVER DATA..." << std::endl;
 		writeMatlabFile_S();
+		writeMatlabFile_PF();
+		writeMatlabFile_F();
 
 		std::cout << "-------------------" << std::endl;
 	}

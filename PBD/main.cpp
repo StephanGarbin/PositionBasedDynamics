@@ -47,7 +47,7 @@ Parameters parameters;
 IOParameters ioParameters;
 
 void mainLoop();
-
+void applyInitialDeformationToMesh();
 
 void applyFEMDisplacementsToParticles()
 {
@@ -201,6 +201,15 @@ void mainLoopGlut(void)
 
 void mainLoop()
 {
+	//Apply initial deformation if necessary
+	if (parameters.applyInitialDeformationToMesh)
+	{
+		if (parameters.getCurrentFrame() == parameters.frame2ApplyInitialDeformation)
+		{
+			applyInitialDeformationToMesh();
+		}
+	}
+
 	parameters.solverSettings.calculateLambda();
 	parameters.solverSettings.calculateMu();
 
@@ -338,6 +347,15 @@ void collapseMesh()
 	}
 
 	getCurrentPositionFromParticles();
+}
+
+void applyInitialDeformationToMesh()
+{
+	if (parameters.TEST_IDX == 1)
+	{
+		(*particles)[1].position().y() += 0.5f;
+		(*particles)[1].previousPosition().y() += 0.5f;
+	}
 }
 
 int main(int argc, char* argv[])

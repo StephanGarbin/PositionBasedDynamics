@@ -95,12 +95,17 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& setting
 		//std::cout << p.velocity().transpose() << std::endl;
 	}
 
-	for (auto& p : *particles)
-	{
-		//p.position() += settings.deltaT * settings.positionDeltaMultiplicationFactor * settings.externalPositionDelta;
-		p.position() += settings.getCurrentTime() * settings.positionDeltaMultiplicationFactor * settings.externalPositionDelta;
-		//std::cout << p.velocity().transpose() << std::endl;
-	}
+	//if (settings.currentFrame == 1)
+	//{
+	//	for (auto& p : *particles)
+	//	{
+	//		Eigen::Vector3f temp(0.0f, 1.5f, 0.0f);
+	//		//p.position() += settings.deltaT * settings.positionDeltaMultiplicationFactor * settings.externalPositionDelta;
+	//		//p.position() += settings.getCurrentTime() * settings.positionDeltaMultiplicationFactor * settings.externalPositionDelta;
+	//		p.position() = temp;
+	//		//std::cout << p.velocity().transpose() << std::endl;
+	//	}
+	//}
 }
 
 void
@@ -2854,10 +2859,10 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//Compute volume
 			float Volume = tetrahedra[t].getUndeformedVolume();
 
-			if (F.isIdentity())
-			{
-				continue;
-			}
+			//if (F.isIdentity())
+			//{
+			//	continue;
+			//}
 
 			isInverted = F.determinant() < 0.0;
 
@@ -2948,7 +2953,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted)
 			{
-				std::cout << lagrangeM << "; ERROR!" << std::endl;
+				//std::cout << lagrangeM << "; ERROR!" << std::endl;
 				continue;
 			}
 			else
@@ -2957,17 +2962,15 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				{
 					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
 					{
-						deltaX = (tetrahedra[t].get_x(cI).inverseMass()
-							* lagrangeM) * gradient.col(cI);
+						if (!settings.disablePositionCorrection)
+						{
+							deltaX = (tetrahedra[t].get_x(cI).inverseMass()
+								* lagrangeM) * gradient.col(cI);
 
-						tetrahedra[t].get_x(cI).position() += deltaX;
+							tetrahedra[t].get_x(cI).position() += deltaX;
+						}
 					}
 				}
-			}
-
-			if (settings.trackS)
-			{
-				settings.tracker.S.push_back(PF * FInverseTranspose.transpose());
 			}
 		}
 
@@ -2977,6 +2980,19 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
 		}
 
+	}
+
+	if (settings.trackS)
+	{
+		settings.tracker.S.push_back(PF * FInverseTranspose.transpose());
+	}
+	if (settings.trackF)
+	{
+		settings.tracker.F.push_back(F);
+	}
+	if (settings.trackPF)
+	{
+		settings.tracker.PF.push_back(PF);
 	}
 
 	//for (int pC = 0; pC < probabilisticConstraints.size(); ++pC)

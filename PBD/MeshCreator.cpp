@@ -300,6 +300,7 @@ MeshCreator::generateSingleTet(std::shared_ptr<std::vector<PBDParticle>>& partic
 
 	//2. Constrain one face
 	(*particles)[0].inverseMass() = 0.0f;
+	(*particles)[1].inverseMass() = 0.0f;
 	(*particles)[2].inverseMass() = 0.0f;
 	(*particles)[3].inverseMass() = 0.0f;
 

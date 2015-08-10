@@ -123,6 +123,8 @@ bool parseTerminalParameters(const int argc, char* argv[],
 		parseGeneralParams(params, argc, argv);
 	}
 
+	params.solverSettings.tracker.generateFileNames(params.TEST_IDX, params.TEST_VERSION);
+
 	return true;
 }
 
@@ -255,7 +257,6 @@ void initTest_1(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.printStrainEnergyToFile = false;
 	params.solverSettings.gravity = 0.0f;
 	params.solverSettings.externalForce.setZero();
-	params.solverSettings.rho = 0.5f;
 	params.solverSettings.numTetrahedraIterations = 0;
 	params.solverSettings.correctStrongForcesWithSubteps = false;
 	params.solverSettings.useGeometricConstraintLimits = false;
@@ -263,14 +264,21 @@ void initTest_1(Parameters& params, IOParameters& paramsIO)
 
 	params.disableSolver = false;
 	params.solverSettings.disableConstraintProjection = false;
+	params.solverSettings.disablePositionCorrection = false;
+	params.applyInitialDeformationToMesh = true;
+	params.frame2ApplyInitialDeformation = 100;
+
 	params.solverSettings.numConstraintIts = 1;
 	params.numMillisecondsToWaitBetweenFrames = 0;
 	//params.solverSettings.forceMultiplicationFactor = 10000.2;
 	//params.solverSettings.externalForce.x() = 1.0f;
 	params.solverSettings.trackS = true;
+	params.solverSettings.trackF = true;
+	params.solverSettings.trackPF = true;
 
 	params.solverSettings.forceMultiplicationFactor = 1.0f;
 	params.solverSettings.externalForce.x() = 1.0f;
+	params.solverSettings.rho = 0.1f;
 
 	if (params.TEST_VERSION == 0)
 	{

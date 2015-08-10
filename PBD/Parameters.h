@@ -9,6 +9,8 @@ struct Parameters
 	int TEST_IDX;
 	int TEST_VERSION;
 
+	int frame2ApplyInitialDeformation;
+
 	//---------------------------------
 
 	int numMillisecondsToWaitBetweenFrames;
@@ -46,12 +48,15 @@ struct Parameters
 	//Constraint IO
 	bool readVertexConstraintData;
 
+	bool applyInitialDeformationToMesh;
+
 	//Settings for the solver
 	PBDSolverSettings solverSettings;
 
 	void initialiseToDefaults()
 	{
 		disableSolver = false;
+		applyInitialDeformationToMesh = false;
 
 		numMillisecondsToWaitBetweenFrames = 0;
 		executionTimeSum = 0.0f;

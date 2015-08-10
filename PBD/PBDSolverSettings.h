@@ -7,6 +7,7 @@
 struct PBDSolverSettings
 {
 	bool disableConstraintProjection;
+	bool disablePositionCorrection;
 
 	float deltaT;
 
@@ -59,6 +60,8 @@ struct PBDSolverSettings
 	PBDSolverTracker tracker;
 
 	bool trackS;
+	bool trackF;
+	bool trackPF;
 
 	void initialise()
 	{
@@ -68,6 +71,7 @@ struct PBDSolverSettings
 		positionDeltaMultiplicationFactor = 0.0f;
 
 		disableConstraintProjection = false;
+		disablePositionCorrection = false;
 
 		printStrainEnergy = false;
 		printStrainEnergyToFile = false;
