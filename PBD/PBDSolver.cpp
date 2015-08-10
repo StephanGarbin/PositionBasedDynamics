@@ -2875,9 +2875,6 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 			float logI3 = log(I3);
 
-
-
-
 			PF = settings.mu * F - settings.mu * FInverseTranspose
 				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
@@ -2886,6 +2883,8 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//Compute Strain Energy density field
 			float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
 
+
+			//VISCOELASTICIY -----------------------------------------------------------------------------------------------------------
 			Eigen::Matrix3f vMult = tetrahedra[t].getUpsilon();
 
 			vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
@@ -2894,38 +2893,6 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			PF = PF * 2.0f - vMult;
 
 			PF *= F;
-
-			//Eigen::Matrix3f C = FTransposeF;
-
-
-			//Eigen::Matrix3f C_bar = C * std::powf(F.determinant(), 2.0f / 3.0f);
-
-			//float I1 = C_bar.trace();
-			//float I4 = (C_bar * a).dot(a);
-			//float J = F.determinant();
-
-			//float energyISO = (mu / 2.0f) * (I1 - 3.0f) + (eta / 2.0f) * (std::powf(I4 - 1.0f, 2.0f));
-			//float energyVOLUME = (k / 2.0f) * std::powf(J - 1.0f, 2.0f);
-
-			//float strainEnergy = energyISO + energyVOLUME;
-
-			//Eigen::Matrix3f energyISODerivative = C * energyISO;
-			//Eigen::Matrix3f energVOLUMEDerivative = C * energyVOLUME;
-
-
-			//Eigen::Matrix3f vMult = tetrahedra[t].getUpsilon();
-
-			//vMult = (2.0f * settings.deltaT * alpha * energyISODerivative + rho * vMult) / (settings.deltaT + rho);
-
-			////-------------
-			//vMult.setZero();
-			////--------------
-
-
-			//Eigen::Matrix3f S = 2.0 * energyISODerivative + 2.0f * energVOLUMEDerivative - vMult;
-
-			//tetrahedra[t].getUpsilon() = vMult;
-			//PF = S * F.inverse();
 
 			//PF GRADIENT ---------------------------------------------------------------------------------------------------------------
 

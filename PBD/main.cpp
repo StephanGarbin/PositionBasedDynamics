@@ -48,6 +48,9 @@ IOParameters ioParameters;
 
 void mainLoop();
 void applyInitialDeformationToMesh();
+void disapplyInitialDeformationToMesh();
+
+void applyContinuousDeformationToMesh();
 
 void applyFEMDisplacementsToParticles()
 {
@@ -208,6 +211,16 @@ void mainLoop()
 		{
 			applyInitialDeformationToMesh();
 		}
+
+		if (parameters.getCurrentFrame() == parameters.frame2DisApplyInitialDeformation)
+		{
+			disapplyInitialDeformationToMesh();
+		}
+	}
+
+	if (parameters.applyContinuousDeformationToMesh)
+	{
+		applyContinuousDeformationToMesh();
 	}
 
 	parameters.solverSettings.calculateLambda();
@@ -355,6 +368,29 @@ void applyInitialDeformationToMesh()
 	{
 		(*particles)[1].position().y() += 0.5f;
 		(*particles)[1].previousPosition().y() += 0.5f;
+	}
+}
+
+void disapplyInitialDeformationToMesh()
+{
+	if (parameters.TEST_IDX == 1)
+	{
+		(*particles)[1].position().y() -= 0.5f;
+		(*particles)[1].previousPosition().y() -= 0.5f;
+	}
+}
+
+void applyContinuousDeformationToMesh()
+{
+	if (parameters.getCurrentFrame() < parameters.continuousDeformationRelaxationFrame)
+	{
+		(*particles)[1].position().y() += parameters.continuousDeformationStrainIncreaseFactor;
+		(*particles)[1].previousPosition().y() += parameters.continuousDeformationStrainIncreaseFactor;
+	}
+	else if (parameters.getCurrentFrame() < 1000)
+	{
+		(*particles)[1].position().y() -= parameters.continuousDeformationStrainIncreaseFactor;
+		(*particles)[1].previousPosition().y() -= parameters.continuousDeformationStrainIncreaseFactor;
 	}
 }
 

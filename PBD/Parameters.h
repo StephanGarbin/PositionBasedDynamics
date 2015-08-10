@@ -10,6 +10,10 @@ struct Parameters
 	int TEST_VERSION;
 
 	int frame2ApplyInitialDeformation;
+	int frame2DisApplyInitialDeformation;
+
+	int continuousDeformationRelaxationFrame;
+	float continuousDeformationStrainIncreaseFactor;
 
 	//---------------------------------
 
@@ -49,6 +53,7 @@ struct Parameters
 	bool readVertexConstraintData;
 
 	bool applyInitialDeformationToMesh;
+	bool applyContinuousDeformationToMesh;
 
 	//Settings for the solver
 	PBDSolverSettings solverSettings;
