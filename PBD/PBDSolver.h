@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 #include <iostream>
 #include <fstream>
@@ -120,3 +121,55 @@ void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const E
 	const float restVolume,
 	const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy, int it);
 
+inline int smallestDistanceToOppositePlane(PBDTetrahedra3d& tet, float& resultDist, Eigen::Vector3f& normal)
+{
+	//1. 4-2, 4-3
+	Eigen::Vector3f n = (tet.get_x(3).position() - tet.get_x(1).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
+	Eigen::Vector3f w = (tet.get_x(3).position() - tet.get_x(0).position());
+	float dist1 = n.dot(w);
+
+
+	n = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
+	w = (tet.get_x(3).position() - tet.get_x(1).position());
+	float dist2 = n.dot(w);
+
+	n = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(1).position()).normalized();
+	w = (tet.get_x(3).position() - tet.get_x(2).position());
+
+	float dist3 = n.dot(w);
+
+	n = (tet.get_x(1).position() - tet.get_x(0).position()).cross(tet.get_x(1).position() - tet.get_x(2).position()).normalized();
+	w = (tet.get_x(3).position() - tet.get_x(1).position());
+
+	float dist4 = n.dot(w);
+
+	std::vector<float> distances;
+	distances.push_back(dist1); distances.push_back(dist2); distances.push_back(dist3); distances.push_back(dist4);
+	std::sort(distances.begin(), distances.end());
+
+	//std::cout << dist1 << ", " << dist2 << ", " << dist3 << ", " << dist4 << std::endl;
+	if (distances[0] == dist1)
+	{
+		resultDist = dist1;
+		normal = (tet.get_x(3).position() - tet.get_x(1).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
+		return 0;
+	}
+	else if (distances[0] == dist2)
+	{
+		resultDist = dist2;
+		normal = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
+		return 1;
+	}
+	else if (distances[0] == dist3)
+	{
+		resultDist = dist3;
+		normal = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(1).position()).normalized();
+		return 2;
+	}
+	else if (distances[0] == dist4)
+	{
+		resultDist = dist4;
+		normal = (tet.get_x(1).position() - tet.get_x(0).position()).cross(tet.get_x(1).position() - tet.get_x(2).position()).normalized();
+		return 3;
+	}
+}

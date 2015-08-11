@@ -52,6 +52,8 @@ void disapplyInitialDeformationToMesh();
 
 void applyContinuousDeformationToMesh();
 
+void invertSingleElementAtStart();
+
 void applyFEMDisplacementsToParticles()
 {
 	std::vector<double>& displacements = FEMsolver.getCurrentDisplacements();
@@ -223,6 +225,11 @@ void mainLoop()
 		applyContinuousDeformationToMesh();
 	}
 
+	if (parameters.invertSingleElementAtStart)
+	{
+		invertSingleElementAtStart();
+	}
+
 	parameters.solverSettings.calculateLambda();
 	parameters.solverSettings.calculateMu();
 
@@ -378,13 +385,28 @@ void applyContinuousDeformationToMesh()
 {
 	if (parameters.getCurrentFrame() < parameters.continuousDeformationRelaxationFrame)
 	{
-		(*particles)[1].position().y() += parameters.continuousDeformationStrainIncreaseFactor;
-		(*particles)[1].previousPosition().y() += parameters.continuousDeformationStrainIncreaseFactor;
+		//float increaseFactor = parameters.continuousDeformationStrainIncreaseFactor;
+		//(*particles)[1].position().y() += parameters.continuousDeformationStrainIncreaseFactor;
+		(*particles)[1].previousPosition().z() += parameters.continuousDeformationStrainIncreaseFactor * (parameters.continuousDeformationRelaxationFrame - parameters.getCurrentFrame());
 	}
-	else if (parameters.getCurrentFrame() < 1000)
+	else if (parameters.getCurrentFrame() < parameters.continuousDeformationRelaxationFrame * 2)
 	{
-		(*particles)[1].position().y() -= parameters.continuousDeformationStrainIncreaseFactor;
-		(*particles)[1].previousPosition().y() -= parameters.continuousDeformationStrainIncreaseFactor;
+		//(*particles)[1].position().y() -= parameters.continuousDeformationStrainIncreaseFactor;
+		(*particles)[1].previousPosition().z() -= parameters.continuousDeformationStrainIncreaseFactor * ((parameters.getCurrentFrame() - parameters.continuousDeformationRelaxationFrame));
+	}
+	//else
+	//{
+	//	(*particles)[1].inverseMass() = 1.0f;
+	//}
+}
+
+void invertSingleElementAtStart()
+{
+	if (parameters.getCurrentFrame() == 1)
+	{
+		(*particles)[1].inverseMass() = 1.0f;
+		(*particles)[1].position().y() -= parameters.invertSingleElementAtStartAmount;
+		(*particles)[1].previousPosition().y() -= parameters.invertSingleElementAtStartAmount;
 	}
 }
 

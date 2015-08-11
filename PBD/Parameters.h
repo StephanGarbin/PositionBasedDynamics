@@ -9,11 +9,15 @@ struct Parameters
 	int TEST_IDX;
 	int TEST_VERSION;
 
+	//Convenience functions
 	int frame2ApplyInitialDeformation;
 	int frame2DisApplyInitialDeformation;
 
 	int continuousDeformationRelaxationFrame;
 	float continuousDeformationStrainIncreaseFactor;
+
+	bool invertSingleElementAtStart;
+	float invertSingleElementAtStartAmount;
 
 	//---------------------------------
 
