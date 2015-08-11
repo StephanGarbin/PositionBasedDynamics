@@ -44,6 +44,20 @@ public:
 		return m_upsilon;
 	}
 
+	Eigen::Matrix3f& getFullUpsilon(int idx)
+	{
+		return m_upsilonFull[idx];
+	}
+
+	void setFullUpsilonCount(int num)
+	{
+		m_upsilonFull.resize(num);
+		for (int i = 0; i < num; ++i)
+		{
+			m_upsilonFull[i].setZero();
+		}
+	}
+
 	void glRender(double r, double g, double b);
 private:
 
@@ -72,6 +86,7 @@ private:
 
 	//viscoelasticity
 	Eigen::Matrix3f m_upsilon;
+	std::vector<Eigen::Matrix3f> m_upsilonFull;
 
 };
 

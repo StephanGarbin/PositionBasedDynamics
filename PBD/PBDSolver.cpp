@@ -2885,7 +2885,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 
 			//VISCOELASTICIY -----------------------------------------------------------------------------------------------------------
-			Eigen::Matrix3f vMult = tetrahedra[t].getUpsilon();
+			Eigen::Matrix3f vMult;
 
 			if (settings.useFullPronySeries)
 			{
@@ -2894,17 +2894,24 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 				for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
 				{
-					temp  += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF + settings.fullRho[pComponent] * vMult);
+					temp  += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+						+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+
+					tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+						+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
 				}
 
-				vMult =  temp / (settings.deltaT + settings.rho);
+				vMult = temp;
 			}
 			else
 			{
+				vMult = tetrahedra[t].getUpsilon();
+
 				vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
+
+				tetrahedra[t].getUpsilon() = vMult;
 			}
 
-			tetrahedra[t].getUpsilon() = vMult;
 			PF = PF * 2.0f - vMult;
 
 			PF *= F;

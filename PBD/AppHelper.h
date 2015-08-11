@@ -153,6 +153,12 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 	else if (params.TEST_IDX == 1 || params.TEST_IDX == 2 || params.TEST_IDX == 3)
 	{
 		MeshCreator::generateSingleTet(particles, tetrahedra, 0, 0, 0);
+
+		if (params.TEST_IDX == 3)
+		{
+			tetrahedra[0].setFullUpsilonCount(params.solverSettings.fullAlpha.size());
+		}
+
 		return true;
 	}
 	else
@@ -423,15 +429,16 @@ void initTest_3(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.externalForce.x() = 1.0f;
 	params.solverSettings.useFullPronySeries = true;
 
-	//if (params.TEST_VERSION == 0)
+	if (params.TEST_VERSION == 0)
 	{
-		params.solverSettings.fullAlpha = { 0.20f, 0.05f, 0.75f };
-		params.solverSettings.fullRho = { 0.6f, 0.3f, 0.1f };
+		params.solverSettings.fullAlpha = { 0.60f, 0.2f, 0.2f };
+		params.solverSettings.fullRho = { 0.019f, 0.9f, 0.001f };
 	}
-	//else if (params.TEST_VERSION == 1)
-	//{
-	//	params.solverSettings.alpha = 0.25f;
-	//}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.fullAlpha = { 0.30f, 0.3f, 0.4f };
+		params.solverSettings.fullRho = { 0.001f, 0.00001f, 0.9001f };
+	}
 	//else if (params.TEST_VERSION == 2)
 	//{
 	//	params.solverSettings.alpha = 0.5f;
