@@ -52,6 +52,8 @@ void disapplyInitialDeformationToMesh();
 
 void applyContinuousDeformationToMesh();
 
+void collapseMesh();
+
 void invertSingleElementAtStart();
 
 void applyFEMDisplacementsToParticles()
@@ -230,6 +232,11 @@ void mainLoop()
 		invertSingleElementAtStart();
 	}
 
+	if (parameters.collapseMeshAtStart)
+	{
+		collapseMesh();
+	}
+
 	parameters.solverSettings.calculateLambda();
 	parameters.solverSettings.calculateMu();
 
@@ -347,6 +354,11 @@ void TerminateAll(void)
 
 void collapseMesh()
 {
+	if (parameters.getCurrentFrame() != 1)
+	{
+		return;
+	}
+
 	float minDimValue = -100000000;
 
 	for (int p = 0; p < particles->size(); ++p)
@@ -404,9 +416,50 @@ void invertSingleElementAtStart()
 {
 	if (parameters.getCurrentFrame() == 1)
 	{
-		(*particles)[1].inverseMass() = 1.0f;
-		(*particles)[1].position().y() -= parameters.invertSingleElementAtStartAmount;
-		(*particles)[1].previousPosition().y() -= parameters.invertSingleElementAtStartAmount;
+		switch (parameters.TEST_VERSION)
+		{
+		case 0:
+			(*particles)[1].inverseMass() = 1.0f;
+			(*particles)[1].position().y() -= parameters.invertSingleElementAtStartAmount;
+			(*particles)[1].previousPosition().y() -= parameters.invertSingleElementAtStartAmount;
+			break;
+		case 1:
+			(*particles)[2].inverseMass() = 1.0f;
+			(*particles)[2].position().z() -= parameters.invertSingleElementAtStartAmount;
+			(*particles)[2].previousPosition().z() -= parameters.invertSingleElementAtStartAmount;
+			break;
+		case 2:
+			(*particles)[3].inverseMass() = 1.0f;
+			(*particles)[3].position().x() += parameters.invertSingleElementAtStartAmount;
+			(*particles)[3].previousPosition().x() += parameters.invertSingleElementAtStartAmount;
+			break;
+		case 3:
+			(*particles)[0].position().x() = 0.3f;
+			(*particles)[0].position().y() = 0.3f;
+			(*particles)[0].position().z() = 0.6f;
+
+			(*particles)[1].position().x() = 0.3f;
+			(*particles)[1].position().y() = 0.0f;
+			(*particles)[1].position().z() = 0.599135f;
+			
+			(*particles)[2].position().x() = 0.0f;
+			(*particles)[2].position().y() = 0.0f;
+			(*particles)[2].position().z() = 0.0f;
+			
+			(*particles)[3].position().x() = 0.3f;
+			(*particles)[3].position().y() = 0.0f;
+			(*particles)[3].position().z() = 0.6f;
+
+			(*particles)[0].previousPosition() = (*particles)[0].position();
+			(*particles)[1].previousPosition() = (*particles)[1].position();
+			(*particles)[2].previousPosition() = (*particles)[2].position();
+			(*particles)[3].previousPosition() = (*particles)[3].position();
+
+			(*particles)[0].inverseMass() = 1.0f;
+			(*particles)[1].inverseMass() = 1.0f;
+			(*particles)[2].inverseMass() = 0.0f;
+			(*particles)[3].inverseMass() = 1.0f;
+		}
 	}
 }
 
@@ -482,12 +535,6 @@ int main(int argc, char* argv[])
 		}
 		smHandler->initTopology(*particles, tetrahedra);
 		std::cout << "Initialised Topology for Alembic Output!" << std::endl;
-	}
-
-	if (parameters.testingInversionHandling)
-	{
-		collapseMesh();
-		std::cout << "Collapsed mesh to test inversion Handling!" << std::endl;
 	}
 
 	//TweakBar Interface

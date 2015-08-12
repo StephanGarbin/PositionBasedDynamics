@@ -59,14 +59,12 @@ bool parseGeneralParams(Parameters& params, const int argc, char* argv[])
 }
 
 void initTest_0(Parameters& params, IOParameters& paramsIO);
-
 void initTest_1(Parameters& params, IOParameters& paramsIO);
-
 void initTest_2(Parameters& params, IOParameters& paramsIO);
-
 void initTest_3(Parameters& params, IOParameters& paramsIO);
 
 void initTest_4(Parameters& params, IOParameters& paramsIO);
+void initTest_5(Parameters& params, IOParameters& paramsIO);
 
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
@@ -128,6 +126,9 @@ bool parseTerminalParameters(const int argc, char* argv[],
 	case 4:
 		initTest_4(params, paramsIO);
 		break;
+	case 5:
+		initTest_5(params, paramsIO);
+		break;
 	default:
 		break;
 	}
@@ -164,6 +165,11 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 			tetrahedra[0].setFullUpsilonCount(params.solverSettings.fullAlpha.size());
 		}
 
+		return true;
+	}
+	if (params.TEST_IDX == 5)
+	{
+		MeshCreator::generateTetBar(particles, tetrahedra, 10, 6, 6);
 		return true;
 	}
 	else
@@ -489,6 +495,79 @@ void initTest_4(Parameters& params, IOParameters& paramsIO)
 	//params.frame2ApplyInitialDeformation = 100;
 	//params.frame2DisApplyInitialDeformation = 500;
 
+	params.solverSettings.numConstraintIts = 1;
+	params.numMillisecondsToWaitBetweenFrames = 200;
+	//params.solverSettings.forceMultiplicationFactor = 10000.2;
+	//params.solverSettings.externalForce.x() = 1.0f;
+	//params.solverSettings.trackS = true;
+	//params.solverSettings.trackF = true;
+	//params.solverSettings.trackPF = true;
+
+	//params.solverSettings.forceMultiplicationFactor = 1.0f;
+	//params.solverSettings.externalForce.x() = 1.0f;
+	params.solverSettings.useFullPronySeries = false;
+	params.solverSettings.alpha = 0.0f;
+	params.solverSettings.rho = 0.0f;
+
+	params.invertSingleElementAtStart = true;
+
+	if (params.TEST_VERSION == 0)
+	{
+		params.invertSingleElementAtStartAmount = 2.000001f;
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.invertSingleElementAtStartAmount = 2.000001f;
+	}
+	else if (params.TEST_VERSION == 2)
+	{
+		params.invertSingleElementAtStartAmount = 2.000001f;
+	}
+	else if (params.TEST_VERSION == 3)
+	{
+		params.numMillisecondsToWaitBetweenFrames = 500;
+	}
+	//else if (params.TEST_VERSION == 3)
+	//{
+	//	params.solverSettings.alpha = 0.75f;
+	//}
+	//else if (params.TEST_VERSION == 4)
+	//{
+	//	params.solverSettings.alpha = 1.0f;
+	//}
+}
+
+void initTest_5(Parameters& params, IOParameters& paramsIO)
+{
+	params.maxFrames = 1000;
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+
+	//params.zoom = 1.318f;
+
+	params.solverSettings.poissonRatio = 0.3f;
+	params.solverSettings.youngsModulus = 0.1f;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = 0.0f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	params.zoom = 1.5f;
+
+	params.disableSolver = false;
+	params.solverSettings.disableConstraintProjection = false;
+	params.solverSettings.disablePositionCorrection = false;
+	//params.applyInitialDeformationToMesh = true;
+	//params.frame2ApplyInitialDeformation = 100;
+	//params.frame2DisApplyInitialDeformation = 500;
+
 	params.solverSettings.numConstraintIts = 25;
 	params.numMillisecondsToWaitBetweenFrames = 50;
 	//params.solverSettings.forceMultiplicationFactor = 10000.2;
@@ -503,19 +582,18 @@ void initTest_4(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.alpha = 0.0f;
 	params.solverSettings.rho = 0.0f;
 
-	params.invertSingleElementAtStart = true;
-	params.invertSingleElementAtStartAmount = 1.000001f;
+	//params.invertSingleElementAtStart = true;
 
 	if (params.TEST_VERSION == 0)
 	{
-		//params.solverSettings.fullAlpha = { 0.60f, 0.2f, 0.2f };
-		//params.solverSettings.fullRho = { 0.019f, 0.9f, 0.001f };
+		params.collapseMeshAtStart = true;
+		params.dimToCollapse = 2;
+
 	}
-	//else if (params.TEST_VERSION == 1)
-	//{
-	//	params.solverSettings.fullAlpha = { 0.30f, 0.3f, 0.4f };
-	//	params.solverSettings.fullRho = { 0.001f, 0.00001f, 0.9001f };
-	//}
+	else if (params.TEST_VERSION == 1)
+	{
+		
+	}
 	//else if (params.TEST_VERSION == 2)
 	//{
 	//	params.solverSettings.alpha = 0.5f;

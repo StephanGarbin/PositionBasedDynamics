@@ -123,53 +123,71 @@ void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const E
 
 inline int smallestDistanceToOppositePlane(PBDTetrahedra3d& tet, float& resultDist, Eigen::Vector3f& normal)
 {
+	std::vector<Eigen::Vector3f> normals;
+
 	//1. 4-2, 4-3
-	Eigen::Vector3f n = (tet.get_x(3).position() - tet.get_x(1).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
+	normals.push_back((tet.get_x(3).position() - tet.get_x(2).position()).cross(tet.get_x(3).position() - tet.get_x(1).position()).normalized());
 	Eigen::Vector3f w = (tet.get_x(3).position() - tet.get_x(0).position());
-	float dist1 = n.dot(w);
+	float dist0 = normals[0].dot(w);
 
 
-	n = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
+	normals.push_back((tet.get_x(3).position() - tet.get_x(2).position()).cross(tet.get_x(3).position() - tet.get_x(0).position()).normalized());
 	w = (tet.get_x(3).position() - tet.get_x(1).position());
-	float dist2 = n.dot(w);
+	float dist1 = normals[1].dot(w);
 
-	n = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(1).position()).normalized();
+	normals.push_back((tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(1).position()).normalized());
 	w = (tet.get_x(3).position() - tet.get_x(2).position());
 
-	float dist3 = n.dot(w);
+	float dist2 = normals[2].dot(w);
 
-	n = (tet.get_x(1).position() - tet.get_x(0).position()).cross(tet.get_x(1).position() - tet.get_x(2).position()).normalized();
+	normals.push_back((tet.get_x(1).position() - tet.get_x(0).position()).cross(tet.get_x(1).position() - tet.get_x(2).position()).normalized());
 	w = (tet.get_x(3).position() - tet.get_x(1).position());
 
-	float dist4 = n.dot(w);
+	float dist3 = normals[3].dot(w);
 
 	std::vector<float> distances;
-	distances.push_back(dist1); distances.push_back(dist2); distances.push_back(dist3); distances.push_back(dist4);
+	if (tet.get_x(0).inverseMass() != 0.0f)
+	{
+		distances.push_back(dist0);
+	}
+	if (tet.get_x(1).inverseMass() != 0.0f)
+	{
+		distances.push_back(dist1);
+	}
+	if (tet.get_x(2).inverseMass() != 0.0f)
+	{
+		distances.push_back(dist2);
+	}
+	if (tet.get_x(3).inverseMass() != 0.0f)
+	{
+		distances.push_back(dist3);
+	}
+
 	std::sort(distances.begin(), distances.end());
 
-	//std::cout << dist1 << ", " << dist2 << ", " << dist3 << ", " << dist4 << std::endl;
-	if (distances[0] == dist1)
+	//std::cout << dist0 << ", " << dist1 << ", " << dist2 << ", " << dist3 << std::endl;
+	if (distances[0] == dist0)
+	{
+		resultDist = dist0;
+		normal = normals[0];
+		return 0;
+	}
+	else if (distances[0] == dist1)
 	{
 		resultDist = dist1;
-		normal = (tet.get_x(3).position() - tet.get_x(1).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
-		return 0;
+		normal = normals[1];
+		return 1;
 	}
 	else if (distances[0] == dist2)
 	{
 		resultDist = dist2;
-		normal = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(2).position()).normalized();
-		return 1;
+		normal = normals[2];
+		return 2;
 	}
 	else if (distances[0] == dist3)
 	{
 		resultDist = dist3;
-		normal = (tet.get_x(3).position() - tet.get_x(0).position()).cross(tet.get_x(3).position() - tet.get_x(1).position()).normalized();
-		return 2;
-	}
-	else if (distances[0] == dist4)
-	{
-		resultDist = dist4;
-		normal = (tet.get_x(1).position() - tet.get_x(0).position()).cross(tet.get_x(1).position() - tet.get_x(2).position()).normalized();
+		normal = normals[3];
 		return 3;
 	}
 }

@@ -45,7 +45,7 @@ struct Parameters
 	bool printStrainEnergyToFile;
 
 	//Inversion Handling Test
-	bool testingInversionHandling ;
+	bool collapseMeshAtStart;
 	int dimToCollapse;
 
 	//Mesh generation
@@ -79,7 +79,7 @@ struct Parameters
 		writeToAlembic = true;
 		printStrainEnergyToFile = false;
 
-		testingInversionHandling = false;
+		collapseMeshAtStart = false;
 		dimToCollapse = 1;
 
 		generateMeshInsteadOfDoingIO = true;

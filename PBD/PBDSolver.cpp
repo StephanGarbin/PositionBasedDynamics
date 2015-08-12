@@ -2858,68 +2858,95 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//Get deformation gradient
 			F = tetrahedra[t].getDeformationGradient();
 
+			//Degenerate Elements
+			//if (F.determinant() == 0.0f)
+			//{
+			//	for (int cI = 0; cI < 2; ++cI)
+			//	{
+			//		if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+			//		{
+			//			if (!settings.disablePositionCorrection)
+			//			{
+			//				deltaX.x() = 1e-6f;
+			//				deltaX.y() = 1e-6f;
+			//				deltaX.z() = 1e-6f;
+			//				deltaX *= tetrahedra[t].get_x(cI).inverseMass();
+
+
+			//				tetrahedra[t].get_x(cI).position() += deltaX;
+			//			}
+			//		}
+			//	}
+			//}
+			
+			F = tetrahedra[t].getDeformationGradient();
+
 			//Deal with inverted elements
-			if (F.determinant() < 0.0)
+			if (F.determinant() < 0.0 )
 			{
+				continue;
 				float dist;
 
 				Eigen::Vector3f normal;
 
 				int cI = smallestDistanceToOppositePlane(tetrahedra[t], dist, normal);
 
+				dist = std::abs(dist);
+
 				//std::cout << "ci: " << cI << std::endl;
 
-				w1 = tetrahedra[t].get_x(cI).inverseMass();
+				/*w1 = tetrahedra[t].get_x(cI).inverseMass();
 				x1 = tetrahedra[t].get_x(cI).position();
 
 				w2 = 0.0;
-				x2 = tetrahedra[t].get_x(cI).position() + (1.0f + 0.1f / dist) * dist * normal;
+				x2 = tetrahedra[t].get_x(cI).position() + (1.0f + 0.1f / dist) * dist * normal;*/
 
-				computeDeltaXPositionConstraint(w1, w2, 1e-8f,
-					x1, x2, temp, deltaX);
-				tetrahedra[t].get_x(cI).position() += -deltaX * w1;
-				tetrahedra[t].get_x(cI).previousPosition() += -deltaX * w1;
+				//computeDeltaXPositionConstraint(w1, w2, 0.0f,
+				//	x1, x2, temp, deltaX);
+				//tetrahedra[t].get_x(cI).position() += -deltaX * w1;
+				//tetrahedra[t].get_x(cI).previousPosition() += -deltaX * w1;
 
-				/*std::cout << " d: " << dist << ", " << std::endl;
-				std::cout << -deltaX * w1 << std::endl;
-				
-				std::cout << "Corrected Inversion!" << std::endl;
-*/
+				tetrahedra[t].get_x(cI).position() -= (1.0f + 0.1f / dist) * dist * normal;
+				//tetrahedra[t].get_x(cI).previousPosition() -= (1.0f + 0.1f / dist) * dist * normal;
+
+				//std::cout << "Corrected Inversion!" << std::endl;
+
 				//RECOMPUTE F!
 				F = tetrahedra[t].getDeformationGradient();
+
+				if (F.determinant() < 0.0f)
+				{
+					tetrahedra[t].get_x(cI).position() += 2.0f * ((1.0f + 0.1f / dist) * dist * normal);
+					//tetrahedra[t].get_x(cI).previousPosition() += 2.0f * ((1.0f + 0.1f / dist) * dist * normal);
+					//for (int y = 0; y < 4; ++y)
+					//{
+					//	if (y == cI)
+					//	{
+					//		std::cout << tetrahedra[t].get_x(y).position() - (1.0f + 0.1f / dist) * dist * normal << std::endl << "---" << std::endl;
+					//	}
+					//	else
+					//	{
+					//		std::cout << tetrahedra[t].get_x(y).position() << std::endl << "---" << std::endl;
+					//	}
+					//	std::cout << "Inv M: " << tetrahedra[t].get_x(y).inverseMass() << std::endl;
+					//}
+					//std::cout << "Correction: " << (1.0f + 0.1f / dist) * dist * normal << std::endl;
+					//std::cout << "Ci: " << cI << std::endl;
+					////std::cout << "Normal: " << std::endl << normal << std::endl;
+					//std::cout << "Distance: " << dist << std::endl;
+					////std::cout << "!!!!!: " << cI << std::endl;
+					//std::cout << "_______________________________" << std::endl;
+					//continue;
+				}
+
+				//continue;
 			}
+
+			//continue;
+			F = tetrahedra[t].getDeformationGradient();
 
 			//Compute volume
 			float Volume = tetrahedra[t].getUndeformedVolume();
-
-			//Deal with degenerate elements
-			//if (std::abs(Volume) < 0.1f)
-			//{
-			//	float dist;
-
-			//	Eigen::Vector3f normal;
-
-			//	int cI = smallestDistanceToOppositePlane(tetrahedra[t], dist, normal);
-
-			//	//std::cout << "ci: " << cI << std::endl;
-
-			//	w1 = tetrahedra[t].get_x(cI).inverseMass();
-			//	x1 = tetrahedra[t].get_x(cI).position();
-
-			//	w2 = 0.0;
-			//	x2 = tetrahedra[t].get_x(cI).position() + 2.0f * dist * normal;
-
-			//	computeDeltaXPositionConstraint(w1, w2, 1e-8f,
-			//		x1, x2, temp, deltaX);
-			//	tetrahedra[t].get_x(cI).position() += -deltaX * w1;
-			//	tetrahedra[t].get_x(cI).previousPosition() += -deltaX * w1;
-
-			//	//std::cout << " d: " << dist << ", " << std::endl;
-			//	//std::cout << -deltaX * w1 << std::endl;
-
-			//	//RECOMPUTE F!
-			//	F = tetrahedra[t].getDeformationGradient();
-			//}
 
 			FInverseTranspose = F.inverse().transpose();
 			FTransposeF = F.transpose() * F;
@@ -2970,25 +2997,25 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			PF = PF * 2.0f - vMult;
 
 			PF *= F;
-			float limit = 200.0f;
+			//float limit = 20.0f;
 
-			for (int row = 0; row < 3; ++row)
-			{
-				for (int col = 0; col < 3; ++col)
-				{
-					if (std::abs(PF(row, col)) > limit)
-					{
-						if (PF(row, col) < 0.0f)
-						{
-							F(row, col) = -limit;
-						}
-						else
-						{
-							PF(row, col) = limit;
-						}
-					}
-				}
-			}
+			//for (int row = 0; row < 3; ++row)
+			//{
+			//	for (int col = 0; col < 3; ++col)
+			//	{
+			//		if (std::abs(PF(row, col)) > limit)
+			//		{
+			//			if (PF(row, col) < 0.0f)
+			//			{
+			//				F(row, col) = -limit;
+			//			}
+			//			else
+			//			{
+			//				PF(row, col) = limit;
+			//			}
+			//		}
+			//	}
+			//}
 
 			//PF GRADIENT ---------------------------------------------------------------------------------------------------------------
 
@@ -3030,14 +3057,23 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//std::cout << "Gradient: " << std::endl;
 			//std::cout << gradient << std::endl;
 			//std::cout << "LaM: " << lagrangeM << std::endl;
+			//std::cout << "---------------------------------" << std::endl;
 
 
-			if (std::isnan(lagrangeM) || std::isinf(lagrangeM) || isInverted)
+			if (std::isnan(lagrangeM) || std::isinf(lagrangeM))
 			{
 				//std::cout << "F: " << std::endl;
 				//std::cout << F << std::endl;
-				//std::cout << "strainEnergy: " << strainEnergy << std::endl;
-				//std::cout << lagrangeM << "; ERROR!" << std::endl;
+				//std::cout << "det: " << F.determinant() << std::endl;
+				//std::cout << "vol: " << Volume << std::endl;
+				//std::cout << "PF: " << std::endl;
+				//std::cout << PF << std::endl;
+				//std::cout << "Gradient: " << std::endl;
+				//std::cout << gradient << std::endl;
+				//std::cout << "LaM: " << lagrangeM << std::endl;
+				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+
+				//std::cout << "---------------------------------" << std::endl;
 				continue;
 			}
 			else
