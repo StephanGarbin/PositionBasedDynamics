@@ -66,6 +66,8 @@ void initTest_3(Parameters& params, IOParameters& paramsIO);
 void initTest_4(Parameters& params, IOParameters& paramsIO);
 void initTest_5(Parameters& params, IOParameters& paramsIO);
 
+void initTest_6(Parameters& params, IOParameters& paramsIO);
+
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
 {
@@ -129,6 +131,9 @@ bool parseTerminalParameters(const int argc, char* argv[],
 	case 5:
 		initTest_5(params, paramsIO);
 		break;
+	case 6:
+		initTest_6(params, paramsIO);
+		break;
 	default:
 		break;
 	}
@@ -167,7 +172,12 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 
 		return true;
 	}
-	if (params.TEST_IDX == 5)
+	else if (params.TEST_IDX == 5)
+	{
+		MeshCreator::generateTetBar(particles, tetrahedra, 5, 3, 3);
+		return true;
+	}
+	else if (params.TEST_IDX == 6)
 	{
 		MeshCreator::generateTetBar(particles, tetrahedra, 10, 6, 6);
 		return true;
@@ -593,6 +603,104 @@ void initTest_5(Parameters& params, IOParameters& paramsIO)
 	else if (params.TEST_VERSION == 1)
 	{
 		
+	}
+	//else if (params.TEST_VERSION == 2)
+	//{
+	//	params.solverSettings.alpha = 0.5f;
+	//}
+	//else if (params.TEST_VERSION == 3)
+	//{
+	//	params.solverSettings.alpha = 0.75f;
+	//}
+	//else if (params.TEST_VERSION == 4)
+	//{
+	//	params.solverSettings.alpha = 1.0f;
+	//}
+}
+
+void initTest_6(Parameters& params, IOParameters& paramsIO)
+{
+	params.maxFrames = 100000;
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+
+	params.solverSettings.poissonRatio = 0.3f;
+	params.solverSettings.youngsModulus = 10.0f;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	params.zoom = 0.5f;
+
+
+	params.disableSolver = false;
+	params.solverSettings.disableConstraintProjection = false;
+	params.solverSettings.disablePositionCorrection = false;
+	//params.applyInitialDeformationToMesh = true;
+	//params.frame2ApplyInitialDeformation = 100;
+	//params.frame2DisApplyInitialDeformation = 500;
+
+	params.solverSettings.numConstraintIts = 25;
+	params.numMillisecondsToWaitBetweenFrames = 0;
+	//params.solverSettings.forceMultiplicationFactor = 10000.2;
+	//params.solverSettings.externalForce.x() = 1.0f;
+	//params.solverSettings.trackS = true;
+	//params.solverSettings.trackF = true;
+	//params.solverSettings.trackPF = true;
+
+	//params.solverSettings.forceMultiplicationFactor = 1.0f;
+	//params.solverSettings.externalForce.x() = 1.0f;
+	params.solverSettings.useFullPronySeries = false;
+	params.solverSettings.alpha = 0.0f;
+	params.solverSettings.rho = 0.0f;
+
+	//params.invertSingleElementAtStart = true;
+
+	if (params.TEST_VERSION == 0)
+	{
+		params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
+
+		//params.solverSettings.disablePositionCorrection = true;
+		params.solverSettings.MR_f_active = 1.0f;
+		params.solverSettings.MR_f_passive = 1.0f;
+		params.solverSettings.MR_alpha = 0.0f;
+		params.solverSettings.MR_A = 3.0f;
+		params.solverSettings.MR_B = 1.0f;
+		params.solverSettings.MR_J = 1.0f;
+		params.solverSettings.MR_K = 6.0f;
+		params.solverSettings.MR_T = 1.0f;
+		params.solverSettings.MR_a = Eigen::Vector3f(1.0f, 0.0f, 0.0f).normalized();
+
+		params.solverSettings.MR_A0.setZero();
+		params.solverSettings.MR_A0(0, 0) = 1.0f;
+
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
+
+		//params.solverSettings.disablePositionCorrection = true;
+		params.solverSettings.MR_f_active = 1.0f;
+		params.solverSettings.MR_f_passive = 1.0f;
+		params.solverSettings.MR_alpha = 0.0f;
+		params.solverSettings.MR_A = 3.0f;
+		params.solverSettings.MR_B = 1.0f;
+		params.solverSettings.MR_J = 1.0f;
+		params.solverSettings.MR_K = 6.0f;
+		params.solverSettings.MR_T = 1.0f;
+		params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f).normalized();
+
+		params.solverSettings.MR_A0.setZero();
+		params.solverSettings.MR_A0(1, 1) = 1.0f;
+
 	}
 	//else if (params.TEST_VERSION == 2)
 	//{

@@ -120,8 +120,8 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 float
 PBDSolver::calculateTotalStrainEnergy(std::vector<PBDTetrahedra3d>& tetrahedra,
-	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings, int it,
-	std::ofstream& file)
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings, int it,
+std::ofstream& file)
 {
 	Eigen::Matrix3f F;
 	Eigen::Matrix3f FInverseTranspose;
@@ -256,7 +256,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 		for (int it = 0; it < settings.numConstraintIts; ++it)
 		{
 			for (int t = 0; t < tetrahedra.size(); ++t)
-			//for (int t = settings.numTetrahedra - 1; t >= 0; --t)
+				//for (int t = settings.numTetrahedra - 1; t >= 0; --t)
 			{
 				for (int innerT = 0; innerT < settings.numTetrahedraIterations; ++innerT)
 				{
@@ -807,114 +807,114 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 
 void
 PBDSolver::projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
-	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
-	std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences)
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences)
 {
-		Eigen::Matrix3f F;
-		Eigen::Matrix3f FInverseTranspose;
-		Eigen::Matrix3f FTransposeF;
+	Eigen::Matrix3f F;
+	Eigen::Matrix3f FInverseTranspose;
+	Eigen::Matrix3f FTransposeF;
 
-		Eigen::Matrix3f PF;
-		Eigen::Matrix3f gradientTemp;
-		Eigen::MatrixXf gradient; gradient.resize(3, 4);
+	Eigen::Matrix3f PF;
+	Eigen::Matrix3f gradientTemp;
+	Eigen::MatrixXf gradient; gradient.resize(3, 4);
 
-		Eigen::Matrix3f U;
-		Eigen::Matrix3f V;
-		bool isInverted;
+	Eigen::Matrix3f U;
+	Eigen::Matrix3f V;
+	bool isInverted;
 
-		Eigen::Vector3f deltaX;
+	Eigen::Vector3f deltaX;
 
-		std::ofstream strainEnergyfile;
+	std::ofstream strainEnergyfile;
 
-		if (settings.printStrainEnergyToFile)
+	if (settings.printStrainEnergyToFile)
+	{
+		std::stringstream ss;
+		ss << "C:/Users/Stephan/Documents/MATLAB/dissertation/pbd/strainEnergyDebug/strainEnergySOR_" << m_currentFrame << ".txt";
+		strainEnergyfile.open(ss.str());
+		ss.clear();
+	}
+
+	if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
+	{
+		calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
+	}
+
+	for (int it = 0; it < settings.numConstraintIts; ++it)
+	{
+		//reset the accmulator arrays
+		for (int t = 0; t < particles->size(); ++t)
 		{
-			std::stringstream ss;
-			ss << "C:/Users/Stephan/Documents/MATLAB/dissertation/pbd/strainEnergyDebug/strainEnergySOR_" << m_currentFrame << ".txt";
-			strainEnergyfile.open(ss.str());
-			ss.clear();
+			temporaryPositions[t].setZero();
+			numConstraintInfluences[t] = 0;
+		}
+
+		boost::thread_group threads;
+
+		int numThreads = 4;
+
+		int stepSize = tetrahedra.size() / numThreads;
+
+		mutexStruct mutexInstance;
+		//std::cout << settings.numTetrahedra << std::endl;
+		for (int t = 0; t < tetrahedra.size(); t += stepSize)
+		{
+			threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
+				boost::ref(temporaryPositions), boost::ref(numConstraintInfluences),
+				0, tetrahedra.size() - 1));
+			//if (t < settings.numTetrahedra - stepSize - 1)
+			//{
+			//	threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
+			//		boost::ref(temporaryPositions), boost::ref(numConstraintInfluences),
+			//		t, t + stepSize - 1));
+			//	//std::cout << t << "; " << t + stepSize - 1 << std::endl;
+			//}
+			//else
+			//{
+			//	threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
+			//		boost::ref(temporaryPositions), boost::ref(numConstraintInfluences),
+			//		t, settings.numTetrahedra - 1));
+			//	//std::cout << t << "; " << settings.numTetrahedra - 1 << std::endl;
+			//	continue;
+			//}
+		};
+
+		threads.join_all();
+
+		for (int t = 0; t < tetrahedra.size(); ++t)
+		{
+			for (int cI = 0; cI < 4; ++cI)
+			{
+
+				if (tetrahedra[t].get_x(cI).inverseMass() != 0)
+				{
+					if (numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]] != 0)
+					{
+						//tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] * settings.w) / (numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]] / 4.0f); 
+						tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]]);
+						//std::cout << temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] << std::endl;
+					}
+				}
+			}
 		}
 
 		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
 		{
-			calculateTotalStrainEnergy(tetrahedra, particles, settings, -1, strainEnergyfile);
-		}
-
-		for (int it = 0; it < settings.numConstraintIts; ++it)
-		{
-			//reset the accmulator arrays
-			for (int t = 0; t < particles->size(); ++t)
-			{
-				temporaryPositions[t].setZero();
-				numConstraintInfluences[t] = 0;
-			}
-
-			boost::thread_group threads;
-
-			int numThreads = 4;
-
-			int stepSize = tetrahedra.size() / numThreads;
-
-			mutexStruct mutexInstance;
-			//std::cout << settings.numTetrahedra << std::endl;
-			for (int t = 0; t < tetrahedra.size(); t += stepSize)
-			{
-				threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
-					boost::ref(temporaryPositions), boost::ref(numConstraintInfluences),
-					0, tetrahedra.size() - 1));
-				//if (t < settings.numTetrahedra - stepSize - 1)
-				//{
-				//	threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
-				//		boost::ref(temporaryPositions), boost::ref(numConstraintInfluences),
-				//		t, t + stepSize - 1));
-				//	//std::cout << t << "; " << t + stepSize - 1 << std::endl;
-				//}
-				//else
-				//{
-				//	threads.create_thread(boost::bind(projectConstraintsSOR_CORE, boost::ref(mutexInstance), boost::ref(tetrahedra), boost::ref(particles), boost::ref(settings),
-				//		boost::ref(temporaryPositions), boost::ref(numConstraintInfluences),
-				//		t, settings.numTetrahedra - 1));
-				//	//std::cout << t << "; " << settings.numTetrahedra - 1 << std::endl;
-				//	continue;
-				//}
-			};
-			
-			threads.join_all();
-
-			for (int t = 0; t < tetrahedra.size(); ++t)
-			{
-				for (int cI = 0; cI < 4; ++cI)
-				{
-
-					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
-					{
-						if (numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]] != 0)
-						{
-							//tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] * settings.w) / (numConstraintInfluences[tetrahedra[t].getVertexIndices()[cI]] / 4.0f); 
-							tetrahedra[t].get_x(cI).position() += (temporaryPositions[tetrahedra[t].getVertexIndices()[cI]]);
-							//std::cout << temporaryPositions[tetrahedra[t].getVertexIndices()[cI]] << std::endl;
-						}
-					}
-				}
-			}
-
-			if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
-			{
-				calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
-			}
-		}
-
-		if (settings.printStrainEnergyToFile)
-		{
-			strainEnergyfile.close();
+			calculateTotalStrainEnergy(tetrahedra, particles, settings, it, strainEnergyfile);
 		}
 	}
+
+	if (settings.printStrainEnergyToFile)
+	{
+		strainEnergyfile.close();
+	}
+}
 
 
 void
 projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& tetrahedra,
-	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
-	std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
-	int start, int end)
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
+int start, int end)
 {
 	Eigen::Matrix3f F;
 	Eigen::Matrix3f FInverseTranspose;
@@ -969,7 +969,7 @@ projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& 
 		//	+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 		computeGreenStrainAndPiolaStressInversion(F, FTransposeF, U, V, Volume, settings.mu, settings.lambda, PF, epsilon, strainEnergy, -1);
 
-		
+
 
 
 		//std::cout << "Current Volume: " << tetrahedra[t].getVolume();
@@ -1009,7 +1009,7 @@ projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& 
 			lagrangeM = 0.0;
 		}
 
-		
+
 		boost::mutex::scoped_lock lock(sorMutex.m_mutexSOR);
 		for (int cI = 0; cI < 4; ++cI)
 		{
@@ -1217,7 +1217,7 @@ const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &s
 {
 	//Compute Eigendecomposition
 	Eigen::Vector3f S;
-	
+
 	Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
 	epsilon = eigenSolver.pseudoEigenvalueMatrix();
 	S[0] = epsilon(0, 0);
@@ -1349,7 +1349,7 @@ const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &s
 	// Clamp small singular values
 	//const float minXVal = 0.577f;
 	const float minXVal = 0.177f;
-	
+
 	// epsilon for hatF
 	Eigen::Vector3f epsilonHatF(0.5f*(hatF[0] * hatF[0] - 1.0f), 0.5f*(hatF[1] * hatF[1] - 1.0f), 0.5f*(hatF[2] * hatF[2] - 1.0f));
 
@@ -1418,8 +1418,8 @@ const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &s
 
 void
 PBDSolver::computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
-	const float restVolume,
-	const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy)
+const float restVolume,
+const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy)
 {
 	// epsilon = 1/2 F^T F - I
 
@@ -1453,7 +1453,7 @@ PBDSolver::computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
 
 void
 PBDSolver::projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
-	std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k)
+std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k)
 {
 	float w1;
 	float w2;
@@ -1465,7 +1465,7 @@ PBDSolver::projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
 	Eigen::Vector3f deltaX;
 
 	Eigen::Vector3f temp;
-	
+
 	float stiffnessMultiplier;
 
 
@@ -1553,8 +1553,8 @@ PBDSolver::projectConstraintsDistance(std::vector<PBDTetrahedra3d>& tetrahedra,
 
 void
 PBDSolver::projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tetrahedra,
-	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
-	std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
+std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 {
 	float w1;
 	float w2;
@@ -2363,7 +2363,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& s
 			float logI3 = log(I3);
 
 			//Compute Stress tensor
-			
+
 			PF = settings.mu * F - settings.mu * FInverseTranspose
 				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
@@ -2688,7 +2688,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k
 			//m3 = 1.0f;
 			//m4 = 1.0f;
 
-			if(solveVolumeConstraint(p0, m1, p1, m2, p2, m3, p3, m4, tetrahedra[t].getUndeformedVolumeAlternative(),
+			if (solveVolumeConstraint(p0, m1, p1, m2, p2, m3, p3, m4, tetrahedra[t].getUndeformedVolumeAlternative(),
 				1.0f,
 				1.0f,
 				corr0, corr1, corr2, corr3))
@@ -2831,6 +2831,10 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 	Eigen::Vector3f deltaX;
 
+	//Mooney-Rivlin
+	Eigen::Matrix3f C;
+
+
 	std::ofstream strainEnergyfile;
 
 	if (settings.printStrainEnergyToFile)
@@ -2854,6 +2858,8 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 		for (int t = 0; t < tetrahedra.size(); ++t)
 		{
 			float lagrangeM;
+			float strainEnergy;
+			float Volume;
 
 			//Get deformation gradient
 			F = tetrahedra[t].getDeformationGradient();
@@ -2878,11 +2884,11 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//		}
 			//	}
 			//}
-			
+
 			F = tetrahedra[t].getDeformationGradient();
 
 			//Deal with inverted elements
-			if (F.determinant() < 0.0 )
+			if (F.determinant() < 0.0)
 			{
 				continue;
 				float dist;
@@ -2893,30 +2899,15 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 				dist = std::abs(dist);
 
-				//std::cout << "ci: " << cI << std::endl;
-
-				/*w1 = tetrahedra[t].get_x(cI).inverseMass();
-				x1 = tetrahedra[t].get_x(cI).position();
-
-				w2 = 0.0;
-				x2 = tetrahedra[t].get_x(cI).position() + (1.0f + 0.1f / dist) * dist * normal;*/
-
-				//computeDeltaXPositionConstraint(w1, w2, 0.0f,
-				//	x1, x2, temp, deltaX);
-				//tetrahedra[t].get_x(cI).position() += -deltaX * w1;
-				//tetrahedra[t].get_x(cI).previousPosition() += -deltaX * w1;
-
-				tetrahedra[t].get_x(cI).position() -= (1.0f + 0.1f / dist) * dist * normal;
+				tetrahedra[t].get_x(cI).position() -= (1.0f + 0.05f / dist) * dist * normal;
 				//tetrahedra[t].get_x(cI).previousPosition() -= (1.0f + 0.1f / dist) * dist * normal;
-
-				//std::cout << "Corrected Inversion!" << std::endl;
 
 				//RECOMPUTE F!
 				F = tetrahedra[t].getDeformationGradient();
 
 				if (F.determinant() < 0.0f)
 				{
-					tetrahedra[t].get_x(cI).position() += 2.0f * ((1.0f + 0.1f / dist) * dist * normal);
+					tetrahedra[t].get_x(cI).position() += 2.0f * ((1.0f + 0.05f / dist) * dist * normal);
 					//tetrahedra[t].get_x(cI).previousPosition() += 2.0f * ((1.0f + 0.1f / dist) * dist * normal);
 					//for (int y = 0; y < 4; ++y)
 					//{
@@ -2938,35 +2929,122 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 					//std::cout << "_______________________________" << std::endl;
 					//continue;
 				}
-
-				//continue;
+				//tetrahedra[t].get_x(cI).inverseMass() = 0.0000000000001f;
+				continue;
 			}
 
 			//continue;
-			F = tetrahedra[t].getDeformationGradient();
-
-			//Compute volume
-			float Volume = tetrahedra[t].getUndeformedVolume();
-
+			//F = tetrahedra[t].getDeformationGradient();
 			FInverseTranspose = F.inverse().transpose();
 			FTransposeF = F.transpose() * F;
 
-			//Compute Isotropic Invariants
-			float I1 = (FTransposeF).trace();
-			float I3 = (FTransposeF).determinant();
+			switch (settings.materialModel)
+			{
+			case PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN:
+			{
+				Volume = tetrahedra[t].getUndeformedVolume();
 
-			float logI3 = log(I3);
+				//Compute Isotropic Invariants
+				float I1 = (FTransposeF).trace();
+				float I3 = (FTransposeF).determinant();
 
-			PF = settings.mu * F - settings.mu * FInverseTranspose
-				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+				float logI3 = log(I3);
 
-			PF *= FInverseTranspose.transpose();
+				PF = settings.mu * F - settings.mu * FInverseTranspose
+				   + ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
-			//Compute Strain Energy density field
-			float strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+				//Compute Strain Energy density field
+				strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+
+			}
+			break;
+			case PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER:
+			{
+				Volume = tetrahedra[t].getUndeformedVolume();
+
+				//Compute Isotropic Invariants
+				float I1 = (FTransposeF).trace();
+				float I3 = (FTransposeF).determinant();
+
+				float logI3 = log(I3);
+
+
+				PF = settings.mu * F - settings.mu * FInverseTranspose
+					+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+
+				//Compute Strain Energy density field
+				strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+
+				//STRETCH ('pseudo-invariant' of C)
+				float lambda = std::sqrtf((settings.MR_a.transpose() * FTransposeF).dot(settings.MR_a));
+
+				//float term_fiberResponse = settings.MR_alpha * settings.MR_f_active * lambda + settings.MR_f_passive * lambda;
+
+				float greekLetter = 10.0f;
+
+				strainEnergy += (greekLetter / 2.0f) * std::pow(1.0f - lambda, 2.0f);
+				//PF += greekLetter * (lambda - 1.0f) * (lambda / 3.0f * FTransposeF.inverse());
+				PF += std::pow(F.determinant(), 2.0 / 3.0) * greekLetter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
+
+				//std::cout << "Lambda: " << lambda << std::endl;
+				//std::cout << "term_fiberResponse: " << term_fiberResponse << std::endl;
+				//std::cout << PF << std::endl;
+			}
+			break;
+			case PBDSolverSettings::CONSTITUTIVE_MODEL::MOONEY_RIVLIN:
+			{
+				float term_isotropic;
+				float term_incompressibility;
+				float term_fiberResponse;
+
+				C = std::powf(settings.MR_J, 2.0f / 3.0f) * FTransposeF;
+
+				float I1 = C.trace();
+				float I2 = 0.5f * (std::powf(I1, 2.0f) - (C * C).trace());
+				
+				float lambda = std::sqrtf((settings.MR_a.transpose() * C).dot(settings.MR_a));
+
+				float p = std::pow(std::log(settings.MR_J), 2.0f);
+
+				//Energy
+				term_isotropic = settings.MR_A * I1 + settings.MR_B * I2;
+
+				term_incompressibility = settings.MR_K * p;
+
+				term_fiberResponse = settings.MR_alpha * settings.MR_f_active * lambda + settings.MR_f_passive * lambda;
+
+				strainEnergy = term_isotropic;// +term_incompressibility;// +term_fiberResponse;
+				//strainEnergy = term_isotropic + term_fiberResponse;// +term_incompressibility;
+
+				//Stress
+				float Jc = std::pow(F.determinant(), -1.0f / 3.0f);
+				float Jcc = std::powf(Jc, 2.0f);
+
+				Eigen::Matrix3f I1_2 = Jcc * C;
+
+				float w1 = 4.0f * Jcc * settings.MR_A;
+				float w2 = 4.0f * std::powf(Jcc, 2.0f) * settings.MR_B;
+				float w12 = w1 + I1 * w2;
+
+				float pf = (w12 * C.trace() - w2 * (C * C).trace() + settings.MR_T * std::powf(lambda, 2.0f)) / 3.0f;
+
+				PF = w12 * F - w2 * (F * F * F);/*
+					+ (p - pf) * F.inverse();
+					+ 4.0f * Jcc * settings.MR_T * (F * settings.MR_a) * settings.MR_a.transpose();*/
+				//PF = w12 * F - w2 * (F * F * F)
+				//	+ 4.0f * Jcc * settings.MR_T * (F * settings.MR_a) * settings.MR_a.transpose();/*
+				//	+ (p - pf) * F.inverse();*/
+			}
+			break;
+			default:
+				std::cout << "ERROR: No Constitutive Model Selected!" << std::endl;
+				break;
+			}
 
 
 			//VISCOELASTICIY -----------------------------------------------------------------------------------------------------------
+			PF *= FInverseTranspose.transpose();
+
 			Eigen::Matrix3f vMult;
 
 			if (settings.useFullPronySeries)
@@ -2976,7 +3054,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 				for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
 				{
-					temp  += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+					temp += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
 						+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
 
 					tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
@@ -3048,18 +3126,6 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			lagrangeM = -(strainEnergy / denominator);
 
 
-			//std::cout << "F: " << std::endl;
-			//std::cout << F << std::endl;
-			//std::cout << "det: " << F.determinant() << std::endl;
-			//std::cout << "vol: " << Volume << std::endl;
-			//std::cout << "PF: " << std::endl;
-			//std::cout << PF << std::endl;
-			//std::cout << "Gradient: " << std::endl;
-			//std::cout << gradient << std::endl;
-			//std::cout << "LaM: " << lagrangeM << std::endl;
-			//std::cout << "---------------------------------" << std::endl;
-
-
 			if (std::isnan(lagrangeM) || std::isinf(lagrangeM))
 			{
 				//std::cout << "F: " << std::endl;
@@ -3078,6 +3144,12 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			}
 			else
 			{
+				//std::cout << "Gradient: " << std::endl;
+				//std::cout << gradient << std::endl;
+				//std::cout << "LaM: " << lagrangeM << std::endl;
+				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+
+				//std::cout << "---------------------------------" << std::endl;
 				for (int cI = 0; cI < 4; ++cI)
 				{
 					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
@@ -3087,15 +3159,10 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 							deltaX = (tetrahedra[t].get_x(cI).inverseMass()
 								* lagrangeM) * gradient.col(cI);
 
-							/*std::cout << cI << ": " << std::endl;
-							std::cout << deltaX << std::endl;*/
-
 							tetrahedra[t].get_x(cI).position() += deltaX;
 						}
 					}
 				}
-
-				//std::cout << "--------------------------------" << std::endl;
 			}
 		}
 

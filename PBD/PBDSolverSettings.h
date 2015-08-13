@@ -68,8 +68,32 @@ struct PBDSolverSettings
 	bool trackF;
 	bool trackPF;
 
+	enum CONSTITUTIVE_MODEL
+	{
+		NEO_HOOKEAN,
+		NEO_HOOKEAN_FIBER,
+		MOONEY_RIVLIN
+	};
+
+	CONSTITUTIVE_MODEL materialModel;
+
+	float MR_J;
+	float MR_A;
+	float MR_B;
+	float MR_K;
+	float MR_T;
+
+	float MR_f_active;
+	float MR_f_passive;
+	float MR_alpha;
+
+	Eigen::Vector3f MR_a;
+	Eigen::Matrix3f MR_A0;
+
 	void initialise()
 	{
+		
+		materialModel = NEO_HOOKEAN;
 		externalForce.setZero();
 		forceMultiplicationFactor = 0.0f;
 		externalPositionDelta.setZero();
