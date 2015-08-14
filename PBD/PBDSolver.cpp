@@ -2981,8 +2981,8 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 				strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(1.0f - lambda, 2.0f);
 
-				PF += std::pow(F.determinant(), 2.0 / 3.0) * settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
-
+				//PF += std::pow(F.determinant(), 2.0 / 3.0) * settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
+				PF += settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
 			}
 			break;
 			case PBDSolverSettings::CONSTITUTIVE_MODEL::MOONEY_RIVLIN:

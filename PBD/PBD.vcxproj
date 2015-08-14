@@ -178,6 +178,7 @@
     <ClCompile Include="commonMath.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
     <ClCompile Include="FEMSimulator.cpp" />
+    <ClCompile Include="FiberMesh.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
@@ -203,6 +204,7 @@
     <ClInclude Include="dVector.h" />
     <ClInclude Include="EnergyConstraint.h" />
     <ClInclude Include="FEMSimulator.h" />
+    <ClInclude Include="FiberMesh.h" />
     <ClInclude Include="GLUTHelper.h" />
     <ClInclude Include="IOParameters.h" />
     <ClInclude Include="lodepng.h" />

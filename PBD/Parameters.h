@@ -62,6 +62,9 @@ struct Parameters
 	//Settings for the solver
 	PBDSolverSettings solverSettings;
 
+	//Fiber Mesh
+	bool createFiberMesh;
+
 	void initialiseToDefaults()
 	{
 		disableSolver = false;
@@ -78,6 +81,7 @@ struct Parameters
 		useFEMSolver = false;
 		writeToAlembic = true;
 		printStrainEnergyToFile = false;
+		createFiberMesh = false;
 
 		collapseMeshAtStart = false;
 		dimToCollapse = 1;

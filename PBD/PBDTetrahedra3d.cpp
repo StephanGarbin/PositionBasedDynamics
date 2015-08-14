@@ -257,3 +257,68 @@ PBDTetrahedra3d::getUndeformedSideLength(int idx)
 {
 	return m_undeformedSideLengths[idx];
 }
+
+
+Eigen::Vector3f&
+PBDTetrahedra3d::getFaceVertex(int face, int vertex)
+{
+	switch (face)
+	{
+	case 0:
+		switch (vertex)
+		{
+		case 0:
+			return pbdx1;
+			break;
+		case 1:
+			return pbdx2;
+			break;
+		case 2:
+			return pbdx3;
+			break;
+		}
+		break;
+	case 1:
+		switch (vertex)
+		{
+		case 0:
+			return pbdx2;
+			break;
+		case 1:
+			return pbdx4;
+			break;
+		case 2:
+			return pbdx3;
+			break;
+		}
+		break;
+	case 2:
+		switch (vertex)
+		{
+		case 0:
+			return pbdx2;
+			break;
+		case 1:
+			return pbdx1;
+			break;
+		case 2:
+			return pbdx4;
+			break;
+		}
+		break;
+	case 3:
+		switch (vertex)
+		{
+		case 0:
+			return pbdx1;
+			break;
+		case 1:
+			return pbdx3;
+			break;
+		case 2:
+			return pbdx4;
+			break;
+		}
+		break;
+	}
+}

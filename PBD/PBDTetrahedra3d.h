@@ -58,6 +58,8 @@ public:
 		}
 	}
 
+	Eigen::Vector3f& getFaceVertex(int face, int vertex);
+
 	void glRender(double r, double g, double b);
 private:
 

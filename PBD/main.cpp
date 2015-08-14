@@ -1,3 +1,5 @@
+#define _USE_MATH_DEFINES
+
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -29,6 +31,7 @@
 #include "IOParameters.h"
 
 #include "AppHelper.h"
+#include "FiberMesh.h"
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
@@ -37,6 +40,7 @@ std::vector<Eigen::Vector3f> initialPositions;
 std::vector<int> numConstraintInfluences;
 std::vector<PBDProbabilisticConstraint> probabilisticConstraints;
 std::vector<std::vector<Eigen::Vector2f>> trackingData;
+std::shared_ptr<FiberMesh> fiberMesh;
 
 PBDSolver solver;
 FEMSimulator FEMsolver;
@@ -53,6 +57,8 @@ void disapplyInitialDeformationToMesh();
 void applyContinuousDeformationToMesh();
 
 void collapseMesh();
+
+void createFiberMesh();
 
 void invertSingleElementAtStart();
 
@@ -235,6 +241,11 @@ void mainLoop()
 	if (parameters.collapseMeshAtStart)
 	{
 		collapseMesh();
+	}
+
+	if (parameters.createFiberMesh)
+	{
+		createFiberMesh();
 	}
 
 	parameters.solverSettings.calculateLambda();
@@ -462,6 +473,23 @@ void invertSingleElementAtStart()
 			(*particles)[3].inverseMass() = 1.0f;
 		}
 	}
+}
+
+void createFiberMesh()
+{
+	if (parameters.getCurrentFrame() != 1)
+	{
+		return;
+	}
+
+	fiberMesh = std::make_shared <FiberMesh>(particles, &tetrahedra);
+
+	Eigen::Vector3f origin(0.0f, 0.0f, 0.0f);
+	Eigen::Vector3f dimension(5.0f, 3.0f, 3.0f);
+	Eigen::Vector3f rotation(0.0f, 0.0f, M_PI / 2.0f);
+
+	fiberMesh->generateFibersToFillCube(origin, rotation, dimension,
+		2, 2, 0.0f, false);
 }
 
 int main(int argc, char* argv[])

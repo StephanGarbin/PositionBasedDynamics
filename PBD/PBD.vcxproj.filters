@@ -60,6 +60,9 @@
     <ClCompile Include="commonMath.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FiberMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dVector.h">
@@ -132,6 +135,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="commonMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiberMesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
