@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "PBDSolverTracker.h"
+#include "commonMath.h"
 
 struct PBDSolverSettings
 {
@@ -87,6 +88,7 @@ struct PBDSolverSettings
 	float MR_f_passive;
 	float MR_alpha;
 
+	float anisotropyParameter;
 	Eigen::Vector3f MR_a;
 	Eigen::Matrix3f MR_A0;
 
@@ -98,6 +100,7 @@ struct PBDSolverSettings
 		forceMultiplicationFactor = 0.0f;
 		externalPositionDelta.setZero();
 		positionDeltaMultiplicationFactor = 0.0f;
+		anisotropyParameter = 0.0f;
 
 		disableConstraintProjection = false;
 		disablePositionCorrection = false;
@@ -141,6 +144,13 @@ struct PBDSolverSettings
 	void calculateMu()
 	{
 		mu = youngsModulus / (2.0f * (1.0f + poissonRatio));
+	}
+
+	void calculateFiberStructureTensor()
+	{
+		MR_a.normalize();
+
+		MR_A0 = kroneckerProduct(MR_a, MR_a);
 	}
 
 	float getCurrentTime() const

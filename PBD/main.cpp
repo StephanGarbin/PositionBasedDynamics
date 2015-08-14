@@ -239,6 +239,7 @@ void mainLoop()
 
 	parameters.solverSettings.calculateLambda();
 	parameters.solverSettings.calculateMu();
+	parameters.solverSettings.calculateFiberStructureTensor();
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
 
@@ -550,6 +551,8 @@ int main(int argc, char* argv[])
 	TwAddVarRW(solverSettings, "constraintIts", TW_TYPE_INT32, &parameters.solverSettings.numConstraintIts,
 		" label='Constraint Iterations' min=1 max=100 step=1 keyIncr=s keyDecr=S help='Internal Solver Constraint Iterations (5 is stable)' ");
 
+	TwAddSeparator(solverSettings, NULL, NULL);
+	TwAddButton(solverSettings, "comment0", NULL, NULL, " label='Elasticity' ");
 	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &parameters.solverSettings.youngsModulus,
 		" label='Youngs Modulus' min=0.0 max=1000.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
 
@@ -557,11 +560,19 @@ int main(int argc, char* argv[])
 		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");
 
 	TwAddSeparator(solverSettings, NULL, NULL);
-
+	TwAddButton(solverSettings, "comment1", NULL, NULL, " label='Viscoelasticity' ");
 	TwAddVarRW(solverSettings, "Alpha", TW_TYPE_FLOAT, &parameters.solverSettings.alpha,
 		" label='Alpha' min=0.0 max=1.0 step=0.01 keyIncr=s keyDecr=S help='Alpha' ");
 	TwAddVarRW(solverSettings, "Rho", TW_TYPE_FLOAT, &parameters.solverSettings.rho,
 		" label='Rho' min=0.0 max=100 step=0.01 keyIncr=s keyDecr=S help='Rho' ");
+
+	TwAddSeparator(solverSettings, NULL, NULL);
+	TwAddButton(solverSettings, "comment2", NULL, NULL, " label='Anisotropy' ");
+	TwAddVarRW(solverSettings, "AnisotropyStrength", TW_TYPE_FLOAT, &parameters.solverSettings.anisotropyParameter,
+		" label='Strength' min=0.0 max=10000 step=0.01 keyIncr=s keyDecr=S help='Strength of Anisotropic Material Component' ");
+
+	TwAddVarRW(solverSettings, "AnistropyDir", TW_TYPE_DIR3F, &parameters.solverSettings.MR_a[0],
+		" label='Dir' help='Direction of Material Anisotropy' ");
 
 	TwAddSeparator(solverSettings, NULL, NULL);
 

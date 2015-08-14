@@ -57,6 +57,9 @@
     <ClCompile Include="TrackerIO.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="commonMath.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dVector.h">
@@ -126,6 +129,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PBDSolverTracker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="commonMath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

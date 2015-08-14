@@ -679,9 +679,7 @@ void initTest_6(Parameters& params, IOParameters& paramsIO)
 		params.solverSettings.MR_T = 1.0f;
 		params.solverSettings.MR_a = Eigen::Vector3f(1.0f, 0.0f, 0.0f).normalized();
 
-		params.solverSettings.MR_A0.setZero();
-		params.solverSettings.MR_A0(0, 0) = 1.0f;
-
+		params.solverSettings.anisotropyParameter = 1.0f;
 	}
 	else if (params.TEST_VERSION == 1)
 	{
@@ -701,6 +699,7 @@ void initTest_6(Parameters& params, IOParameters& paramsIO)
 		params.solverSettings.MR_A0.setZero();
 		params.solverSettings.MR_A0(1, 1) = 1.0f;
 
+		params.solverSettings.anisotropyParameter = 1.0f;
 	}
 	//else if (params.TEST_VERSION == 2)
 	//{

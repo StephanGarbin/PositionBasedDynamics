@@ -175,6 +175,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AbcWriter.cpp" />
+    <ClCompile Include="commonMath.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
     <ClCompile Include="FEMSimulator.cpp" />
     <ClCompile Include="lodepng.cpp" />
@@ -195,6 +196,7 @@
   <ItemGroup>
     <ClInclude Include="AbcWriter.h" />
     <ClInclude Include="AppHelper.h" />
+    <ClInclude Include="commonMath.h" />
     <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="CUDAPBD_SolverSettings.h" />
     <ClInclude Include="CUDA_WRAPPER.h" />

@@ -2968,7 +2968,6 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 				float logI3 = log(I3);
 
-
 				PF = settings.mu * F - settings.mu * FInverseTranspose
 					+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
@@ -2980,15 +2979,10 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 				//float term_fiberResponse = settings.MR_alpha * settings.MR_f_active * lambda + settings.MR_f_passive * lambda;
 
-				float greekLetter = 10.0f;
+				strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(1.0f - lambda, 2.0f);
 
-				strainEnergy += (greekLetter / 2.0f) * std::pow(1.0f - lambda, 2.0f);
-				//PF += greekLetter * (lambda - 1.0f) * (lambda / 3.0f * FTransposeF.inverse());
-				PF += std::pow(F.determinant(), 2.0 / 3.0) * greekLetter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
+				PF += std::pow(F.determinant(), 2.0 / 3.0) * settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
 
-				//std::cout << "Lambda: " << lambda << std::endl;
-				//std::cout << "term_fiberResponse: " << term_fiberResponse << std::endl;
-				//std::cout << PF << std::endl;
 			}
 			break;
 			case PBDSolverSettings::CONSTITUTIVE_MODEL::MOONEY_RIVLIN:
