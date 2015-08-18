@@ -70,6 +70,11 @@ void initTest_6(Parameters& params, IOParameters& paramsIO);
 
 void initTest_7(Parameters& params, IOParameters& paramsIO);
 
+void initTest_8(Parameters& params, IOParameters& paramsIO);
+
+//Average DeltaX Length Measure
+void initTest_9(Parameters& params, IOParameters& paramsIO);
+
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
 {
@@ -139,6 +144,12 @@ bool parseTerminalParameters(const int argc, char* argv[],
 	case 7:
 		initTest_7(params, paramsIO);
 		break;
+	case 8:
+		initTest_8(params, paramsIO);
+		break;
+	case 9:
+		initTest_9(params, paramsIO);
+		break;
 	default:
 		break;
 	}
@@ -187,9 +198,14 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 		MeshCreator::generateTetBar(particles, tetrahedra, 10, 6, 6);
 		return true;
 	}
-	else if (params.TEST_IDX == 6)
+	else if (params.TEST_IDX == 7 || params.TEST_IDX == 8)
 	{
 		MeshCreator::generateTetBar(particles, tetrahedra, 5, 3, 3);
+		return true;
+	}
+	else if (params.TEST_IDX == 9)
+	{
+		MeshCreator::generateTetBar(particles, tetrahedra, 10, 4, 4);
 		return true;
 	}
 	else
@@ -258,7 +274,7 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.gravity = -9.81f;
 	params.solverSettings.externalForce.setZero();
 	params.solverSettings.forceMultiplicationFactor = 0.0f;
-	params.solverSettings.rho = 0.5f;
+	params.solverSettings.rho = 1.0f;
 	params.solverSettings.numTetrahedraIterations = 0;
 	params.solverSettings.correctStrongForcesWithSubteps = false;
 	params.solverSettings.useGeometricConstraintLimits = false;
@@ -326,7 +342,7 @@ void initTest_1(Parameters& params, IOParameters& paramsIO)
 
 	params.solverSettings.forceMultiplicationFactor = 1.0f;
 	params.solverSettings.externalForce.x() = 1.0f;
-	params.solverSettings.rho = 0.1f;
+	params.solverSettings.rho = 0.0f;
 
 	if (params.TEST_VERSION == 0)
 	{
@@ -380,7 +396,7 @@ void initTest_2(Parameters& params, IOParameters& paramsIO)
 	params.applyInitialDeformationToMesh = false;
 	params.applyContinuousDeformationToMesh = true;
 	params.continuousDeformationRelaxationFrame = 500;
-	params.continuousDeformationStrainIncreaseFactor = 0.01f;
+	params.continuousDeformationStrainIncreaseFactor = 0.001f;
 	params.frame2ApplyInitialDeformation = -1;
 
 	params.solverSettings.numConstraintIts = 1;
@@ -393,7 +409,7 @@ void initTest_2(Parameters& params, IOParameters& paramsIO)
 
 	params.solverSettings.forceMultiplicationFactor = 0.0f;
 
-	params.solverSettings.rho = 1.0f;
+	params.solverSettings.rho = 0.5f;
 
 	if (params.TEST_VERSION == 0)
 	{
@@ -820,4 +836,144 @@ void initTest_7(Parameters& params, IOParameters& paramsIO)
 	//{
 	//	params.solverSettings.alpha = 1.0f;
 	//}
+}
+
+void initTest_8(Parameters& params, IOParameters& paramsIO)
+{
+	params.maxFrames = 100000;
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+
+	params.solverSettings.poissonRatio = 0.3f;
+	params.solverSettings.youngsModulus = 10.0f;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	params.zoom = 0.5f;
+
+
+	params.disableSolver = false;
+	params.solverSettings.disableConstraintProjection = false;
+	params.solverSettings.disablePositionCorrection = false;
+	//params.applyInitialDeformationToMesh = true;
+	//params.frame2ApplyInitialDeformation = 100;
+	//params.frame2DisApplyInitialDeformation = 500;
+
+	params.solverSettings.numConstraintIts = 25;
+	params.numMillisecondsToWaitBetweenFrames = 0;
+	//params.solverSettings.forceMultiplicationFactor = 10000.2;
+	//params.solverSettings.externalForce.x() = 1.0f;
+	//params.solverSettings.trackS = true;
+	//params.solverSettings.trackF = true;
+	//params.solverSettings.trackPF = true;
+
+	//params.solverSettings.forceMultiplicationFactor = 1.0f;
+	//params.solverSettings.externalForce.x() = 1.0f;
+	params.solverSettings.useFullPronySeries = false;
+	params.solverSettings.alpha = 0.0f;
+	params.solverSettings.rho = 0.0f;
+
+	//params.invertSingleElementAtStart = true;
+
+	if (params.TEST_VERSION == 0)
+	{
+		params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
+
+		//params.solverSettings.disablePositionCorrection = true;
+		params.solverSettings.MR_f_active = 1.0f;
+		params.solverSettings.MR_f_passive = 1.0f;
+		params.solverSettings.MR_alpha = 0.0f;
+		params.solverSettings.MR_A = 3.0f;
+		params.solverSettings.MR_B = 1.0f;
+		params.solverSettings.MR_J = 1.0f;
+		params.solverSettings.MR_K = 6.0f;
+		params.solverSettings.MR_T = 1.0f;
+		params.solverSettings.MR_a = Eigen::Vector3f(1.0f, 0.0f, 0.0f).normalized();
+
+		params.solverSettings.anisotropyParameter = 1.0f;
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.numConstraintIts = 25;
+		params.maxFrames = 10000;
+		params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::RUBIN_BODNER;
+
+		//params.solverSettings.disablePositionCorrection = true;
+
+	}
+	//else if (params.TEST_VERSION == 2)
+	//{
+	//	params.solverSettings.alpha = 0.5f;
+	//}
+	//else if (params.TEST_VERSION == 3)
+	//{
+	//	params.solverSettings.alpha = 0.75f;
+	//}
+	//else if (params.TEST_VERSION == 4)
+	//{
+	//	params.solverSettings.alpha = 1.0f;
+	//}
+}
+
+void initTest_9(Parameters& params, IOParameters& paramsIO)
+{
+	params.maxFrames = 50000;
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+	params.disableSolver = false;
+
+	params.solverSettings.poissonRatio = 0.3f;
+	params.solverSettings.youngsModulus = 5.0f;
+	params.solverSettings.numConstraintIts = 5;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.forceMultiplicationFactor = 0.0f;
+	params.solverSettings.rho = 1.0f;
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	params.solverSettings.trackAverageDeltaXLength = true;
+
+	params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
+
+	params.zoom = 0.5f;
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
+
+	if (params.TEST_VERSION == 0)
+	{
+		params.solverSettings.alpha = 0.0f;
+
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.alpha = 0.25f;
+	}
+	else if (params.TEST_VERSION == 2)
+	{
+		params.solverSettings.alpha = 0.5f;
+	}
+	else if (params.TEST_VERSION == 3)
+	{
+		params.solverSettings.alpha = 0.75f;
+	}
+	else if (params.TEST_VERSION == 4)
+	{
+		params.solverSettings.alpha = 1.0f;
+	}
 }

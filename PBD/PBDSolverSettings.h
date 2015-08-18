@@ -68,12 +68,13 @@ struct PBDSolverSettings
 	bool trackS;
 	bool trackF;
 	bool trackPF;
+	bool trackAverageDeltaXLength;
 
 	enum CONSTITUTIVE_MODEL
 	{
 		NEO_HOOKEAN,
 		NEO_HOOKEAN_FIBER,
-		MOONEY_RIVLIN
+		RUBIN_BODNER
 	};
 
 	CONSTITUTIVE_MODEL materialModel;
@@ -109,6 +110,11 @@ struct PBDSolverSettings
 		printStrainEnergy = false;
 		printStrainEnergyToFile = false;
 		printStressComponentsToFile = false;
+
+		trackS = false;
+		trackF = false;
+		trackPF = false;
+		trackAverageDeltaXLength = false;
 	}
 
 	void print()

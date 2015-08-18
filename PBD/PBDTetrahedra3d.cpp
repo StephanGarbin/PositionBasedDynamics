@@ -25,7 +25,17 @@
 #define pbdx1_raw (*m_particles)[m_vertexIndices[__idx1]] 
 #define pbdx2_raw (*m_particles)[m_vertexIndices[__idx2]] 
 #define pbdx3_raw (*m_particles)[m_vertexIndices[__idx3]] 
-#define pbdx4_raw (*m_particles)[m_vertexIndices[__idx4]] 
+#define pbdx4_raw (*m_particles)[m_vertexIndices[__idx4]]
+
+#define pbdV1 (*m_particles)[m_vertexIndices[__idx1]].previousVelocity()
+#define pbdV2 (*m_particles)[m_vertexIndices[__idx2]].previousVelocity()
+#define pbdV3 (*m_particles)[m_vertexIndices[__idx3]].previousVelocity()
+#define pbdV4 (*m_particles)[m_vertexIndices[__idx4]].previousVelocity()
+
+#define pbdv1 (*m_particles)[m_vertexIndices[__idx1]].velocity() 
+#define pbdv2 (*m_particles)[m_vertexIndices[__idx2]].velocity() 
+#define pbdv3 (*m_particles)[m_vertexIndices[__idx3]].velocity() 
+#define pbdv4 (*m_particles)[m_vertexIndices[__idx4]].velocity() 
 
 #include <GL\glew.h>
 #include <gl\GL.h>
@@ -56,6 +66,12 @@ PBDTetrahedra3d::initialise(std::vector<int>& vertexIndices, const std::shared_p
 	calculateUndeformedVolume();
 	calculateUndeformedSideLengths();
 	m_upsilon.setZero();
+
+
+	m_distortionDissipative.setZero();
+	m_distortionElastic.setZero();
+	m_deformedShapeMatrix_previousVelocity.setZero();
+	m_deformedShapeMatrix_previousPosition.setZero();
 }
 
 const Eigen::Matrix3f&
@@ -88,6 +104,21 @@ PBDTetrahedra3d::calculateDeformedShapeMatrix()
 	m_deformedShapeMatrix.col(2) = pbdx3 - pbdx4;
 }
 
+Eigen::Matrix3f
+PBDTetrahedra3d::calculateRelativeDeformationGradientVelocity()
+{
+	Eigen::Matrix3f result;
+	return result;
+}
+
+Eigen::Matrix3f
+PBDTetrahedra3d::calculateRelativeDeformationGradientPosition()
+{
+	calculateDeformedShapeMatrix();
+
+	return m_deformedShapeMatrix * m_deformedShapeMatrix_previousPosition.inverse();
+}
+
 
 Eigen::Matrix3f
 PBDTetrahedra3d::getDeformationGradient()
@@ -101,6 +132,16 @@ PBDTetrahedra3d::getDeformationGradient()
 
 
 	return m_deformedShapeMatrix * m_referenceShapeMatrixInverse;
+}
+
+Eigen::Matrix3f
+PBDTetrahedra3d::getVelocityGradient()
+{
+	m_velocityMatrix.col(0) = pbdv1 - pbdv4;
+	m_velocityMatrix.col(1) = pbdv2 - pbdv4;
+	m_velocityMatrix.col(2) = pbdv3 - pbdv4;
+
+	return m_velocityMatrix * m_referenceShapeMatrixInverse;
 }
 
 float

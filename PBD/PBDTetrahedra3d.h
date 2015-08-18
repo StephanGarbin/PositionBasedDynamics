@@ -22,6 +22,8 @@ public:
 
 	Eigen::Matrix3f getDeformationGradient();
 
+	Eigen::Matrix3f getVelocityGradient();
+
 	float getVolume();
 
 	float getUndeformedVolume()
@@ -60,6 +62,27 @@ public:
 
 	Eigen::Vector3f& getFaceVertex(int face, int vertex);
 
+	Eigen::Matrix3f& getDistortionDissipative() { return m_distortionDissipative; }
+	Eigen::Matrix3f& getDistortionElastic() { return m_distortionElastic; }
+
+	void setPreviousDeformedShapeMatrix()
+	{
+		calculateDeformedShapeMatrix();
+		m_deformedShapeMatrix_previousPosition = m_deformedShapeMatrix;
+	}
+
+	Eigen::Matrix3f getRelativeDeformationGradient()
+	{
+		calculateDeformedShapeMatrix();
+		return m_deformedShapeMatrix * m_deformedShapeMatrix_previousPosition.inverse();
+	}
+
+	void calculateReferenceVelocityMatrix();
+
+	Eigen::Matrix3f calculateRelativeDeformationGradientVelocity();
+
+	Eigen::Matrix3f calculateRelativeDeformationGradientPosition();
+
 	void glRender(double r, double g, double b);
 private:
 
@@ -77,6 +100,11 @@ private:
 	Eigen::Matrix3f m_referenceShapeMatrixInverse;
 	Eigen::Matrix3f m_deformedShapeMatrix;
 
+	Eigen::Matrix3f m_deformedShapeMatrix_previousVelocity;
+	Eigen::Matrix3f m_deformedShapeMatrix_previousPosition;
+
+	Eigen::Matrix3f m_velocityMatrix;
+
 	std::vector<int> m_vertexIndices;
 	std::shared_ptr<std::vector<PBDParticle>> m_particles;
 	float m_undeformedVolume;
@@ -89,6 +117,10 @@ private:
 	//viscoelasticity
 	Eigen::Matrix3f m_upsilon;
 	std::vector<Eigen::Matrix3f> m_upsilonFull;
+
+	//Rubin-Bodner stuff
+	Eigen::Matrix3f m_distortionElastic;
+	Eigen::Matrix3f m_distortionDissipative;
 
 };
 

@@ -20,6 +20,7 @@ struct PBDSolverTracker
 		filenameS = generateSingleFileName("SecondPiolaKirchoffTensor", idx, version);
 		filenamePF = generateSingleFileName("FirstPiolaKirchoffTensor", idx, version);
 		filenameF = generateSingleFileName("DeformationGradient", idx, version);
+		filenameAverageDeltaXLength = generateSingleFileName("DeltaXAverageLength", idx, version);
 	}
 
 	std::string generateSingleFileName(std::string baseName, int idx, int version)
@@ -36,9 +37,40 @@ struct PBDSolverTracker
 	std::string filenamePF;
 	std::string filenameF;
 
+	std::string filenameAverageDeltaXLength;
+	std::vector<float> averageDeltaXLength;
+
 	std::vector<Eigen::Matrix3f> S;
 	std::vector<Eigen::Matrix3f> PF;
 	std::vector<Eigen::Matrix3f> F;
+
+	void writeMatlabFile_deltaX()
+	{
+		std::ofstream file;
+		file.open(filenameAverageDeltaXLength);
+		if (!file.is_open())
+		{
+			std::cout << "ERROR: Could not write [ " << filenameAverageDeltaXLength << " ]." << std::endl;
+			return;
+		}
+
+		file << "averageDeltaXLength = [ ";
+		for (int i = 0; i < averageDeltaXLength.size(); ++i)
+		{
+			file << averageDeltaXLength[i];
+			if (i < averageDeltaXLength.size() - 1)
+			{
+				file << ", ";
+			}
+			else
+			{
+				file << " ];";
+			}
+		}
+
+		file.close();
+		file.clear();
+	}
 
 	void writeMatlabFile_S()
 	{
@@ -61,6 +93,7 @@ struct PBDSolverTracker
 		writeMatlabFile_S();
 		writeMatlabFile_PF();
 		writeMatlabFile_F();
+		writeMatlabFile_deltaX();
 
 		std::cout << "-------------------" << std::endl;
 	}

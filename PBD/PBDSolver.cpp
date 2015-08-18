@@ -2798,10 +2798,6 @@ PBDSolver::projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahed
 std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 {
-	float mu = 6567.0f;
-	float k = 326210.0f;
-	float eta = 16.0f * mu;
-
 	Eigen::Vector3f a(0.0f, 1.0f, 0.0f);
 
 	float w1;
@@ -2813,7 +2809,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 	Eigen::Vector3f temp;
 
-
+	Eigen::Matrix3f F_orig;
 	Eigen::Matrix3f F;
 	Eigen::Matrix3f FInverseTranspose;
 	Eigen::Matrix3f FTransposeF;
@@ -2823,6 +2819,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 	Eigen::MatrixXf gradient; gradient.resize(3, 4);
 
 	Eigen::Matrix3f U;
+	Eigen::Matrix3f U_orig;
 	Eigen::Matrix3f V;
 	bool isInverted;
 
@@ -2836,6 +2833,9 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 
 	std::ofstream strainEnergyfile;
+
+	float averageDeltaXLengthAccumulator = 0.0f;
+	float averageDeltaXLengthAccumulatorCounter = 0.0f;
 
 	if (settings.printStrainEnergyToFile)
 	{
@@ -2862,79 +2862,120 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			float Volume;
 
 			//Get deformation gradient
-			F = tetrahedra[t].getDeformationGradient();
+			F_orig = tetrahedra[t].getDeformationGradient();
 
-			//Degenerate Elements
-			//if (F.determinant() == 0.0f)
-			//{
-			//	for (int cI = 0; cI < 2; ++cI)
-			//	{
-			//		if (tetrahedra[t].get_x(cI).inverseMass() != 0)
-			//		{
-			//			if (!settings.disablePositionCorrection)
-			//			{
-			//				deltaX.x() = 1e-6f;
-			//				deltaX.y() = 1e-6f;
-			//				deltaX.z() = 1e-6f;
-			//				deltaX *= tetrahedra[t].get_x(cI).inverseMass();
+			FTransposeF = F_orig.transpose() * F_orig;
 
-
-			//				tetrahedra[t].get_x(cI).position() += deltaX;
-			//			}
-			//		}
-			//	}
-			//}
-
-			F = tetrahedra[t].getDeformationGradient();
-
-			//Deal with inverted elements
-			if (F.determinant() < 0.0)
+			//Deal with inverted elements / degenerate elements
+			//if (std::fabs(F.determinant()) < 1.0e-4f)
+			if (true)
 			{
-				continue;
-				float dist;
-
-				Eigen::Vector3f normal;
-
-				int cI = smallestDistanceToOppositePlane(tetrahedra[t], dist, normal);
-
-				dist = std::abs(dist);
-
-				tetrahedra[t].get_x(cI).position() -= (1.0f + 0.05f / dist) * dist * normal;
-				//tetrahedra[t].get_x(cI).previousPosition() -= (1.0f + 0.1f / dist) * dist * normal;
-
-				//RECOMPUTE F!
-				F = tetrahedra[t].getDeformationGradient();
-
-				if (F.determinant() < 0.0f)
+				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+				V = eigenSolver.pseudoEigenvectors(); //eigenvectors
+				
+				for (int i = 0; i < 3; ++i)
 				{
-					tetrahedra[t].get_x(cI).position() += 2.0f * ((1.0f + 0.05f / dist) * dist * normal);
-					//tetrahedra[t].get_x(cI).previousPosition() += 2.0f * ((1.0f + 0.1f / dist) * dist * normal);
-					//for (int y = 0; y < 4; ++y)
-					//{
-					//	if (y == cI)
-					//	{
-					//		std::cout << tetrahedra[t].get_x(y).position() - (1.0f + 0.1f / dist) * dist * normal << std::endl << "---" << std::endl;
-					//	}
-					//	else
-					//	{
-					//		std::cout << tetrahedra[t].get_x(y).position() << std::endl << "---" << std::endl;
-					//	}
-					//	std::cout << "Inv M: " << tetrahedra[t].get_x(y).inverseMass() << std::endl;
-					//}
-					//std::cout << "Correction: " << (1.0f + 0.1f / dist) * dist * normal << std::endl;
-					//std::cout << "Ci: " << cI << std::endl;
-					////std::cout << "Normal: " << std::endl << normal << std::endl;
-					//std::cout << "Distance: " << dist << std::endl;
-					////std::cout << "!!!!!: " << cI << std::endl;
-					//std::cout << "_______________________________" << std::endl;
-					//continue;
+					if (S(i, i) < 0.0f)
+					{
+						S(i, i) = 0.0f;
+					}
 				}
-				//tetrahedra[t].get_x(cI).inverseMass() = 0.0000000000001f;
-				continue;
+
+				//remove reflection from V if necessary
+				if (V.determinant() < 0.0f)
+				{
+					float minElementValue = 10000000000000;
+					int minElementIdx = 111;
+					for (int i = 0; i < 3; ++i)
+					{
+						if (S(i, i) < minElementValue)
+						{
+							minElementValue = V(i, i);
+							minElementIdx = i;
+						}
+					}
+					V.col(minElementIdx) *= -1.0f;
+				}
+
+				//determine entries of F
+				F.setZero();
+				for (int i = 0; i < 3; ++i)
+				{
+					F(i, i) = std::sqrtf(S(i, i));
+				}
+
+				U = F_orig * V * F.inverse();
+				U_orig = U;
+				int numEntriesNearZero = 0;
+				int idx = 0;
+				for (int i = 0; i < 3; ++i)
+				{
+					if (std::fabs(F(i, i)) < 1.0e-4f)
+					{
+						++numEntriesNearZero;
+						idx = i;
+					}
+				}
+
+				if (numEntriesNearZero > 0)
+				{
+					if (numEntriesNearZero == 1)
+					{
+						if (idx == 0)
+						{
+							U.col(0) = U.col(1).cross(U.col(2)).normalized();
+						}
+						else if (idx == 1)
+						{
+							U.col(1) = U.col(0).cross(U.col(2)).normalized();
+						}
+						else
+						{
+							U.col(2) = U.col(0).cross(U.col(1)).normalized();
+						}
+					}
+					else
+					{
+						U.setIdentity();
+					}
+				}
+
+				//remove reflection from U if necessary
+				if (U.determinant() < 0.0f)
+				{
+					float minElementValue = 1000000000000000;
+					int minElementIdx = 111;
+					for (int i = 0; i < 3; ++i)
+					{
+						if (F(i, i) < minElementValue)
+						{
+							minElementValue = F(i, i);
+							minElementIdx = i;
+						}
+					}
+
+					F(minElementIdx, minElementIdx) *= -1.0f;
+					U.col(minElementIdx) *= -1.0f;
+				}
+
+				const float minXVal = 0.177f;
+
+				for (unsigned char j = 0; j < 3; j++)
+				{
+					if (F(j, j) < minXVal)
+						F(j, j) = minXVal;
+				}
+
+				const float maxXVal = 5.177f;
+
+				for (unsigned char j = 0; j < 3; j++)
+				{
+					if (F(j, j) > maxXVal)
+						F(j, j) = maxXVal;
+				}
 			}
 
-			//continue;
-			//F = tetrahedra[t].getDeformationGradient();
 			FInverseTranspose = F.inverse().transpose();
 			FTransposeF = F.transpose() * F;
 
@@ -2968,6 +3009,8 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 				float logI3 = log(I3);
 
+				Eigen::Vector3f rotated_a = V.transpose() * settings.MR_a;
+
 				PF = settings.mu * F - settings.mu * FInverseTranspose
 					+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
@@ -2975,7 +3018,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
 
 				//STRETCH ('pseudo-invariant' of C)
-				float lambda = std::sqrtf((settings.MR_a.transpose() * FTransposeF).dot(settings.MR_a));
+				float lambda = std::sqrtf((rotated_a.transpose() * FTransposeF).dot(rotated_a));
 
 				//float term_fiberResponse = settings.MR_alpha * settings.MR_f_active * lambda + settings.MR_f_passive * lambda;
 
@@ -2985,49 +3028,9 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				PF += settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
 			}
 			break;
-			case PBDSolverSettings::CONSTITUTIVE_MODEL::MOONEY_RIVLIN:
+			case PBDSolverSettings::CONSTITUTIVE_MODEL::RUBIN_BODNER:
 			{
-				float term_isotropic;
-				float term_incompressibility;
-				float term_fiberResponse;
-
-				C = std::powf(settings.MR_J, 2.0f / 3.0f) * FTransposeF;
-
-				float I1 = C.trace();
-				float I2 = 0.5f * (std::powf(I1, 2.0f) - (C * C).trace());
-				
-				float lambda = std::sqrtf((settings.MR_a.transpose() * C).dot(settings.MR_a));
-
-				float p = std::pow(std::log(settings.MR_J), 2.0f);
-
-				//Energy
-				term_isotropic = settings.MR_A * I1 + settings.MR_B * I2;
-
-				term_incompressibility = settings.MR_K * p;
-
-				term_fiberResponse = settings.MR_alpha * settings.MR_f_active * lambda + settings.MR_f_passive * lambda;
-
-				strainEnergy = term_isotropic;// +term_incompressibility;// +term_fiberResponse;
-				//strainEnergy = term_isotropic + term_fiberResponse;// +term_incompressibility;
-
-				//Stress
-				float Jc = std::pow(F.determinant(), -1.0f / 3.0f);
-				float Jcc = std::powf(Jc, 2.0f);
-
-				Eigen::Matrix3f I1_2 = Jcc * C;
-
-				float w1 = 4.0f * Jcc * settings.MR_A;
-				float w2 = 4.0f * std::powf(Jcc, 2.0f) * settings.MR_B;
-				float w12 = w1 + I1 * w2;
-
-				float pf = (w12 * C.trace() - w2 * (C * C).trace() + settings.MR_T * std::powf(lambda, 2.0f)) / 3.0f;
-
-				PF = w12 * F - w2 * (F * F * F);/*
-					+ (p - pf) * F.inverse();
-					+ 4.0f * Jcc * settings.MR_T * (F * settings.MR_a) * settings.MR_a.transpose();*/
-				//PF = w12 * F - w2 * (F * F * F)
-				//	+ 4.0f * Jcc * settings.MR_T * (F * settings.MR_a) * settings.MR_a.transpose();/*
-				//	+ (p - pf) * F.inverse();*/
+				std::cout << "Rubin-Bodner Implementation Removed Temporarily!" << std::endl;
 			}
 			break;
 			default:
@@ -3035,59 +3038,44 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				break;
 			}
 
-
-			//VISCOELASTICIY -----------------------------------------------------------------------------------------------------------
-			PF *= FInverseTranspose.transpose();
-
-			Eigen::Matrix3f vMult;
-
-			if (settings.useFullPronySeries)
+			//VISCOELASTICITY -----------------------------------------------------------------------------------------------------------
+			//if (settings.alpha != 0.0f && settings.rho != 0.0f)
 			{
-				Eigen::Matrix3f temp;
-				temp.setZero();
+				PF *= FInverseTranspose.transpose();
 
-				for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
+				Eigen::Matrix3f vMult;
+
+				if (settings.useFullPronySeries)
 				{
-					temp += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
-						+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+					Eigen::Matrix3f temp;
+					temp.setZero();
 
-					tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
-						+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+					for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
+					{
+						temp += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+							+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+
+						tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+							+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+					}
+
+					vMult = temp;
+				}
+				else
+				{
+					vMult = tetrahedra[t].getUpsilon();
+
+					vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
+
+					tetrahedra[t].getUpsilon() = vMult;
 				}
 
-				vMult = temp;
-			}
-			else
-			{
-				vMult = tetrahedra[t].getUpsilon();
+				PF = PF * 2.0f - vMult;
 
-				vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
-
-				tetrahedra[t].getUpsilon() = vMult;
+				PF = F * PF;
 			}
 
-			PF = PF * 2.0f - vMult;
-
-			PF *= F;
-			//float limit = 20.0f;
-
-			//for (int row = 0; row < 3; ++row)
-			//{
-			//	for (int col = 0; col < 3; ++col)
-			//	{
-			//		if (std::abs(PF(row, col)) > limit)
-			//		{
-			//			if (PF(row, col) < 0.0f)
-			//			{
-			//				F(row, col) = -limit;
-			//			}
-			//			else
-			//			{
-			//				PF(row, col) = limit;
-			//			}
-			//		}
-			//	}
-			//}
+			PF = U * PF * V.transpose();
 
 			//PF GRADIENT ---------------------------------------------------------------------------------------------------------------
 
@@ -3112,7 +3100,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			}
 
 			//prevent division by zero if there is no deformation
-			if (denominator < 1e-18)
+			if (denominator < 1e-12)
 			{
 				continue;
 			}
@@ -3122,28 +3110,31 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 			if (std::isnan(lagrangeM) || std::isinf(lagrangeM))
 			{
-				//std::cout << "F: " << std::endl;
-				//std::cout << F << std::endl;
-				//std::cout << "det: " << F.determinant() << std::endl;
-				//std::cout << "vol: " << Volume << std::endl;
-				//std::cout << "PF: " << std::endl;
-				//std::cout << PF << std::endl;
-				//std::cout << "Gradient: " << std::endl;
-				//std::cout << gradient << std::endl;
-				//std::cout << "LaM: " << lagrangeM << std::endl;
-				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+				std::cout << "U orig: " << std::endl;
+				std::cout << U_orig << std::endl;
+				std::cout << "U: " << std::endl;
+				std::cout << U << std::endl;
+				std::cout << "V: " << std::endl;
+				std::cout << V << std::endl;
+				std::cout << "F: " << std::endl;
+				std::cout << F << std::endl;
+				std::cout << "S: " << std::endl;
+				std::cout << S << std::endl;
+				std::cout << "det: " << F.determinant() << std::endl;
+				std::cout << "vol: " << Volume << std::endl;
+				std::cout << "PF: " << std::endl;
+				std::cout << PF << std::endl;
+				std::cout << "Gradient: " << std::endl;
+				std::cout << gradient << std::endl;
+				std::cout << "LaM: " << lagrangeM << std::endl;
+				std::cout << "Strain Energy: " << strainEnergy << std::endl;
+				std::cout << "Log(I3): " << log(FTransposeF.determinant()) << std::endl;
 
-				//std::cout << "---------------------------------" << std::endl;
+				std::cout << "---------------------------------" << std::endl;
 				continue;
 			}
 			else
 			{
-				//std::cout << "Gradient: " << std::endl;
-				//std::cout << gradient << std::endl;
-				//std::cout << "LaM: " << lagrangeM << std::endl;
-				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
-
-				//std::cout << "---------------------------------" << std::endl;
 				for (int cI = 0; cI < 4; ++cI)
 				{
 					if (tetrahedra[t].get_x(cI).inverseMass() != 0)
@@ -3154,12 +3145,21 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 								* lagrangeM) * gradient.col(cI);
 
 							tetrahedra[t].get_x(cI).position() += deltaX;
+
+							if (settings.trackAverageDeltaXLength)
+							{
+								float value = deltaX.squaredNorm();
+								if (!std::isnan(value) && !std::isinf(value))
+								{
+									averageDeltaXLengthAccumulator += value;
+									averageDeltaXLengthAccumulatorCounter += 1.0f;
+								}
+							}
 						}
 					}
 				}
 			}
 		}
-
 
 		if (settings.printStrainEnergy || settings.printStrainEnergyToFile)
 		{
@@ -3179,6 +3179,20 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 	if (settings.trackPF)
 	{
 		settings.tracker.PF.push_back(PF);
+	}
+
+	if (settings.trackAverageDeltaXLength)
+	{
+		if (averageDeltaXLengthAccumulatorCounter != 0.0f)
+		{
+			settings.tracker.averageDeltaXLength.push_back(averageDeltaXLengthAccumulator / averageDeltaXLengthAccumulatorCounter);
+		}
+		else
+		{
+			settings.tracker.averageDeltaXLength.push_back(0.0f);
+		}
+		
+		
 	}
 
 	//for (int pC = 0; pC < probabilisticConstraints.size(); ++pC)

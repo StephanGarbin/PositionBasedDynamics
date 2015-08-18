@@ -411,12 +411,12 @@ void applyContinuousDeformationToMesh()
 	{
 		//float increaseFactor = parameters.continuousDeformationStrainIncreaseFactor;
 		//(*particles)[1].position().y() += parameters.continuousDeformationStrainIncreaseFactor;
-		(*particles)[1].previousPosition().z() += parameters.continuousDeformationStrainIncreaseFactor * (parameters.continuousDeformationRelaxationFrame - parameters.getCurrentFrame());
+		(*particles)[1].previousPosition().z() -= parameters.continuousDeformationStrainIncreaseFactor * (parameters.continuousDeformationRelaxationFrame - parameters.getCurrentFrame());
 	}
 	else if (parameters.getCurrentFrame() < parameters.continuousDeformationRelaxationFrame * 2)
 	{
 		//(*particles)[1].position().y() -= parameters.continuousDeformationStrainIncreaseFactor;
-		(*particles)[1].previousPosition().z() -= parameters.continuousDeformationStrainIncreaseFactor * ((parameters.getCurrentFrame() - parameters.continuousDeformationRelaxationFrame));
+		(*particles)[1].previousPosition().z() += parameters.continuousDeformationStrainIncreaseFactor * ((parameters.getCurrentFrame() - parameters.continuousDeformationRelaxationFrame));
 	}
 	//else
 	//{
@@ -484,12 +484,13 @@ void createFiberMesh()
 
 	fiberMesh = std::make_shared <FiberMesh>(particles, &tetrahedra);
 
-	Eigen::Vector3f origin(0.0f, 0.0f, 0.0f);
-	Eigen::Vector3f dimension(5.0f, 3.0f, 3.0f);
-	Eigen::Vector3f rotation(0.0f, 0.0f, M_PI / 2.0f);
-
-	fiberMesh->generateFibersToFillCube(origin, rotation, dimension,
-		2, 2, 0.0f, false);
+	//	Eigen::Vector3f origin(0.0f, 0.0f, 0.0f);
+	//	Eigen::Vector3f dimension(5.0f, 3.0f, 3.0f);
+	//	Eigen::Vector3f rotation(0.0f, 0.0f, M_PI / 2.0f);
+	//
+	//	fiberMesh->generateFibersToFillCube(origin, rotation, dimension,
+	//		2, 2, 0.0f, false);
+	//}
 }
 
 int main(int argc, char* argv[])
