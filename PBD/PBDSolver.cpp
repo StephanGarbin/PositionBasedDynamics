@@ -2870,10 +2870,11 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//if (std::fabs(F.determinant()) < 1.0e-4f)
 			if (true)
 			{
-				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-				S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
-				V = eigenSolver.pseudoEigenvectors(); //eigenvectors
-				
+				//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				//S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+				//V = eigenSolver.pseudoEigenvectors(); //eigenvectors
+				eigenDecompositionCardano(FTransposeF, S, V);
+
 				for (int i = 0; i < 3; ++i)
 				{
 					if (S(i, i) < 0.0f)
@@ -2885,17 +2886,18 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				//remove reflection from V if necessary
 				if (V.determinant() < 0.0f)
 				{
-					float minElementValue = 10000000000000;
-					int minElementIdx = 111;
-					for (int i = 0; i < 3; ++i)
-					{
-						if (S(i, i) < minElementValue)
-						{
-							minElementValue = V(i, i);
-							minElementIdx = i;
-						}
-					}
-					V.col(minElementIdx) *= -1.0f;
+					//float minElementValue = 10000000000000;
+					//int minElementIdx = 111;
+					//for (int i = 0; i < 3; ++i)
+					//{
+					//	if (S(i, i) < minElementValue)
+					//	{
+					//		minElementValue = V(i, i);
+					//		minElementIdx = i;
+					//	}
+					//}
+					//V.col(minElementIdx) *= -1.0f;
+					V.col(0) *= -1.0f;
 				}
 
 				//determine entries of F
@@ -2911,7 +2913,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				int idx = 0;
 				for (int i = 0; i < 3; ++i)
 				{
-					if (std::fabs(F(i, i)) < 1.0e-4f)
+					if (std::fabs(F(i, i)) < 1.0e-6f)
 					{
 						++numEntriesNearZero;
 						idx = i;
@@ -2959,7 +2961,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 					U.col(minElementIdx) *= -1.0f;
 				}
 
-				const float minXVal = 0.177f;
+				const float minXVal = 0.3f;
 
 				for (unsigned char j = 0; j < 3; j++)
 				{
@@ -2967,13 +2969,13 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 						F(j, j) = minXVal;
 				}
 
-				const float maxXVal = 5.177f;
+				//const float maxXVal = 100.0f;
 
-				for (unsigned char j = 0; j < 3; j++)
-				{
-					if (F(j, j) > maxXVal)
-						F(j, j) = maxXVal;
-				}
+				//for (unsigned char j = 0; j < 3; j++)
+				//{
+				//	if (F(j, j) > maxXVal)
+				//		F(j, j) = maxXVal;
+				//}
 			}
 
 			FInverseTranspose = F.inverse().transpose();
@@ -3025,7 +3027,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(1.0f - lambda, 2.0f);
 
 				//PF += std::pow(F.determinant(), 2.0 / 3.0) * settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
-				PF += settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
+				PF += F * (settings.anisotropyParameter * (lambda - 1.0f) * (kroneckerProduct(rotated_a, rotated_a) + lambda / 3.0f * FInverseTranspose));
 			}
 			break;
 			case PBDSolverSettings::CONSTITUTIVE_MODEL::RUBIN_BODNER:
@@ -3041,10 +3043,15 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			//VISCOELASTICITY -----------------------------------------------------------------------------------------------------------
 			//if (settings.alpha != 0.0f && settings.rho != 0.0f)
 			{
+				PF *= F.inverse();
+
+
+				/*FInverseTranspose = F_orig.inverse().transpose();
+
 				PF *= FInverseTranspose.transpose();
-
+				*/
 				Eigen::Matrix3f vMult;
-
+				
 				if (settings.useFullPronySeries)
 				{
 					Eigen::Matrix3f temp;
@@ -3071,6 +3078,8 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 				}
 
 				PF = PF * 2.0f - vMult;
+
+				/*PF = F_orig * PF;*/
 
 				PF = F * PF;
 			}
@@ -3100,7 +3109,7 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 			}
 
 			//prevent division by zero if there is no deformation
-			if (denominator < 1e-12)
+			if (denominator < 1e-15)
 			{
 				continue;
 			}
@@ -3110,27 +3119,27 @@ std::vector<PBDProbabilisticConstraint>& probabilisticConstraints)
 
 			if (std::isnan(lagrangeM) || std::isinf(lagrangeM))
 			{
-				std::cout << "U orig: " << std::endl;
-				std::cout << U_orig << std::endl;
-				std::cout << "U: " << std::endl;
-				std::cout << U << std::endl;
-				std::cout << "V: " << std::endl;
-				std::cout << V << std::endl;
-				std::cout << "F: " << std::endl;
-				std::cout << F << std::endl;
-				std::cout << "S: " << std::endl;
-				std::cout << S << std::endl;
-				std::cout << "det: " << F.determinant() << std::endl;
-				std::cout << "vol: " << Volume << std::endl;
-				std::cout << "PF: " << std::endl;
-				std::cout << PF << std::endl;
-				std::cout << "Gradient: " << std::endl;
-				std::cout << gradient << std::endl;
-				std::cout << "LaM: " << lagrangeM << std::endl;
-				std::cout << "Strain Energy: " << strainEnergy << std::endl;
-				std::cout << "Log(I3): " << log(FTransposeF.determinant()) << std::endl;
+				//std::cout << "U orig: " << std::endl;
+				//std::cout << U_orig << std::endl;
+				//std::cout << "U: " << std::endl;
+				//std::cout << U << std::endl;
+				//std::cout << "V: " << std::endl;
+				//std::cout << V << std::endl;
+				//std::cout << "F: " << std::endl;
+				//std::cout << F << std::endl;
+				//std::cout << "S: " << std::endl;
+				//std::cout << S << std::endl;
+				//std::cout << "det: " << F.determinant() << std::endl;
+				//std::cout << "vol: " << Volume << std::endl;
+				//std::cout << "PF: " << std::endl;
+				//std::cout << PF << std::endl;
+				//std::cout << "Gradient: " << std::endl;
+				//std::cout << gradient << std::endl;
+				//std::cout << "LaM: " << lagrangeM << std::endl;
+				//std::cout << "Strain Energy: " << strainEnergy << std::endl;
+				//std::cout << "Log(I3): " << log(FTransposeF.determinant()) << std::endl;
 
-				std::cout << "---------------------------------" << std::endl;
+				//std::cout << "---------------------------------" << std::endl;
 				continue;
 			}
 			else
