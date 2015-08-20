@@ -144,7 +144,7 @@
       </PrecompiledHeader>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\win64_2013\include;..\..\..\..\..\..\..\..\TOOLS\VEGAFEM\include;..\..\..\..\..\..\..\..\Program Files\GLFW\include;..\..\..\..\..\..\..\..\TOOLS\AntTweakBar\include;..\..\..\..\..\..\..\..\TOOLS\boost\boost_1_57_0\;..\..\..\..\..\..\..\..\TOOLS\FREEGLUT\freeglut-2.8.1\include;..\..\..\..\..\..\..\..\TOOLS\GLEW\include;..\..\..\..\..\..\..\..\TOOLS\GLUT\glut-3.7.6-bin;..\..\..\..\..\..\..\..\TOOLS\Eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -157,8 +157,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\hdf5-1.8.9-win64\lib;..\..\..\..\..\..\..\..\Program Files (x86)\Intel\Composer XE 2015\compiler\lib\intel64;..\..\..\..\..\..\..\..\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\x64\Release\;..\..\..\..\..\..\..\..\TOOLS\HDF5\x64\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\ilmbase\lib\x64\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\win64_2013\Release;..\..\..\..\..\..\..\..\TOOLS\VEGAFEM\VS\lib\x64;..\..\..\..\..\..\..\..\Program Files\GLFW\lib;..\..\..\..\..\..\..\..\TOOLS\AntTweakBar\lib;..\..\..\..\..\..\..\..\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\msvc-12.0\release\address-model-64\link-static\threading-multi\;..\..\..\..\..\..\..\..\TOOLS\TETGEN\x64\Release;..\..\..\..\..\..\..\..\TOOLS\GLUT\glut-3.7.6-bin;..\..\..\..\..\..\..\..\TOOLS\GLEW\lib\Release\x64;..\..\..\..\..\..\..\..\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libmmdd.lib;libhdf5_hl.lib;libhdf5_tools.lib;libhdf5.lib;AlembicIlmBase.lib;AlembicAbcCoreAbstract.lib;hdf5_hl.lib;hdf5_tools.lib;libszip.lib;libzlib.lib;hdf5.lib;AlembicAbcCollection.lib;AlembicAbcCoreFactory.lib;AlembicAbcCoreOgawa.lib;AlembicAbcGeom.lib;AlembicAbcMaterial.lib;AlembicAbcOpenGL.lib;AlembicOgawa.lib;AlembicUtil.lib;AlembicZLIB.lib;AlembicAbcCoreHDF5.lib;AlembicAbc.lib;camera.lib;clothBW.lib;configFile.lib;corotationalLinearFEM.lib;elasticForceModel.lib;forceModel.lib;getopts.lib;glslPhong.lib;graph.lib;hashTable.lib;imageIO.lib;insertRows.lib;integrator.lib;integratorDense.lib;integratorSparse.lib;isotropicHyperelasticFEM.lib;lighting.lib;loadlist.lib;massSpringSystem.lib;matrix.lib;matrixIO.lib;minivector.lib;modalMatrix.lib;objMesh.lib;openGLHelper.lib;performanceCounter.lib;polarDecomposition.lib;quaternion.lib;reducedElasticForceModel.lib;reducedForceModel.lib;reducedStvk.lib;renderVolumetricMesh.lib;rigidBodyDynamics.lib;sceneObjectReduced.lib;sparseMatrix.lib;sparseSolver.lib;stvk.lib;uniqueIntegerID.lib;volumetricMesh.lib;glfw3.lib;AntTweakBar64.lib;tet.lib;opengl32.lib;glut32.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboost_thread-vc120-mt-1_57.lib;libboost_timer-vc120-mt-1_57.lib;libboost_system-vc120-mt-1_57.lib;libboost_date_time-vc120-mt-1_57.lib;libboost_chrono-vc120-mt-1_57.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\Program Files (x86)\Intel\Composer XE 2015\compiler\lib\intel64;..\..\..\..\..\..\..\..\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v6.5\lib\x64;..\x64\Release\;..\..\..\..\..\..\..\..\TOOLS\HDF5\x64\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\ilmbase\lib\x64\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\win64_2013\Release;..\..\..\..\..\..\..\..\TOOLS\VEGAFEM\VS\lib\x64;..\..\..\..\..\..\..\..\Program Files\GLFW\lib;..\..\..\..\..\..\..\..\TOOLS\AntTweakBar\lib;..\..\..\..\..\..\..\..\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\msvc-12.0\release\address-model-64\link-static\threading-multi\;..\..\..\..\..\..\..\..\TOOLS\TETGEN\x64\Release;..\..\..\..\..\..\..\..\TOOLS\GLUT\glut-3.7.6-bin;..\..\..\..\..\..\..\..\TOOLS\GLEW\lib\Release\x64;..\..\..\..\..\..\..\..\TOOLS\FREEGLUT\freeglut-2.8.1\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cudart.lib;libmmdd.lib;libhdf5_hl.lib;libhdf5_tools.lib;libhdf5.lib;AlembicAbcCoreHDF5.lib;AlembicAbcCoreOgawa.lib;AlembicAbcOpenGL.lib;AlembicAbcMaterial.lib;AlembicOgawa.lib;AlembicZLIB.lib;AlembicIlmBase.lib;AlembicAbc.lib;AlembicAbcGeom.lib;AlembicUtil.lib;AlembicAbcCoreAbstract.lib;AlembicAbcCollection.lib;camera.lib;clothBW.lib;configFile.lib;corotationalLinearFEM.lib;elasticForceModel.lib;forceModel.lib;getopts.lib;glslPhong.lib;graph.lib;hashTable.lib;imageIO.lib;insertRows.lib;integrator.lib;integratorDense.lib;integratorSparse.lib;isotropicHyperelasticFEM.lib;lighting.lib;loadlist.lib;massSpringSystem.lib;matrix.lib;matrixIO.lib;minivector.lib;modalMatrix.lib;objMesh.lib;openGLHelper.lib;performanceCounter.lib;polarDecomposition.lib;quaternion.lib;reducedElasticForceModel.lib;reducedForceModel.lib;reducedStvk.lib;renderVolumetricMesh.lib;rigidBodyDynamics.lib;sceneObjectReduced.lib;sparseMatrix.lib;sparseSolver.lib;stvk.lib;uniqueIntegerID.lib;volumetricMesh.lib;glfw3.lib;AntTweakBar64.lib;tet.lib;opengl32.lib;glut32.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libboost_thread-vc120-mt-1_57.lib;libboost_timer-vc120-mt-1_57.lib;libboost_system-vc120-mt-1_57.lib;libboost_date_time-vc120-mt-1_57.lib;libboost_chrono-vc120-mt-1_57.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -174,14 +174,11 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AbcReader.cpp" />
     <ClCompile Include="AbcWriter.cpp" />
-    <ClCompile Include="CollisionMesh.cpp" />
     <ClCompile Include="commonMath.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
     <ClCompile Include="FEMSimulator.cpp" />
     <ClCompile Include="FiberMesh.cpp" />
-    <ClCompile Include="cImageIO.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
@@ -198,10 +195,8 @@
     <ClCompile Include="VegaIO.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AbcReader.h" />
     <ClInclude Include="AbcWriter.h" />
     <ClInclude Include="AppHelper.h" />
-    <ClInclude Include="CollisionMesh.h" />
     <ClInclude Include="commonMath.h" />
     <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="CUDAPBD_SolverSettings.h" />
@@ -211,7 +206,6 @@
     <ClInclude Include="FEMSimulator.h" />
     <ClInclude Include="FiberMesh.h" />
     <ClInclude Include="GLUTHelper.h" />
-    <ClInclude Include="cImageIO.h" />
     <ClInclude Include="IOParameters.h" />
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="MeshCreator.h" />

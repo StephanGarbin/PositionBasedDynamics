@@ -12,7 +12,6 @@
 #include "Parameters.h"
 #include "PBDSolverSettings.h"
 #include "PBDProbabilisticConstraint.h"
-#include "CollisionMesh.h"
 
 #include <boost/thread.hpp>
 
@@ -22,8 +21,7 @@ public:
 	void advanceSystem(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 		std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
-		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
-		std::vector<CollisionMesh>& collisionGeometry);
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints);
 	PBDSolver();
 
 	~PBDSolver();
@@ -34,10 +32,22 @@ public:
 	void advancePositions(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings);
 
+	void projectConstraints(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+
+	void projectConstraintsGeometricInversionHandling(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+
+	void projectConstraintsOLD(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+
 	void projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
-		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
-		std::vector<CollisionMesh>& collisionGeometry);
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints);
+
+	void projectConstraintsSOR(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+		std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences);
 
 	void updateVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
@@ -52,6 +62,13 @@ public:
 	void projectConstraintsVolume(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, int numIterations, float k);
 
+	void projectConstraintsNeoHookeanMixture(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints);
+
+	void projectConstraintsMooneyRivlin(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
+
 	bool correctInversion(Eigen::Matrix3f& F, 
 		Eigen::Matrix3f& FTransposeF,
 		Eigen::Matrix3f& FInverseTranspose, Eigen::Matrix3f& PF,
@@ -59,6 +76,10 @@ public:
 		float I1, float I2, float logI3,
 		float& strainEnergy, float volume,
 		const PBDSolverSettings& settings);
+
+	void computeGreenStrainAndPiolaStress(const Eigen::Matrix3f &F,
+		const float restVolume,
+		const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy);
 
 	inline void computeDeltaXPositionConstraint(float w1, float w2, float restDistance,
 		const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& temp, Eigen::Vector3f& deltaX);
@@ -84,10 +105,21 @@ const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& temp, Eig
 	}
 }
 
+
 struct mutexStruct
 {
 	boost::mutex m_mutexSOR;
 };
+
+void projectConstraintsSOR_CORE(mutexStruct& sorMutex, std::vector<PBDTetrahedra3d>& tetrahedra,
+	std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings,
+	std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
+	int start, int end);
+
+void computeGreenStrainAndPiolaStressInversion(const Eigen::Matrix3f& F, const Eigen::Matrix3f& FTransposeF,
+	Eigen::Matrix3f& U, Eigen::Matrix3f& V,
+	const float restVolume,
+	const float mu, const float lambda, Eigen::Matrix3f &epsilon, Eigen::Matrix3f &sigma, float &energy, int it);
 
 inline int smallestDistanceToOppositePlane(PBDTetrahedra3d& tet, float& resultDist, Eigen::Vector3f& normal)
 {

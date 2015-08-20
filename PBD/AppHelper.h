@@ -75,9 +75,6 @@ void initTest_8(Parameters& params, IOParameters& paramsIO);
 //Average DeltaX Length Measure
 void initTest_9(Parameters& params, IOParameters& paramsIO);
 
-//Suction Test
-void initTest_10(Parameters& params, IOParameters& paramsIO);
-
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
 {
@@ -153,9 +150,6 @@ bool parseTerminalParameters(const int argc, char* argv[],
 	case 9:
 		initTest_9(params, paramsIO);
 		break;
-	case 10:
-		initTest_10(params, paramsIO);
-		break;
 	default:
 		break;
 	}
@@ -180,7 +174,7 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 {
 	if (params.TEST_IDX == 0)
 	{
-		MeshCreator::generateTetBar(particles, tetrahedra, 10, 3, 3);
+		MeshCreator::generateTetBar(particles, tetrahedra, 10, 6, 6);
 		return true;
 	}
 	else if (params.TEST_IDX == 1 || params.TEST_IDX == 2 || params.TEST_IDX == 3 || params.TEST_IDX == 4)
@@ -213,13 +207,6 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 	{
 		MeshCreator::generateTetBar(particles, tetrahedra, 10, 4, 4);
 		return true;
-	}
-	else if (params.TEST_IDX == 10)
-	{
-		Eigen::Vector3f initialVelocity;
-		initialVelocity.setZero();
-		TetGenIO::readNodes(paramsIO.nodeFile, *particles, params.solverSettings.inverseMass, initialVelocity);
-		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
 	}
 	else
 	{
@@ -278,8 +265,8 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.disableSolver = false;
 
 	params.solverSettings.poissonRatio = 0.3f;
-	params.solverSettings.youngsModulus = 100.0f;
-	params.solverSettings.numConstraintIts = 5;
+	params.solverSettings.youngsModulus = 1.0f;
+	params.solverSettings.numConstraintIts = 25;
 	params.solverSettings.deltaT = 0.005f;
 	params.solverSettings.inverseMass = 1.0f;
 	params.solverSettings.printStrainEnergy = false;
@@ -291,10 +278,6 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.numTetrahedraIterations = 0;
 	params.solverSettings.correctStrongForcesWithSubteps = false;
 	params.solverSettings.useGeometricConstraintLimits = false;
-
-	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
-
-	params.solverSettings.materialModel = PBDSolverSettings::NEO_HOOKEAN_FIBER;
 
 	if (params.TEST_VERSION == 0)
 	{
@@ -426,7 +409,7 @@ void initTest_2(Parameters& params, IOParameters& paramsIO)
 
 	params.solverSettings.forceMultiplicationFactor = 0.0f;
 
-	params.solverSettings.rho = 0.99f;
+	params.solverSettings.rho = 0.5f;
 
 	if (params.TEST_VERSION == 0)
 	{
@@ -601,7 +584,7 @@ void initTest_5(Parameters& params, IOParameters& paramsIO)
 	//params.zoom = 1.318f;
 
 	params.solverSettings.poissonRatio = 0.3f;
-	params.solverSettings.youngsModulus = 10.0f;
+	params.solverSettings.youngsModulus = 0.1f;
 	params.solverSettings.deltaT = 0.005f;
 	params.solverSettings.inverseMass = 1.0f;
 	params.solverSettings.printStrainEnergy = false;
@@ -621,7 +604,7 @@ void initTest_5(Parameters& params, IOParameters& paramsIO)
 	//params.frame2ApplyInitialDeformation = 100;
 	//params.frame2DisApplyInitialDeformation = 500;
 
-	params.solverSettings.numConstraintIts = 1;
+	params.solverSettings.numConstraintIts = 25;
 	params.numMillisecondsToWaitBetweenFrames = 50;
 	//params.solverSettings.forceMultiplicationFactor = 10000.2;
 	//params.solverSettings.externalForce.x() = 1.0f;
@@ -635,29 +618,22 @@ void initTest_5(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.alpha = 0.0f;
 	params.solverSettings.rho = 0.0f;
 
-	params.doImageIO = true;
-
 	//params.invertSingleElementAtStart = true;
 
 	if (params.TEST_VERSION == 0)
 	{
 		params.collapseMeshAtStart = true;
-		params.dimToCollapse = 0;
-		params.imageFileName = "inversionLowRes_dim0";
+		params.dimToCollapse = 2;
 
 	}
 	else if (params.TEST_VERSION == 1)
 	{
-		params.collapseMeshAtStart = true;
-		params.dimToCollapse = 1;
-		params.imageFileName = "inversionLowRes_dim1";
+		
 	}
-	else if (params.TEST_VERSION == 2)
-	{
-		params.collapseMeshAtStart = true;
-		params.dimToCollapse = 2;
-		params.imageFileName = "inversionLowRes_dim2";
-	}
+	//else if (params.TEST_VERSION == 2)
+	//{
+	//	params.solverSettings.alpha = 0.5f;
+	//}
 	//else if (params.TEST_VERSION == 3)
 	//{
 	//	params.solverSettings.alpha = 0.75f;
@@ -1001,76 +977,3 @@ void initTest_9(Parameters& params, IOParameters& paramsIO)
 		params.solverSettings.alpha = 1.0f;
 	}
 }
-
-void initTest_10(Parameters& params, IOParameters& paramsIO)
-{
-	params.writeToAlembic = false;
-	params.useTrackingConstraints = false;
-	params.readVertexConstraintData = false;
-	params.useFEMSolver = false;
-	params.disableSolver = false;
-
-	params.solverSettings.poissonRatio = 0.45f;
-	params.solverSettings.youngsModulus = 550.0f;
-	params.solverSettings.numConstraintIts = 5;
-	params.solverSettings.deltaT = 0.005f;
-	params.solverSettings.inverseMass = 1.0f;
-	params.solverSettings.printStrainEnergy = false;
-	params.solverSettings.printStrainEnergyToFile = false;
-	params.solverSettings.gravity = 0.0f;
-	params.solverSettings.externalForce.setZero();
-	params.solverSettings.forceMultiplicationFactor = 0.0f;
-	params.solverSettings.rho = 1.0f;
-	params.solverSettings.numTetrahedraIterations = 0;
-	params.solverSettings.correctStrongForcesWithSubteps = false;
-	params.solverSettings.useGeometricConstraintLimits = false;
-
-	paramsIO.nodeFile = "tissueCube.1.node";
-	paramsIO.elementFile = "tissueCube.1.ele";
-
-	params.solverSettings.enableGroundPlaneCollision = true;
-	params.readCollisionGeometry = true;
-	params.collisionGeometryFiles.push_back("suctionCollisionTestMesh.abc");
-
-	params.translateCollisionGeometry = true;
-	params.collisionGeometryTranslationAmount = Eigen::Vector3f(0.0f, -0.001f, 0.0f);
-	params.collisionGeometryTranslateUntilFrame = 50;
-
-	params.applyPressure = true;
-	params.pressureStartFrame = 60;
-	params.pressureEndFrame = 1460;
-	params.pressureCentre = Eigen::Vector3f(0.995f, 0.508f, -0.993f);
-	params.pressureRadius = 0.5f;
-	params.pressureMaxPositionIdx = 1729;
-	params.pressureForce = Eigen::Vector3f(0.0f, 20.0f, 0.0f);
-
-	params.writeToAlembic = true;
-	params.maxFrames = 2000;
-
-	params.solverSettings.rho = 0.58f;
-
-	params.solverSettings.trackSpecificPosition = true;
-	params.solverSettings.trackSpecificPositionIdx = 426;
-
-	if (params.TEST_VERSION == 0)
-	{
-		params.solverSettings.alpha = 0.0f;
-	}
-	else if (params.TEST_VERSION == 1)
-	{
-		params.solverSettings.alpha = 0.25f;
-	}
-	else if (params.TEST_VERSION == 2)
-	{
-		params.solverSettings.alpha = 0.5f;
-	}
-	else if (params.TEST_VERSION == 3)
-	{
-		params.solverSettings.alpha = 0.75f;
-	}
-	else if (params.TEST_VERSION == 4)
-	{
-		params.solverSettings.alpha = 1.0f;
-	}
-}
-

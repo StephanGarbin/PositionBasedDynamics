@@ -21,7 +21,6 @@ struct PBDSolverTracker
 		filenamePF = generateSingleFileName("FirstPiolaKirchoffTensor", idx, version);
 		filenameF = generateSingleFileName("DeformationGradient", idx, version);
 		filenameAverageDeltaXLength = generateSingleFileName("DeltaXAverageLength", idx, version);
-		fileNameSpecificPosition = generateSingleFileName("ParticlePosition", idx, version);
 	}
 
 	std::string generateSingleFileName(std::string baseName, int idx, int version)
@@ -37,7 +36,6 @@ struct PBDSolverTracker
 	std::string filenameS;
 	std::string filenamePF;
 	std::string filenameF;
-	std::string fileNameSpecificPosition;
 
 	std::string filenameAverageDeltaXLength;
 	std::vector<float> averageDeltaXLength;
@@ -45,8 +43,6 @@ struct PBDSolverTracker
 	std::vector<Eigen::Matrix3f> S;
 	std::vector<Eigen::Matrix3f> PF;
 	std::vector<Eigen::Matrix3f> F;
-
-	std::vector<Eigen::Vector3f> specificPosition;
 
 	void writeMatlabFile_deltaX()
 	{
@@ -91,28 +87,6 @@ struct PBDSolverTracker
 		array3d_2_matlab(PF, filenamePF, "PF");
 	}
 
-	void writeMatlabFile_specificPosition()
-	{
-		std::ofstream file;
-		file.open(fileNameSpecificPosition);
-		if (!file.is_open())
-		{
-			std::cout << "ERROR: Could not write [ " << fileNameSpecificPosition << " ]." << std::endl;
-		}
-
-		file << "particlePosition = zeros(3, " << specificPosition.size() << ");" << std::endl;
-		for (int d = 0; d < specificPosition.size(); ++d)
-		{
-			file << "particlePosition(:, " << d + 1 << ") = [ ";
-			file << specificPosition[d][0] << ", ";
-			file << specificPosition[d][1] << ", ";
-			file << specificPosition[d][2] << "]; ";
-		}
-
-		file.close();
-		file.clear();
-	}
-
 	void writeAll()
 	{
 		std::cout << "WRITING TRACKED SOLVER DATA..." << std::endl;
@@ -120,7 +94,6 @@ struct PBDSolverTracker
 		writeMatlabFile_PF();
 		writeMatlabFile_F();
 		writeMatlabFile_deltaX();
-		writeMatlabFile_specificPosition();
 
 		std::cout << "-------------------" << std::endl;
 	}
