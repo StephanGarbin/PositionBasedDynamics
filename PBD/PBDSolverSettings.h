@@ -69,11 +69,6 @@ struct PBDSolverSettings
 	bool trackF;
 	bool trackPF;
 	bool trackAverageDeltaXLength;
-	bool trackSpecificPosition;
-	int trackSpecificPositionIdx;
-
-	//Collision
-	bool enableGroundPlaneCollision;
 
 	enum CONSTITUTIVE_MODEL
 	{
@@ -119,9 +114,7 @@ struct PBDSolverSettings
 		trackS = false;
 		trackF = false;
 		trackPF = false;
-		trackSpecificPosition = false;
 		trackAverageDeltaXLength = false;
-		enableGroundPlaneCollision = false;
 	}
 
 	void print()

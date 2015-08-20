@@ -65,27 +65,6 @@ struct Parameters
 	//Fiber Mesh
 	bool createFiberMesh;
 
-	//Image IO
-	bool doImageIO;
-	std::string imageFileName;
-
-	//Collision Geometry;
-	bool readCollisionGeometry;
-	std::vector<std::string> collisionGeometryFiles;
-
-	bool translateCollisionGeometry;
-	Eigen::Vector3f collisionGeometryTranslationAmount;
-	int collisionGeometryTranslateUntilFrame;
-
-
-	bool applyPressure;
-	Eigen::Vector3f pressureForce;
-	Eigen::Vector3f pressureCentre;
-	float pressureRadius;
-	int pressureMaxPositionIdx;
-	int pressureStartFrame;
-	int pressureEndFrame;
-
 	void initialiseToDefaults()
 	{
 		disableSolver = false;
@@ -111,11 +90,6 @@ struct Parameters
 		generateMeshFromTrackingData = false;
 
 		readVertexConstraintData = false;
-
-		doImageIO = false;
-		readCollisionGeometry = false;
-		translateCollisionGeometry = false;
-		applyPressure = false;
 	}
 
 	void initialiseCamera()

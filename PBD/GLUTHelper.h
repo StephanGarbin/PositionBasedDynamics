@@ -153,7 +153,7 @@ void GLUTHelper::initWindow(int argc, char* argv[], const GLUTSettings& settings
 
 	//init GLUT
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_MULTISAMPLE);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE);
 	glutInitWindowPosition(settings.positionX, settings.positionY);
 	glutInitWindowSize(settings.width, settings.height);
 	glutCreateWindow(settings.windowName.c_str());
