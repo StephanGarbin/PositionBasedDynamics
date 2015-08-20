@@ -11,6 +11,7 @@
 #include "ConstraintsIO.h"
 #include "VegaIO.h"
 #include "TrackerIO.h"
+#include "cImageIO.h"
 
 #include "AbcWriter.h"
 #include "SurfaceMeshHandler.h"
@@ -32,6 +33,7 @@
 
 #include "AppHelper.h"
 #include "FiberMesh.h"
+#include "CollisionMesh.h"
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
@@ -41,6 +43,7 @@ std::vector<int> numConstraintInfluences;
 std::vector<PBDProbabilisticConstraint> probabilisticConstraints;
 std::vector<std::vector<Eigen::Vector2f>> trackingData;
 std::shared_ptr<FiberMesh> fiberMesh;
+std::vector<CollisionMesh> collisionGeometry;
 
 PBDSolver solver;
 FEMSimulator FEMsolver;
@@ -61,6 +64,20 @@ void collapseMesh();
 void createFiberMesh();
 
 void invertSingleElementAtStart();
+
+void applyCollisitionGeometryTranslation();
+
+void applyPressure();
+
+std::string generateFileName(const std::string& base, const std::string& extension, int idx, int version)
+{
+	std::stringstream ss;
+	ss << base << "_" << idx << "_" << version << "." << extension;
+	std::string result = ss.str();
+	ss.clear();
+
+	return result;
+}
 
 void applyFEMDisplacementsToParticles()
 {
@@ -248,22 +265,44 @@ void mainLoop()
 		createFiberMesh();
 	}
 
+	if (parameters.translateCollisionGeometry)
+	{
+		applyCollisitionGeometryTranslation();
+	}
+
+	if (parameters.applyPressure)
+	{
+		applyPressure();
+	}
+
 	parameters.solverSettings.calculateLambda();
 	parameters.solverSettings.calculateMu();
 	parameters.solverSettings.calculateFiberStructureTensor();
 
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
+	//GLenum err = glGetError();
+	//if (err != GL_NO_ERROR)
+	//{
+	//	std::cerr << "GL Error (Before glPolygonMode): " << err << std::endl;
+	//}
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FLAT);
 
 	setCamera();
 
 	//Render Tets
-	for (int t = 0; t < tetrahedra.size(); ++t)
-	{
-		tetrahedra[t].glRender(0.5, 0.5, 0.5);
-	}
+	//for (int t = 0; t < tetrahedra.size(); ++t)
+	//{
+	//	tetrahedra[t].glRender(0.5, 0.5, 0.5);
+	//}
 
-	glEnable(GL_POLYGON_OFFSET_LINE);
-	glPolygonOffset(-1, -1);
+	//GLenum err = glGetError();
+	//if (err != GL_NO_ERROR)
+	//{
+	//	std::cerr << "GL Error (Before glPolygonMode): " << err << std::endl;
+	//}
+
+	//glEnable(GL_POLYGON_OFFSET_LINE);
+	//glPolygonOffset(-1, -1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	//Render Tets
@@ -271,7 +310,7 @@ void mainLoop()
 	{
 		tetrahedra[t].glRender(1.0, 1.0, 1.0);
 	}
-	glDisable(GL_POLYGON_OFFSET_LINE);
+	//glDisable(GL_POLYGON_OFFSET_LINE);
 
 	for (int i = 0; i < probabilisticConstraints.size(); ++i)
 	{
@@ -295,7 +334,7 @@ void mainLoop()
 				updateProbabilisticConstraints();
 			}
 			solver.advanceSystem(tetrahedra, particles, parameters.solverSettings, currentPositions, numConstraintInfluences,
-				probabilisticConstraints);
+				probabilisticConstraints, collisionGeometry);
 		}
 		else
 		{
@@ -316,7 +355,13 @@ void mainLoop()
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 
+	if (parameters.doImageIO)
+	{
+		saveImage(700, 700, parameters.getCurrentFrame(), parameters.imageFileName);
+	}
+
 	TwDraw();
+
 	glutSwapBuffers();
 	if (!parameters.disableSolver)
 	{
@@ -337,6 +382,11 @@ void mainLoop()
 		std::cout << "Leaving Glut Main Loop..." << std::endl;
 		glutLeaveMainLoop();
 	}
+
+	/*if (parameters.doImageIO)
+	{
+		saveImage(700, 700, parameters.getCurrentFrame(), parameters.imageFileName);
+	}*/
 
 	Sleep(parameters.numMillisecondsToWaitBetweenFrames);
 }
@@ -493,6 +543,30 @@ void createFiberMesh()
 	//}
 }
 
+void applyCollisitionGeometryTranslation()
+{
+	if (parameters.getCurrentFrame() < parameters.collisionGeometryTranslateUntilFrame)
+	{
+		collisionGeometry[0].getCollisionMeshTranslation() += parameters.collisionGeometryTranslationAmount;
+	}
+}
+
+void applyPressure()
+{
+	if (parameters.getCurrentFrame() > parameters.pressureStartFrame
+		&& parameters.getCurrentFrame() < parameters.pressureEndFrame)
+	{
+		for (int i = 0; i < particles->size(); ++i)
+		{
+			float dist = ((*particles)[i].position() - parameters.pressureCentre).squaredNorm();
+			if (dist < parameters.pressureRadius)
+			{
+				(*particles)[i].previousVelocity() += parameters.pressureForce * parameters.solverSettings.deltaT;
+			}
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	if (!parseTerminalParameters(argc, argv, parameters, ioParameters))
@@ -522,8 +596,8 @@ int main(int argc, char* argv[])
 	}
 
 	GLUTSettings glutSettings;
-	glutSettings.height = 500;
-	glutSettings.width = 500;
+	glutSettings.height = 700;
+	glutSettings.width = 700;
 	glutSettings.windowName = "PBD FEM";
 	glutSettings.GLVersionMajor = 3;
 	glutSettings.GLVersionMinor = 0;
@@ -557,14 +631,23 @@ int main(int argc, char* argv[])
 	{
 		if (parameters.useFEMSolver)
 		{
-			smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMeshFEM.abc");
+			smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", generateFileName("deformedMeshFEM", "abc", parameters.TEST_IDX, parameters.TEST_VERSION));
 		}
 		else
 		{
-			smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", "deformedMesh.abc");
+			smHandler = std::make_shared<SurfaceMeshHandler>("WRITE_TETS", generateFileName("deformedMesh", "abc", parameters.TEST_IDX, parameters.TEST_VERSION));
 		}
 		smHandler->initTopology(*particles, tetrahedra);
 		std::cout << "Initialised Topology for Alembic Output!" << std::endl;
+	}
+
+	if (parameters.readCollisionGeometry)
+	{
+		collisionGeometry.resize(parameters.collisionGeometryFiles.size());
+		for (int c = 0; c < parameters.collisionGeometryFiles.size(); ++c)
+		{
+			collisionGeometry[c].readFromAbc(parameters.collisionGeometryFiles[c]);
+		}
 	}
 
 	//TweakBar Interface
