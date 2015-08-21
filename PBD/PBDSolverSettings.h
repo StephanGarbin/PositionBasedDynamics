@@ -98,6 +98,9 @@ struct PBDSolverSettings
 	Eigen::Vector3f MR_a;
 	Eigen::Matrix3f MR_A0;
 
+
+	bool disableInversionHandling;
+
 	void initialise()
 	{
 		
@@ -122,6 +125,8 @@ struct PBDSolverSettings
 		trackSpecificPosition = false;
 		trackAverageDeltaXLength = false;
 		enableGroundPlaneCollision = false;
+
+		disableInversionHandling = false;
 	}
 
 	void print()

@@ -796,9 +796,7 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 			FTransposeF = F_orig.transpose() * F_orig;
 
-			//Deal with inverted elements / degenerate elements
-			//if (std::fabs(F.determinant()) < 1.0e-4f)
-			if (true)
+			if (!settings.disableInversionHandling)
 			{
 				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
 				S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
@@ -908,6 +906,11 @@ std::vector<CollisionMesh>& collisionGeometry)
 				}
 			}
 
+			if (settings.disableInversionHandling)
+			{
+				F = tetrahedra[t].getDeformationGradient();
+			}
+
 			FInverseTranspose = F.inverse().transpose();
 			FTransposeF = F.transpose() * F;
 
@@ -945,11 +948,16 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 				Eigen::Vector3f rotated_a = V.transpose() * settings.MR_a;
 
+				if (settings.disableInversionHandling)
+				{
+					rotated_a = settings.MR_a;
+				}
+
 				//PF = settings.mu * F - settings.mu * FInverseTranspose;
 				//PF_vol = ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
-				PF = settings.mu * F - settings.mu * FInverseTranspose
-				+ ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+				PF = settings.mu * F - settings.mu * FInverseTranspose;
 
+				PF_vol = ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
 				//Compute Strain Energy density field
 				strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
@@ -975,58 +983,65 @@ std::vector<CollisionMesh>& collisionGeometry)
 			}
 			
 			//VISCOELASTICITY -----------------------------------------------------------------------------------------------------------
-			////if (settings.alpha != 0.0f && settings.rho != 0.0f)
-			//{
-			//	//FInverseTranspose = F.inverse();
+			//if (settings.alpha != 0.0f && settings.rho != 0.0f)
+			{
+				//FInverseTranspose = F.inverse();
+				/*PF = U * PF * V.transpose();*/
 
-			//	PF *= F.inverse();
-			//	//PF_vol *= FInverseTranspose;
+				F_orig = tetrahedra[t].getDeformationGradient();
 
-			//	/*FInverseTranspose = F_orig.inverse().transpose();
+				PF = F.inverse() * PF;
+				PF_vol = F.inverse() * PF_vol;
+				//PF_vol *= FInverseTranspose;
 
-			//	PF *= FInverseTranspose.transpose();
-			//	*/
-			//	Eigen::Matrix3f vMult;
-			//	
-			//	if (settings.useFullPronySeries)
-			//	{
-			//		Eigen::Matrix3f temp;
-			//		temp.setZero();
+				/*FInverseTranspose = F_orig.inverse().transpose();
 
-			//		for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
-			//		{
-			//			temp += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
-			//				+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+				PF *= FInverseTranspose.transpose();
+				*/
+				Eigen::Matrix3f vMult;
+				
+				if (settings.useFullPronySeries)
+				{
+					Eigen::Matrix3f temp;
+					temp.setZero();
 
-			//			tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
-			//				+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
-			//		}
+					for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
+					{
+						temp += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+							+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
 
-			//		vMult = temp;
-			//	}
-			//	else
-			//	{
-			//		vMult = tetrahedra[t].getUpsilon() * V.transpose().inverse();
+						tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+							+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+					}
 
-			//		vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
+					vMult = temp;
+				}
+				else
+				{
+					vMult = tetrahedra[t].getUpsilon();
 
-			//		tetrahedra[t].getUpsilon() = U * vMult * V.transpose();
-			//	}
+					vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
 
-			//	PF = (PF) * 2.0f - vMult * 1.0f;
+					tetrahedra[t].getUpsilon() = vMult;
+				}
 
-			//	/*PF = F_orig * PF;*/
+				PF = 2.0f * PF_vol + 2.0f * PF - vMult * 1.0f;
 
-			//	if (settings.trackS)
-			//	{
-			//		settings.tracker.S.push_back(PF);
-			//	}
+				//if (settings.trackS)
+				//{
+				//	settings.tracker.S.push_back(PF);
+				//}
 
-			//	PF = F * PF;
-			//}
+				//PF = F_orig * PF;
+				PF = F * PF;
+			}
 
-			PF = U * PF * V.transpose();
-			/*PF = U * PF * V.transpose();*/
+			//PF = U * PF * V.transpose();
+
+			if (!settings.disableInversionHandling)
+			{
+				PF = U * PF * V.transpose();
+			}
 
 			//PF GRADIENT ---------------------------------------------------------------------------------------------------------------
 

@@ -296,6 +296,8 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 
 	params.solverSettings.materialModel = PBDSolverSettings::NEO_HOOKEAN_FIBER;
 
+	params.solverSettings.disableInversionHandling = false;
+
 	if (params.TEST_VERSION == 0)
 	{
 		params.solverSettings.alpha = 0.0f;
