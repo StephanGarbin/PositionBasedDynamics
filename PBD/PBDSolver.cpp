@@ -959,9 +959,7 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 				strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(lambda - 1.0f, 2.0f);
 
-				PF += TEMP_1;
-
-				PF += std::pow(F.determinant(), -2.0 / 3.0)
+				PF += F * std::pow(F.determinant(), -2.0 / 3.0)
 					* (settings.anisotropyParameter * (lambda - 1.0f)
 					* (kroneckerProduct(rotated_a, rotated_a) + (lambda / 3.0f) * FTransposeF.inverse()));
 			}
