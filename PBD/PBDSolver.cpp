@@ -736,6 +736,8 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 	Eigen::Vector3f temp;
 
+	Eigen::Matrix3f TEMP_1;
+
 	Eigen::Matrix3f F_orig;
 	Eigen::Matrix3f F;
 	Eigen::Matrix3f FInverseTranspose;
@@ -798,10 +800,10 @@ std::vector<CollisionMesh>& collisionGeometry)
 			//if (std::fabs(F.determinant()) < 1.0e-4f)
 			if (true)
 			{
-				//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-				//S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
-				//V = eigenSolver.pseudoEigenvectors(); //eigenvectors
-				eigenDecompositionCardano(FTransposeF, S, V);
+				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+				V = eigenSolver.pseudoEigenvectors(); //eigenvectors
+				//eigenDecompositionCardano(FTransposeF, S, V);
 
 				for (int i = 0; i < 3; ++i)
 				{
@@ -897,7 +899,7 @@ std::vector<CollisionMesh>& collisionGeometry)
 						F(j, j) = minXVal;
 				}
 
-				const float maxXVal = 1000.0f;
+				const float maxXVal = 10000.0f;
 
 				for (unsigned char j = 0; j < 3; j++)
 				{
@@ -953,15 +955,15 @@ std::vector<CollisionMesh>& collisionGeometry)
 				strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
 
 				//STRETCH ('pseudo-invariant' of C)
-				//float lambda = std::sqrtf((rotated_a.transpose() * (std::pow(F.determinant(), 2.0 / 3.0) * FTransposeF)).dot(rotated_a));
 				float lambda = std::sqrtf((rotated_a.transpose() * (1.0f * FTransposeF)).dot(rotated_a));
 
-				//float term_fiberResponse = settings.MR_alpha * settings.MR_f_active * lambda + settings.MR_f_passive * lambda;
+				strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(lambda - 1.0f, 2.0f);
 
-				strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(1.0f - lambda, 2.0f);
+				PF += TEMP_1;
 
-				//PF += std::pow(F.determinant(), 2.0 / 3.0) * settings.anisotropyParameter * (lambda - 1.0f) * (settings.MR_A0 + lambda / 3.0f * FInverseTranspose);
-				PF += settings.anisotropyParameter * (lambda - 1.0f) * (kroneckerProduct(rotated_a, rotated_a) + lambda / 3.0f * FInverseTranspose);
+				PF += std::pow(F.determinant(), -2.0 / 3.0)
+					* (settings.anisotropyParameter * (lambda - 1.0f)
+					* (kroneckerProduct(rotated_a, rotated_a) + (lambda / 3.0f) * FTransposeF.inverse()));
 			}
 			break;
 			case PBDSolverSettings::CONSTITUTIVE_MODEL::RUBIN_BODNER:
@@ -973,59 +975,60 @@ std::vector<CollisionMesh>& collisionGeometry)
 				std::cout << "ERROR: No Constitutive Model Selected!" << std::endl;
 				break;
 			}
-
+			
 			//VISCOELASTICITY -----------------------------------------------------------------------------------------------------------
-			//if (settings.alpha != 0.0f && settings.rho != 0.0f)
-			{
-				//FInverseTranspose = F.inverse();
+			////if (settings.alpha != 0.0f && settings.rho != 0.0f)
+			//{
+			//	//FInverseTranspose = F.inverse();
 
-				PF *= F.inverse();
-				//PF_vol *= FInverseTranspose;
+			//	PF *= F.inverse();
+			//	//PF_vol *= FInverseTranspose;
 
-				/*FInverseTranspose = F_orig.inverse().transpose();
+			//	/*FInverseTranspose = F_orig.inverse().transpose();
 
-				PF *= FInverseTranspose.transpose();
-				*/
-				Eigen::Matrix3f vMult;
-				
-				if (settings.useFullPronySeries)
-				{
-					Eigen::Matrix3f temp;
-					temp.setZero();
+			//	PF *= FInverseTranspose.transpose();
+			//	*/
+			//	Eigen::Matrix3f vMult;
+			//	
+			//	if (settings.useFullPronySeries)
+			//	{
+			//		Eigen::Matrix3f temp;
+			//		temp.setZero();
 
-					for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
-					{
-						temp += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
-							+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+			//		for (int pComponent = 0; pComponent < settings.fullAlpha.size(); ++pComponent)
+			//		{
+			//			temp += (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+			//				+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
 
-						tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
-							+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
-					}
+			//			tetrahedra[t].getFullUpsilon(pComponent) = (2.0f * settings.deltaT * settings.fullAlpha[pComponent] * PF
+			//				+ settings.fullRho[pComponent] * tetrahedra[t].getFullUpsilon(pComponent)) / (settings.deltaT + settings.fullRho[pComponent]);
+			//		}
 
-					vMult = temp;
-				}
-				else
-				{
-					vMult = tetrahedra[t].getUpsilon();
+			//		vMult = temp;
+			//	}
+			//	else
+			//	{
+			//		vMult = tetrahedra[t].getUpsilon() * V.transpose().inverse();
 
-					vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
+			//		vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
 
-					tetrahedra[t].getUpsilon() = vMult;
-				}
+			//		tetrahedra[t].getUpsilon() = U * vMult * V.transpose();
+			//	}
 
-				PF = (PF) * 1.0f - vMult;
+			//	PF = (PF) * 2.0f - vMult * 1.0f;
 
-				/*PF = F_orig * PF;*/
+			//	/*PF = F_orig * PF;*/
 
-				if (settings.trackS)
-				{
-					settings.tracker.S.push_back(PF);
-				}
+			//	if (settings.trackS)
+			//	{
+			//		settings.tracker.S.push_back(PF);
+			//	}
 
-				PF = F * PF;
-			}
+			//	PF = F * PF;
+			//}
 
 			PF = U * PF * V.transpose();
+			/*PF = U * PF * V.transpose();*/
 
 			//PF GRADIENT ---------------------------------------------------------------------------------------------------------------
 

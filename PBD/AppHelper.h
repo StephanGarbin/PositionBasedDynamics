@@ -287,7 +287,7 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.gravity = -9.81f;
 	params.solverSettings.externalForce.setZero();
 	params.solverSettings.forceMultiplicationFactor = 0.0f;
-	params.solverSettings.rho = 1.0f;
+	params.solverSettings.rho = 0.1f;
 	params.solverSettings.numTetrahedraIterations = 0;
 	params.solverSettings.correctStrongForcesWithSubteps = false;
 	params.solverSettings.useGeometricConstraintLimits = false;
