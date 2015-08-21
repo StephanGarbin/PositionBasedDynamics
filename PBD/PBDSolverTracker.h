@@ -100,13 +100,52 @@ struct PBDSolverTracker
 			std::cout << "ERROR: Could not write [ " << fileNameSpecificPosition << " ]." << std::endl;
 		}
 
-		file << "particlePosition = zeros(3, " << specificPosition.size() << ");" << std::endl;
+		//file << "particlePosition = zeros(3, " << specificPosition.size() << ");" << std::endl;
+		//for (int d = 0; d < specificPosition.size(); ++d)
+		//{
+		//	file << "particlePosition(:, " << d + 1 << ") = [ ";
+		//	file << specificPosition[d][0] << ", ";
+		//	file << specificPosition[d][1] << ", ";
+		//	file << specificPosition[d][2] << "]; ";
+		//}
+
+		file << "particlePositionX = [ ";
 		for (int d = 0; d < specificPosition.size(); ++d)
 		{
-			file << "particlePosition(:, " << d + 1 << ") = [ ";
-			file << specificPosition[d][0] << ", ";
-			file << specificPosition[d][1] << ", ";
-			file << specificPosition[d][2] << "]; ";
+			if (d < specificPosition.size() - 1)
+			{
+				file << specificPosition[d][0] << ", ";
+			}
+			else
+			{
+				file << " ];" << std::endl;
+			}
+		}
+
+		file << "particlePositionY = [ ";
+		for (int d = 0; d < specificPosition.size(); ++d)
+		{
+			if (d < specificPosition.size() - 1)
+			{
+				file << specificPosition[d][1] << ", ";
+			}
+			else
+			{
+				file << " ];" << std::endl;
+			}
+		}
+
+		file << "particlePositionZ = [ ";
+		for (int d = 0; d < specificPosition.size(); ++d)
+		{
+			if (d < specificPosition.size() - 1)
+			{
+				file << specificPosition[d][2] << ", ";
+			}
+			else
+			{
+				file << " ];" << std::endl;
+			}
 		}
 
 		file.close();

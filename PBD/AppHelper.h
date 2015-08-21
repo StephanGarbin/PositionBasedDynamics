@@ -278,8 +278,8 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.disableSolver = false;
 
 	params.solverSettings.poissonRatio = 0.3f;
-	params.solverSettings.youngsModulus = 100.0f;
-	params.solverSettings.numConstraintIts = 5;
+	params.solverSettings.youngsModulus = 10.0f;
+	params.solverSettings.numConstraintIts = 10;
 	params.solverSettings.deltaT = 0.005f;
 	params.solverSettings.inverseMass = 1.0f;
 	params.solverSettings.printStrainEnergy = false;
@@ -297,6 +297,7 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.materialModel = PBDSolverSettings::NEO_HOOKEAN_FIBER;
 
 	params.solverSettings.disableInversionHandling = false;
+	params.zoom = 0.328f;
 
 	if (params.TEST_VERSION == 0)
 	{
@@ -1036,23 +1037,26 @@ void initTest_10(Parameters& params, IOParameters& paramsIO)
 
 	params.translateCollisionGeometry = true;
 	params.collisionGeometryTranslationAmount = Eigen::Vector3f(0.0f, -0.001f, 0.0f);
-	params.collisionGeometryTranslateUntilFrame = 50;
+	params.collisionGeometryTranslateUntilFrame = 40;
 
 	params.applyPressure = true;
 	params.pressureStartFrame = 60;
-	params.pressureEndFrame = 1460;
+	params.pressureEndFrame = 360;
 	params.pressureCentre = Eigen::Vector3f(0.995f, 0.508f, -0.993f);
 	params.pressureRadius = 0.5f;
 	params.pressureMaxPositionIdx = 1729;
 	params.pressureForce = Eigen::Vector3f(0.0f, 20.0f, 0.0f);
 
 	params.writeToAlembic = true;
-	params.maxFrames = 2000;
+	params.maxFrames = 700;
 
-	params.solverSettings.rho = 0.58f;
+	params.solverSettings.rho = 0.1f;
 
 	params.solverSettings.trackSpecificPosition = true;
-	params.solverSettings.trackSpecificPositionIdx = 426;
+	params.solverSettings.trackSpecificPositionIdx = 462;
+
+	params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
 
 	if (params.TEST_VERSION == 0)
 	{
@@ -1072,7 +1076,7 @@ void initTest_10(Parameters& params, IOParameters& paramsIO)
 	}
 	else if (params.TEST_VERSION == 4)
 	{
-		params.solverSettings.alpha = 1.0f;
+		params.solverSettings.alpha = 0.99f;
 	}
 }
 

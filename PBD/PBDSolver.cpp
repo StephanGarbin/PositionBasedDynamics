@@ -988,10 +988,14 @@ std::vector<CollisionMesh>& collisionGeometry)
 				//FInverseTranspose = F.inverse();
 				/*PF = U * PF * V.transpose();*/
 
-				F_orig = tetrahedra[t].getDeformationGradient();
+				//F_orig = tetrahedra[t].getDeformationGradient();
 
 				PF = F.inverse() * PF;
 				PF_vol = F.inverse() * PF_vol;
+
+				//PF *= F.inverse();
+				//PF_vol *= F.inverse();
+
 				//PF_vol *= FInverseTranspose;
 
 				/*FInverseTranspose = F_orig.inverse().transpose();
@@ -1022,7 +1026,10 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 					vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
 
-					tetrahedra[t].getUpsilon() = vMult;
+					if (it == settings.numConstraintIts - 1)
+					{
+						tetrahedra[t].getUpsilon() = vMult;
+					}
 				}
 
 				PF = 2.0f * PF_vol + 2.0f * PF - vMult * 1.0f;
@@ -1033,6 +1040,7 @@ std::vector<CollisionMesh>& collisionGeometry)
 				//}
 
 				//PF = F_orig * PF;
+				//PF *= F;
 				PF = F * PF;
 			}
 
@@ -1066,7 +1074,7 @@ std::vector<CollisionMesh>& collisionGeometry)
 			}
 
 			//prevent division by zero if there is no deformation
-			if (denominator < 1e-15)
+			if (denominator < 1e-20)
 			{
 				continue;
 			}
