@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CompareAnimations", "Alembi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConvertRaw2EXR", "ConvertRaw2EXR\ConvertRaw2EXR.vcxproj", "{05405D10-9768-4582-A4EE-3CE85CF65063}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnisotropicVeinModel", "AnisotropicVeinModel\AnisotropicVeinModel.vcxproj", "{005D67A6-8506-4126-95F5-85E7353995E2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -53,6 +55,16 @@ Global
 		{05405D10-9768-4582-A4EE-3CE85CF65063}.Release|Win32.ActiveCfg = Release|Win32
 		{05405D10-9768-4582-A4EE-3CE85CF65063}.Release|Win32.Build.0 = Release|Win32
 		{05405D10-9768-4582-A4EE-3CE85CF65063}.Release|x64.ActiveCfg = Release|x64
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Debug|Win32.Build.0 = Debug|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Debug|x64.ActiveCfg = Debug|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|Win32.ActiveCfg = Release|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|Win32.Build.0 = Release|Win32
+		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
