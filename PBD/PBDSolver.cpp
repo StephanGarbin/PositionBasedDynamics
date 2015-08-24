@@ -798,10 +798,10 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 			if (!settings.disableInversionHandling)
 			{
-				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-				S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
-				V = eigenSolver.pseudoEigenvectors(); //eigenvectors
-				//eigenDecompositionCardano(FTransposeF, S, V);
+				//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				//S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+				//V = eigenSolver.pseudoEigenvectors(); //eigenvectors
+				eigenDecompositionCardano(FTransposeF, S, V);
 
 				for (int i = 0; i < 3; ++i)
 				{
@@ -1026,7 +1026,7 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 					vMult = (2.0f * settings.deltaT * settings.alpha * PF + settings.rho * vMult) / (settings.deltaT + settings.rho);
 
-					if (it == settings.numConstraintIts - 1)
+					//if (it == settings.numConstraintIts - 1)
 					{
 						tetrahedra[t].getUpsilon() = vMult;
 					}

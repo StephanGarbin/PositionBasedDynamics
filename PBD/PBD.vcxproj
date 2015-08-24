@@ -177,6 +177,7 @@
     <ClCompile Include="AbcReader.cpp" />
     <ClCompile Include="AbcWriter.cpp" />
     <ClCompile Include="CollisionMesh.cpp" />
+    <ClCompile Include="CollisionRod.cpp" />
     <ClCompile Include="commonMath.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
     <ClCompile Include="FEMSimulator.cpp" />
@@ -202,6 +203,7 @@
     <ClInclude Include="AbcWriter.h" />
     <ClInclude Include="AppHelper.h" />
     <ClInclude Include="CollisionMesh.h" />
+    <ClInclude Include="CollisionRod.h" />
     <ClInclude Include="commonMath.h" />
     <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="CUDAPBD_SolverSettings.h" />

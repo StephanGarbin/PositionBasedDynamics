@@ -78,6 +78,8 @@ void initTest_9(Parameters& params, IOParameters& paramsIO);
 //Suction Test
 void initTest_10(Parameters& params, IOParameters& paramsIO);
 
+void initTest_11(Parameters& params, IOParameters& paramsIO);
+
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
 {
@@ -156,6 +158,9 @@ bool parseTerminalParameters(const int argc, char* argv[],
 	case 10:
 		initTest_10(params, paramsIO);
 		break;
+	case 11:
+		initTest_11(params, paramsIO);
+		break;
 	default:
 		break;
 	}
@@ -220,6 +225,19 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 		initialVelocity.setZero();
 		TetGenIO::readNodes(paramsIO.nodeFile, *particles, params.solverSettings.inverseMass, initialVelocity);
 		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
+	}
+	else if (params.TEST_IDX == 11)
+	{
+		Eigen::Vector3f initialVelocity;
+		initialVelocity.setZero();
+		TetGenIO::readNodes(paramsIO.nodeFile, *particles, params.solverSettings.inverseMass, initialVelocity);
+		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
+
+		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, paramsIO.constraintFile);
+		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+		{
+			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+		}
 	}
 	else
 	{
@@ -1045,18 +1063,76 @@ void initTest_10(Parameters& params, IOParameters& paramsIO)
 	params.pressureCentre = Eigen::Vector3f(0.995f, 0.508f, -0.993f);
 	params.pressureRadius = 0.5f;
 	params.pressureMaxPositionIdx = 1729;
-	params.pressureForce = Eigen::Vector3f(0.0f, 20.0f, 0.0f);
+	params.pressureForce = Eigen::Vector3f(0.0f, 3.0f, 0.0f);
 
 	params.writeToAlembic = true;
 	params.maxFrames = 700;
 
-	params.solverSettings.rho = 0.1f;
+	params.solverSettings.rho = 0.5f;
 
 	params.solverSettings.trackSpecificPosition = true;
 	params.solverSettings.trackSpecificPositionIdx = 462;
 
+	params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN;
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
+
+	if (params.TEST_VERSION == 0)
+	{
+		params.solverSettings.alpha = 0.0f;
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.alpha = 0.25f;
+	}
+	else if (params.TEST_VERSION == 2)
+	{
+		params.solverSettings.alpha = 0.5f;
+	}
+	else if (params.TEST_VERSION == 3)
+	{
+		params.solverSettings.alpha = 0.75f;
+	}
+	else if (params.TEST_VERSION == 4)
+	{
+		params.solverSettings.alpha = 0.99f;
+	}
+}
+
+void initTest_11(Parameters& params, IOParameters& paramsIO)
+{
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+	params.disableSolver = false;
+
+	params.solverSettings.poissonRatio = 0.45f;
+	params.solverSettings.youngsModulus = 150.0f;
+	params.solverSettings.numConstraintIts = 5;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.forceMultiplicationFactor = 0.0f;
+	params.solverSettings.rho = 1.0f;
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	paramsIO.nodeFile = "liverPig1.node";
+	paramsIO.elementFile = "liverPig1.ele";
+	paramsIO.constraintFile = "pigLiver1AbsoluteConstraints.txt";
+
+	params.writeToAlembic = true;
+	params.maxFrames = 200;
+
+	params.solverSettings.rho = 0.1f;
+
 	params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
 	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
+	params.solverSettings.alpha = 0.0f;
 
 	if (params.TEST_VERSION == 0)
 	{

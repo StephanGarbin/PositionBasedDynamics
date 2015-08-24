@@ -235,7 +235,10 @@
     <ClInclude Include="CUDAMemoryOptimiser.h" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="CUDA_WRAPPER.cu" />
+    <CudaCompile Include="CUDA_WRAPPER.cu">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </CudaCompile>
+    <CudaCompile Include="CUDA_WRAPPER_NEW.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -49,36 +49,71 @@ void eigenDecompositionCardano(Eigen::Matrix3f& A, Eigen::Matrix3f& eigenValues,
 	double p, sqrt_p, q, c, s, phi;
 	p = sqr(m) - 3.0*c1;
 	q = m*(p - (3.0 / 2.0)*c1) - (27.0 / 2.0)*c0;
-	sqrt_p = sqrt(fabs(p));
+	sqrt_p = sqrt(abs(p));
 
 	phi = 27.0 * (0.25*sqr(c1)*(p - c1) + c0*(q + 27.0 / 4.0*c0));
-	phi = (1.0 / 3.0) * atan2(sqrt(fabs(phi)), q);
+	phi = (1.0 / 3.0) * atan2(sqrt(abs(phi)), q);
 
-	c = sqrt_p*cos(phi);
-	s = (1.0 / 1.73205080756887729352744634151)*sqrt_p*sin(phi);
+	c = sqrt_p * cos(phi);
+	s = 0.57735026918962576450914878050195745564760175127012687601860232648397767230293334569371539558574952522520871380513556767 * sqrt_p * sin(phi);
 
-	eigenValues(1, 1) = (1.0 / 3.0)*(m - c);
-	eigenValues(2, 2) = eigenValues(1,1) + s;
-	eigenValues(0, 0) = eigenValues(1,1) + c;
-	eigenValues(1, 1) -= s;
+	Eigen::Matrix3d A_d;
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			A_d(row, col) = (double)A(row, col);
+		}
+	}
+	Eigen::Matrix3d eigenValues_d;
+	Eigen::Matrix3d eigenVectors_d;
+	eigenValues_d.setZero();
+	eigenValues_d(1, 1) = (1.0 / 3.0)*(m - c);
+	eigenValues_d(2, 2) = eigenValues_d(1, 1) + s;
+	eigenValues_d(0, 0) = eigenValues_d(1, 1) + c;
+	eigenValues_d(1, 1) -= s;
 
 	for (int e = 0; e < 2; ++e)
 	{
-		eigenVectors.col(e) = (A.col(0) - eigenValues(e, e) * Eigen::Vector3f(1.0f, 0.0f, 0.0f)).cross(A.col(1) - eigenValues(e, e) * Eigen::Vector3f(0.0f, 1.0f, 0.0f));
+		eigenVectors_d.col(e) = (A_d.col(0) - eigenValues_d(e, e) * Eigen::Vector3d(1.0, 0.0, 0.0)).cross(A_d.col(1) - eigenValues_d(e, e) * Eigen::Vector3d(0.0, 1.0, 0.0));
 	}
 
-	if (std::abs(eigenValues(0, 0) - eigenValues(1, 1)) == 0.0f)
+	if (std::abs(eigenValues_d(0, 0) - eigenValues_d(1, 1)) == 0.0)
 	{
-		eigenVectors.col(1) = eigenVectors.col(0).cross(A.col(0) - eigenValues(0, 0) * Eigen::Vector3f(1.0f, 0.0f, 0.0f));
+		eigenVectors_d.col(1) = eigenVectors_d.col(0).cross(A_d.col(0) - eigenValues_d(0, 0) * Eigen::Vector3d(1.0, 0.0, 0.0));
 	}
 
-	eigenVectors.col(2) = eigenVectors.col(0).cross(eigenVectors.col(1));
-
+	eigenVectors_d.col(2) = eigenVectors_d.col(0).cross(eigenVectors_d.col(1));
+	
+	bool recompute = false;
 	for (int i = 0; i < 3; ++i)
 	{
-		if (eigenVectors.col(i).squaredNorm() != 0)
+		if (eigenVectors_d.col(i).squaredNorm() > 1e-10)
 		{
-			eigenVectors.col(i) = eigenVectors.col(i).normalized();
+			eigenVectors_d.col(i) = eigenVectors_d.col(i).normalized();
+		}
+		else
+		{
+			recompute = true;
 		}
 	}
+
+	if (recompute)
+	{
+		Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(A);
+		eigenValues = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+		eigenVectors = eigenSolver.pseudoEigenvectors(); //eigenvectors
+	}
+	else
+	{
+		for (int row = 0; row < 3; ++row)
+		{
+			for (int col = 0; col < 3; ++col)
+			{
+				eigenValues(row, col) = (float)eigenValues_d(row, col);
+				eigenVectors(row, col) = (float)eigenVectors_d(row, col);
+			}
+		}
+	}
+
 }
