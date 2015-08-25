@@ -13,8 +13,13 @@
 #include "PBDSolverSettings.h"
 #include "PBDProbabilisticConstraint.h"
 #include "CollisionMesh.h"
+#include "CollisionRod.h"
 
 #include <boost/thread.hpp>
+
+#include <tbb\parallel_for.h>
+#include <tbb\mutex.h>
+#include <tbb\queuing_mutex.h>
 
 class PBDSolver
 {
@@ -23,7 +28,8 @@ public:
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 		std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
 		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
-		std::vector<CollisionMesh>& collisionGeometry);
+		std::vector<CollisionMesh>& collisionGeometry,
+		std::vector<CollisionRod>& collisionGeometry2);
 	PBDSolver();
 
 	~PBDSolver();
@@ -37,7 +43,14 @@ public:
 	void projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
-		std::vector<CollisionMesh>& collisionGeometry);
+		std::vector<CollisionMesh>& collisionGeometry,
+		std::vector<CollisionRod>& collisionGeometry2);
+
+	void projectConstraintsVISCOELASTIC_MULTI(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
+		std::vector<CollisionMesh>& collisionGeometry,
+		std::vector<CollisionRod>& collisionGeometry2);
 
 	void updateVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);
@@ -64,6 +77,9 @@ public:
 		const Eigen::Vector3f& x1, const Eigen::Vector3f& x2, Eigen::Vector3f& temp, Eigen::Vector3f& deltaX);
 
 	int m_currentFrame;
+private:
+
+	tbb::queuing_mutex m_mutex;
 };
 
 void

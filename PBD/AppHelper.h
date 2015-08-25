@@ -12,6 +12,8 @@
 #include "PBDParticle.h"
 #include "PBDTetrahedra3d.h"
 
+#include "CollisionRod.h"
+
 
 bool parseTestParams(char* argument,
 	int& testIdx, int& testVersion)
@@ -181,11 +183,12 @@ bool parseTerminalParameters(const int argc, char* argv[],
 bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexConstraintIndices,
 	std::vector<PBDTetrahedra3d>& tetrahedra,
 	std::shared_ptr<std::vector<PBDParticle>>& particles,
-	std::vector<std::vector<Eigen::Vector2f>>& trackingData)
+	std::vector<std::vector<Eigen::Vector2f>>& trackingData,
+	std::vector<CollisionRod>& collisionRodGeometry)
 {
 	if (params.TEST_IDX == 0)
 	{
-		MeshCreator::generateTetBar(particles, tetrahedra, 10, 3, 3);
+		MeshCreator::generateTetBar(particles, tetrahedra, 5, 3, 3);
 		return true;
 	}
 	else if (params.TEST_IDX == 1 || params.TEST_IDX == 2 || params.TEST_IDX == 3 || params.TEST_IDX == 4)
@@ -233,10 +236,24 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 		TetGenIO::readNodes(paramsIO.nodeFile, *particles, params.solverSettings.inverseMass, initialVelocity);
 		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
 
-		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, paramsIO.constraintFile);
-		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+		collisionRodGeometry.resize(1);
+		std::vector<std::string> rodTransformNames;
+		rodTransformNames.push_back("top1_bakedToWorld");
+		rodTransformNames.push_back("bottom_bakedToWorld");
+
+		collisionRodGeometry[0].readFromAbc("rod_liver1.abc", rodTransformNames);
+
+		if (paramsIO.constraintFile != "DUMMY")
 		{
-			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+			ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, paramsIO.constraintFile);
+			for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+			{
+				(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+			}
+		}
+		else
+		{
+			std::cout << "WARNING: Constraint file ignored!" << std::endl;
 		}
 	}
 	else
@@ -1104,10 +1121,11 @@ void initTest_11(Parameters& params, IOParameters& paramsIO)
 	params.useTrackingConstraints = false;
 	params.readVertexConstraintData = false;
 	params.useFEMSolver = false;
-	params.disableSolver = false;
+	params.solverSettings.disableConstraintProjection = false;
+	params.renderCollisionGoemetry = true;
 
-	params.solverSettings.poissonRatio = 0.45f;
-	params.solverSettings.youngsModulus = 150.0f;
+	params.solverSettings.poissonRatio = 0.40f;
+	params.solverSettings.youngsModulus = 1.0f;
 	params.solverSettings.numConstraintIts = 5;
 	params.solverSettings.deltaT = 0.005f;
 	params.solverSettings.inverseMass = 1.0f;
@@ -1123,16 +1141,27 @@ void initTest_11(Parameters& params, IOParameters& paramsIO)
 
 	paramsIO.nodeFile = "liverPig1.node";
 	paramsIO.elementFile = "liverPig1.ele";
+	//paramsIO.constraintFile = "DUMMY";
 	paramsIO.constraintFile = "pigLiver1AbsoluteConstraints.txt";
 
-	params.writeToAlembic = true;
-	params.maxFrames = 200;
+	//params.solverSettings.enableGroundPlaneCollision = true;
+	//params.solverSettings.groundplaneHeight = -50.0f;
 
-	params.solverSettings.rho = 0.1f;
+	params.writeToAlembic = true;
+	params.maxFrames = 6000;
+
+	params.solverSettings.rho = 0.5f;
 
 	params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
 	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
-	params.solverSettings.alpha = 0.0f;
+	params.solverSettings.anisotropyParameter = 0.0f;
+
+
+	//rod
+	params.solverSettings.collisionSpheresNum.push_back(40);
+	params.solverSettings.collisionSpheresRadius.push_back(1.0f);
+
+	params.solverSettings.useMultiThreadedSolver = true;
 
 	if (params.TEST_VERSION == 0)
 	{

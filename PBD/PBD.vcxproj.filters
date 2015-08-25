@@ -75,6 +75,9 @@
     <ClCompile Include="CollisionRod.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AbcReaderTransform.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dVector.h">
@@ -162,6 +165,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CollisionRod.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AbcReaderTransform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PBDSolverProcessingFunctionsTBB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

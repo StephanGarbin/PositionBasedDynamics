@@ -34,6 +34,7 @@
 #include "AppHelper.h"
 #include "FiberMesh.h"
 #include "CollisionMesh.h"
+#include "CollisionRod.h"
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
@@ -44,6 +45,7 @@ std::vector<PBDProbabilisticConstraint> probabilisticConstraints;
 std::vector<std::vector<Eigen::Vector2f>> trackingData;
 std::shared_ptr<FiberMesh> fiberMesh;
 std::vector<CollisionMesh> collisionGeometry;
+std::vector<CollisionRod> collisionGeometry2;
 
 PBDSolver solver;
 FEMSimulator FEMsolver;
@@ -312,6 +314,15 @@ void mainLoop()
 	}
 	//glDisable(GL_POLYGON_OFFSET_LINE);
 
+	if (parameters.renderCollisionGoemetry)
+	{
+		for (int i = 0; i < collisionGeometry2.size(); ++i)
+		{
+			collisionGeometry2[i].glRender(parameters.getCurrentFrame(), parameters.solverSettings.deltaT,
+				parameters.solverSettings.collisionSpheresNum[i], parameters.solverSettings.collisionSpheresRadius[i]);
+		}
+	}
+
 	for (int i = 0; i < probabilisticConstraints.size(); ++i)
 	{
 		glPushMatrix();
@@ -334,7 +345,7 @@ void mainLoop()
 				updateProbabilisticConstraints();
 			}
 			solver.advanceSystem(tetrahedra, particles, parameters.solverSettings, currentPositions, numConstraintInfluences,
-				probabilisticConstraints, collisionGeometry);
+				probabilisticConstraints, collisionGeometry, collisionGeometry2);
 		}
 		else
 		{
@@ -578,7 +589,7 @@ int main(int argc, char* argv[])
 	std::vector<int> vertexConstraintIndices;
 
 	if (!doIO(parameters, ioParameters, vertexConstraintIndices,
-		tetrahedra, particles, trackingData))
+		tetrahedra, particles, trackingData, collisionGeometry2))
 	{
 		return 0;
 	}

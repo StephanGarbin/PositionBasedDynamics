@@ -74,6 +74,13 @@ struct PBDSolverSettings
 
 	//Collision
 	bool enableGroundPlaneCollision;
+	float groundplaneHeight;
+
+	//Collision Rods
+	std::vector<int> collisionSpheresNum;
+	std::vector<float> collisionSpheresRadius;
+
+	bool useMultiThreadedSolver;
 
 	enum CONSTITUTIVE_MODEL
 	{
@@ -125,8 +132,10 @@ struct PBDSolverSettings
 		trackSpecificPosition = false;
 		trackAverageDeltaXLength = false;
 		enableGroundPlaneCollision = false;
+		groundplaneHeight = 0.0f;
 
 		disableInversionHandling = false;
+		useMultiThreadedSolver = true;
 	}
 
 	void print()

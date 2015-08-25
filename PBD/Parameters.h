@@ -86,6 +86,9 @@ struct Parameters
 	int pressureStartFrame;
 	int pressureEndFrame;
 
+
+	bool renderCollisionGoemetry;
+
 	void initialiseToDefaults()
 	{
 		disableSolver = false;
@@ -116,6 +119,8 @@ struct Parameters
 		readCollisionGeometry = false;
 		translateCollisionGeometry = false;
 		applyPressure = false;
+
+		renderCollisionGoemetry = false;
 	}
 
 	void initialiseCamera()

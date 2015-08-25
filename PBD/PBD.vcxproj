@@ -175,6 +175,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AbcReader.cpp" />
+    <ClCompile Include="AbcReaderTransform.cpp" />
     <ClCompile Include="AbcWriter.cpp" />
     <ClCompile Include="CollisionMesh.cpp" />
     <ClCompile Include="CollisionRod.cpp" />
@@ -200,6 +201,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AbcReader.h" />
+    <ClInclude Include="AbcReaderTransform.h" />
     <ClInclude Include="AbcWriter.h" />
     <ClInclude Include="AppHelper.h" />
     <ClInclude Include="CollisionMesh.h" />
@@ -219,6 +221,7 @@
     <ClInclude Include="MeshCreator.h" />
     <ClInclude Include="Parameters.h" />
     <ClInclude Include="PBDProbabilisticConstraint.h" />
+    <ClInclude Include="PBDSolverProcessingFunctionsTBB.h" />
     <ClInclude Include="PBDSolverSettings.h" />
     <ClInclude Include="PBDSolverTracker.h" />
     <ClInclude Include="PBDTetrahedra3d.h" />

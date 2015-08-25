@@ -10,6 +10,7 @@
 #include <boost/bind.hpp>
 
 #include "EnergyConstraint.h"
+#include "PBDSolverProcessingFunctionsTBB.h"
 
 
 PBDSolver::PBDSolver()
@@ -27,7 +28,8 @@ PBDSolver::advanceSystem(std::vector<PBDTetrahedra3d>& tetrahedra,
 std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
-std::vector<CollisionMesh>& collisionGeometry)
+std::vector<CollisionMesh>& collisionGeometry,
+std::vector<CollisionRod>& collisionGeometry2)
 {
 	//Advance Velocities
 	advanceVelocities(tetrahedra, particles, settings);
@@ -52,7 +54,14 @@ std::vector<CollisionMesh>& collisionGeometry)
 		//projectConstraintsDistance(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 		//projectConstraintsGeometricInversionHandling(tetrahedra, particles, settings);
 		//projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
-		projectConstraintsVISCOELASTIC(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry);
+		if (settings.useMultiThreadedSolver)
+		{
+			projectConstraintsVISCOELASTIC_MULTI(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry, collisionGeometry2);
+		}
+		else
+		{
+			projectConstraintsVISCOELASTIC(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry, collisionGeometry2);
+		}
 	}
 
 	//Update Velocities
@@ -720,10 +729,49 @@ bool solveVolumeConstraint(
 
 
 void
+PBDSolver::projectConstraintsVISCOELASTIC_MULTI(std::vector<PBDTetrahedra3d>& tetrahedra,
+std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
+std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
+std::vector<CollisionMesh>& collisionGeometry,
+std::vector<CollisionRod>& collisionGeometry2)
+{
+	for (int it = 0; it < settings.numConstraintIts; ++it)
+	{
+
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, tetrahedra.size()), PBDSolverTBB(tetrahedra, particles,
+			settings, probabilisticConstraints, collisionGeometry, collisionGeometry2, m_mutex), tbb::auto_partitioner());
+
+		if (settings.enableGroundPlaneCollision)
+		{
+			for (int p = 0; p < particles->size(); ++p)
+			{
+				if ((*particles)[p].position()[1] < settings.groundplaneHeight)
+				{
+					(*particles)[p].position()[1] = settings.groundplaneHeight;
+				}
+			}
+		}
+
+		//COLLISION HANDLING
+		for (int c = 0; c < collisionGeometry.size(); ++c)
+		{
+			collisionGeometry[c].resolveParticleCollisions(*particles);
+		}
+
+		for (int c = 0; c < collisionGeometry2.size(); ++c)
+		{
+			collisionGeometry2[c].resolveParticleCollisions(*particles, settings.currentFrame, settings.deltaT,
+				settings.collisionSpheresNum[c], settings.collisionSpheresRadius[c]);
+		}
+	}
+}
+
+void
 PBDSolver::projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahedra,
 std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
-std::vector<CollisionMesh>& collisionGeometry)
+std::vector<CollisionMesh>& collisionGeometry,
+std::vector<CollisionRod>& collisionGeometry2)
 {
 	Eigen::Vector3f a(0.0f, 1.0f, 0.0f);
 
@@ -798,10 +846,10 @@ std::vector<CollisionMesh>& collisionGeometry)
 
 			if (!settings.disableInversionHandling)
 			{
-				//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-				//S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
-				//V = eigenSolver.pseudoEigenvectors(); //eigenvectors
-				eigenDecompositionCardano(FTransposeF, S, V);
+				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+				V = eigenSolver.pseudoEigenvectors(); //eigenvectors
+				//eigenDecompositionCardano(FTransposeF, S, V);
 
 				for (int i = 0; i < 3; ++i)
 				{
@@ -1144,9 +1192,9 @@ std::vector<CollisionMesh>& collisionGeometry)
 		{
 			for (int p = 0; p < particles->size(); ++p)
 			{
-				if ((*particles)[p].position()[1] < 0.0f)
+				if ((*particles)[p].position()[1] < settings.groundplaneHeight)
 				{
-					(*particles)[p].position()[1] = 0.0f;
+					(*particles)[p].position()[1] = settings.groundplaneHeight;
 				}
 			}
 		}
@@ -1155,6 +1203,12 @@ std::vector<CollisionMesh>& collisionGeometry)
 		for (int c = 0; c < collisionGeometry.size(); ++c)
 		{
 			collisionGeometry[c].resolveParticleCollisions(*particles);
+		}
+
+		for (int c = 0; c < collisionGeometry2.size(); ++c)
+		{
+			collisionGeometry2[c].resolveParticleCollisions(*particles, settings.currentFrame, settings.deltaT,
+				settings.collisionSpheresNum[c], settings.collisionSpheresRadius[c]);
 		}
 
 	}
