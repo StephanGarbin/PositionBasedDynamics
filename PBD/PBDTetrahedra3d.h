@@ -10,8 +10,8 @@
 class PBDTetrahedra3d
 {
 public:
-	PBDTetrahedra3d(std::vector<int>&& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles);
-	PBDTetrahedra3d(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles);
+	PBDTetrahedra3d(std::vector<int>&& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles, int thisIdx);
+	PBDTetrahedra3d(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles, int thisIdx);
 	~PBDTetrahedra3d();
 
 	const std::vector<int>& getVertexIndices() const { return m_vertexIndices; }
@@ -113,6 +113,7 @@ private:
 
 	float m_undeformedVolumeAlternative;
 
+	int m_thisIdx;
 
 	//viscoelasticity
 	Eigen::Matrix3f m_upsilon;

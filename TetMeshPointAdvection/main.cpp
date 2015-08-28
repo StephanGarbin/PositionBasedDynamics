@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
 		//	std::cout << "point: " << p << ": " << baryCentricCoordsTetIdx[p] << std::endl;
 		//}
 	}
-	
+	std::cout << "Num Excluded Points: " << numExcludedPoints << std::endl;
 
 	std::cout << "Finished determining barycentric coordinates, analysing mesh..." << std::endl;
 	//-----------------------------------------------------------------------------------------------------------------------------
@@ -225,8 +225,20 @@ int main(int argc, char* argv[])
 				+ reader1.getPositions()[reader1.getFaceIndices(baryCentricCoordsTetIdx[p])[2]] * baryCentricCoords[p][2]
 				+ reader1.getPositions()[reader1.getFaceIndices(baryCentricCoordsTetIdx[p])[3]] * baryCentricCoords[p][3];
 
-			sum += std::sqrtf((groundTruthPointPosition - simulatedPoint).squaredNorm());
-			pointSum += groundTruthPointPosition - simulatedPoint;
+			if ((groundTruthPointPosition - simulatedPoint).squaredNorm() != 0.0f)
+			{
+				if (std::isinf((groundTruthPointPosition - simulatedPoint).squaredNorm()) || std::isnan((groundTruthPointPosition - simulatedPoint).squaredNorm()))
+				{
+					std::cout << p << ": " << std::endl;
+					std::cout << reader1.getPositions()[reader1.getFaceIndices(baryCentricCoordsTetIdx[p])[0]] << std::endl;
+					std::cout << reader1.getPositions()[reader1.getFaceIndices(baryCentricCoordsTetIdx[p])[1]] << std::endl;
+					std::cout << reader1.getPositions()[reader1.getFaceIndices(baryCentricCoordsTetIdx[p])[2]] << std::endl;
+					std::cout << reader1.getPositions()[reader1.getFaceIndices(baryCentricCoordsTetIdx[p])[3]] << std::endl;
+					continue;
+				}
+				sum += std::sqrtf((groundTruthPointPosition - simulatedPoint).squaredNorm());
+				pointSum += (groundTruthPointPosition - simulatedPoint).cwiseAbs();
+			}
 		}
 
 		sumofSquaredPositionDifferences[i] = (sum / (float)(numTrackedPoints - numExcludedPoints));

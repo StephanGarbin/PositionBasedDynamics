@@ -119,7 +119,7 @@ CollisionSphere::calculateNewSphereCentre(int systemFrame, float timeStep)
 		return;
 	}
 
-	timeStep *= 4.0f;
+	timeStep *= 1.0f;
 	//get start & end point
 	Eigen::Vector3f top;
 	Eigen::Vector3f bottom;
@@ -173,8 +173,35 @@ CollisionSphere::resolveParticleCollisions_SAFE(std::vector<PBDParticle>& partic
 
 			float penetrationAmount = sphereRadius - std::sqrtf((sphereCentre - particles[p].position()).squaredNorm());
 
-			particles[p].position() -= (sphereCentre - particles[p].position()).normalized() * penetrationAmount;
+			Eigen::Vector3f correction = (sphereCentre - particles[p].position()).normalized() * penetrationAmount;
+
+			particles[p].position() -= correction;
+			//for (int n = 0; n < particles[p].getContainingTetIdxs().size(); ++n)
+			//{
+			//	
+			//}
+			continue;
 		}
+		//sphereRadius += sphereRadius / 16.0f;
+		//if (std::sqrtf((sphereCentre - particles[p].position()).squaredNorm()) < sphereRadius)
+		//{
+		//	Eigen::Vector3f sphereMotion;
+		//	Eigen::Vector3f particleMotion;
+		//	if (m_previousCollisionSphereCentre[0] == -1.119f &&m_previousCollisionSphereCentre[1] == -1.119f && m_collisionSphereCentre[2] == -1.771f)
+		//	{
+		//		sphereMotion.setZero();
+		//	}
+		//	else
+		//	{
+		//		sphereMotion = sphereCentre - m_previousCollisionSphereCentre;
+		//	}
+
+		//	particleMotion = particles[p].position() - particles[p].previousPosition();
+
+		//	float penetrationAmount = (sphereRadius - std::sqrtf((sphereCentre - particles[p].position()).squaredNorm())) / 2;
+
+		//	particles[p].position() -= (sphereCentre - particles[p].position()).normalized() * penetrationAmount;
+		//}
 	}
 }
 
@@ -195,11 +222,34 @@ CollisionSphere::checkForSinglePointIntersection_SAFE(const Eigen::Vector3f& poi
 
 }
 
+void
+CollisionSphere::checkForSinglePointIntersection_normalReflection_SAFE(const Eigen::Vector3f& previousPoint, const Eigen::Vector3f& point, float& penetrationDistance,
+	bool& penetrates, Eigen::Vector3f& normal, Eigen::Vector3f& correction, float sphereRadius)
+{
+	if (std::sqrtf((m_collisionSphereCentre - point).squaredNorm()) < sphereRadius)
+	{
+		penetrates = true;
+		penetrationDistance = sphereRadius - std::sqrtf((m_collisionSphereCentre - point).squaredNorm());
+		Eigen::Vector3f intersectionPoint = (point - previousPoint) - (point - previousPoint).normalized() * penetrationDistance;
+
+		normal = (intersectionPoint - m_collisionSphereCentre).normalized();
+
+		correction = intersectionPoint + (intersectionPoint - 2.0f * (intersectionPoint.dot(normal)) * normal).normalized() * penetrationDistance;
+	}
+	else
+	{
+		penetrates = false;
+		penetrationDistance = 0.0f;
+		normal.setZero();
+		correction.setZero();
+	}
+
+}
 
 void
 CollisionSphere::glRender(int systemFrame, float timeStep, float sphereRadius)
 {
-	timeStep *= 4.0f;
+	timeStep *= 1.0f;
 	//get start & end point
 	Eigen::Vector3f top;
 	Eigen::Vector3f bottom;

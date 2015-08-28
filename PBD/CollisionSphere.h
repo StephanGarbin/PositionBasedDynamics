@@ -28,6 +28,10 @@ public:
 
 	void checkForSinglePointIntersection_SAFE(const Eigen::Vector3f& point, float& penetrationDistance, bool& penetrates, float sphereRadius);
 
+	void checkForSinglePointIntersection_normalReflection_SAFE(const Eigen::Vector3f& previousPoint, const Eigen::Vector3f& point, float& penetrationDistance,
+		bool& penetrates, Eigen::Vector3f& normal, Eigen::Vector3f& correction, float sphereRadius);
+
+
 	Eigen::Vector3f& getCollisionMeshTranslation()
 	{
 		return m_translation;

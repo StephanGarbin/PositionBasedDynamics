@@ -412,6 +412,9 @@ struct PBDSolverTBB
 									* lagrangeM) * gradient.col(cI);
 
 								Eigen::Vector3f proposedEndpoint = tetrahedra[t].get_x(cI).position() + deltaX;
+								Eigen::Vector3f normal;
+								Eigen::Vector3f correction;
+
 								float penetrationDistance;
 								bool penetrates;
 								for (int cS = 0; cS < collisionGeometry3.size(); ++cS)
@@ -431,6 +434,16 @@ struct PBDSolverTBB
 											proposedEndpoint += penetrationDistance * (tetrahedra[t].get_x(cI).position() - proposedEndpoint).normalized();
 										}
 									}
+
+									//collisionGeometry3[cS].checkForSinglePointIntersection_normalReflection_SAFE(tetrahedra[t].get_x(cI).previousPosition(),
+									//	proposedEndpoint, penetrationDistance, penetrates, normal, correction,
+									//	settings.collisionSpheresRadius[cS]);
+
+									//if (penetrates)
+									//{
+									//	
+									//	proposedEndpoint = correction;
+									//}
 								}
 								tetrahedra[t].get_x(cI).position() = proposedEndpoint;
 

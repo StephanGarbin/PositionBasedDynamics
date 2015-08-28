@@ -271,13 +271,13 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
 
 		//pin ground vertices
-		//for (int p = 0; p < particles->size(); ++p)
-		//{
-		//	if((*particles)[p].position()[1] <= 110.273f)
-		//	{
-		//		(*particles)[p].inverseMass() = 0.0;
-		//	}
-		//}
+		for (int p = 0; p < particles->size(); ++p)
+		{
+			if((*particles)[p].position()[1] <= 110.273f)
+			{
+				(*particles)[p].inverseMass() = 0.0;
+			}
+		}
 
 		//for (int p = 0; p < particles->size(); ++p)
 		//{
@@ -1249,32 +1249,35 @@ void initTest_12(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.disableConstraintProjection = false;
 	params.renderCollisionGoemetry = true;
 
-	params.solverSettings.poissonRatio = 0.40f;
-	params.solverSettings.youngsModulus = 0.1f;
+	params.solverSettings.poissonRatio = 0.4f;
+	params.solverSettings.youngsModulus = 0.02f;
 	params.solverSettings.numConstraintIts = 5;
 	params.solverSettings.deltaT = 0.005f;
 	params.solverSettings.inverseMass = 1.0f;
 	params.solverSettings.printStrainEnergy = false;
 	params.solverSettings.printStrainEnergyToFile = false;
-	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.gravity = -0.00f;
 	params.solverSettings.externalForce.setZero();
 	params.solverSettings.forceMultiplicationFactor = 0.0f;
-	params.solverSettings.rho = 1.0f;
+	params.solverSettings.rho = 0.58f;
 	params.solverSettings.numTetrahedraIterations = 0;
 	params.solverSettings.correctStrongForcesWithSubteps = false;
 	params.solverSettings.useGeometricConstraintLimits = false;
 
-	paramsIO.nodeFile = "LiverInitialLowResolution_00625.1.node";
-	paramsIO.elementFile = "LiverInitialLowResolution_00625.1.ele";
+	paramsIO.nodeFile = "LiverInitialLowResolution_lowest.1.node";
+	paramsIO.elementFile = "LiverInitialLowResolution_lowest.1.ele";
+	paramsIO.constraintFile = "phantomIdentationGood_Lowest.txt";
+	//paramsIO.nodeFile = "LiverInitialLowResolution_00625.1.node";
+	//paramsIO.elementFile = "LiverInitialLowResolution_00625.1.ele";
 	//paramsIO.constraintFile = "DUMMY";
-	paramsIO.constraintFile = "phantomIdentationGood_00625.txt";
+	//paramsIO.constraintFile = "phantomIdentationGood_00625.txt";
 	//paramsIO.constraintFile = "phantomIdentationLow_00625.txt";
 
 	//params.solverSettings.enableGroundPlaneCollision = true;
 	//params.solverSettings.groundplaneHeight = -50.0f;
 
 	params.writeToAlembic = true;
-	params.maxFrames = 1000;
+	params.maxFrames = 6000;
 
 	params.solverSettings.rho = 0.05f;
 

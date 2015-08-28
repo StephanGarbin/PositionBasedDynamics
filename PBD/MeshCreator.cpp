@@ -120,7 +120,7 @@ int width, int height, int depth)
 		localIndices[2] = indices[i * 4 + 2];
 		localIndices[3] = indices[i * 4 + 3];
 
-		tets.push_back(PBDTetrahedra3d(localIndices, particles));
+		tets.push_back(PBDTetrahedra3d(localIndices, particles, i));
 	}
 }
 
@@ -262,7 +262,7 @@ MeshCreator::generateTetBarToFit(std::shared_ptr<std::vector<PBDParticle>>& part
 		localIndices[2] = indices[i * 4 + 2];
 		localIndices[3] = indices[i * 4 + 3];
 
-		tets.push_back(PBDTetrahedra3d(localIndices, particles));
+		tets.push_back(PBDTetrahedra3d(localIndices, particles, i));
 	}
 
 
@@ -306,5 +306,5 @@ MeshCreator::generateSingleTet(std::shared_ptr<std::vector<PBDParticle>>& partic
 
 	//3. Generate 1 Tet Element
 	std::vector<int> indices = { 0, 1, 2, 3 };
-	tets.push_back(PBDTetrahedra3d(std::move(indices), particles));
+	tets.push_back(PBDTetrahedra3d(std::move(indices), particles, 0));
 }

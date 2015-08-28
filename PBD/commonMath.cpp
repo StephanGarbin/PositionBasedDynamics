@@ -1,7 +1,7 @@
 #include "commonMath.h"
 #include <iostream>
 
-int dsyevc3(double A[3][3], double w[3]);
+int dsyevj3(Eigen::Matrix3f& A, Eigen::Matrix3f& Q, Eigen::Matrix3f& w);
 
 Eigen::Matrix3f kroneckerProduct(const Eigen::Vector3f& left, const Eigen::Vector3f& right)
 {
@@ -100,9 +100,11 @@ void eigenDecompositionCardano(Eigen::Matrix3f& A, Eigen::Matrix3f& eigenValues,
 
 	if (recompute)
 	{
-		Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(A);
-		eigenValues = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
-		eigenVectors = eigenSolver.pseudoEigenvectors(); //eigenvectors
+		//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(A);
+		//eigenValues = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+		//eigenVectors = eigenSolver.pseudoEigenvectors(); //eigenvectors
+		eigenValues.setZero();
+		dsyevj3(A, eigenVectors, eigenValues);
 	}
 	else
 	{
@@ -145,4 +147,110 @@ void raySphereIntersect(const Eigen::Vector3f& sphereCentre, float sphereRadius,
 		intersectionPoints[1] = rayOrigin + d2 * rayDirection;
 	}
 
+}
+
+int dsyevj3(Eigen::Matrix3f& A, Eigen::Matrix3f& Q, Eigen::Matrix3f& w)
+{
+	const int n = 3;
+	double sd, so;                  // Sums of diagonal resp. off-diagonal elements
+	double s, c, t;                 // sin(phi), cos(phi), tan(phi) and temporary storage
+	double g, h, z, theta;          // More temporary storage
+	double thresh;
+
+	// Initialize Q to the identitity matrix
+	Q.setIdentity();
+
+	// Initialize w to diag(A)
+	for (int i = 0; i < n; i++)
+		w(i,i) = A(i,i);
+
+	// Calculate SQR(tr(A))  
+	sd = 0.0;
+	for (int i = 0; i < n; i++)
+		sd += fabs(w(i,i));
+	sd = sqr(sd);
+
+	// Main iteration loop
+	for (int nIter = 0; nIter < 50; nIter++)
+	{
+		// Test for convergence 
+		so = 0.0;
+		for (int p = 0; p < n; p++)
+		for (int q = p + 1; q < n; q++)
+			so += fabs(A(p,q));
+		if (so == 0.0)
+			return 0;
+
+		if (nIter < 4)
+			thresh = 0.2 * so / sqr(n);
+		else
+			thresh = 0.0;
+
+		// Do sweep
+		for (int p = 0; p < n; p++)
+		for (int q = p + 1; q < n; q++)
+		{
+			g = 100.0 * fabs(A(p,q));
+			if (nIter > 4 && fabs(w(p,p)) + g == fabs(w(p,p))
+				&& fabs(w(q,q)) + g == fabs(w(q,q)))
+			{
+				A(p,q) = 0.0;
+			}
+			else if (fabs(A(p,q)) > thresh)
+			{
+				// Calculate Jacobi transformation
+				h = w(q,q) - w(p,p);
+				if (fabs(h) + g == fabs(h))
+				{
+					t = A(p,q) / h;
+				}
+				else
+				{
+					theta = 0.5 * h / A(p,q);
+					if (theta < 0.0)
+						t = -1.0 / (sqrt(1.0 + sqr(theta)) - theta);
+					else
+						t = 1.0 / (sqrt(1.0 + sqr(theta)) + theta);
+				}
+				c = 1.0 / sqrt(1.0 + sqr(t));
+				s = t * c;
+				z = t * A(p,q);
+
+				// Apply Jacobi transformation
+				A(p,q) = 0.0;
+				w(p) -= z;
+				w(q) += z;
+				for (int r = 0; r < p; r++)
+				{
+					t = A(r,p);
+					A(r,p) = c*t - s*A(r,q);
+					A(r,q) = s*t + c*A(r,q);
+				}
+				for (int r = p + 1; r < q; r++)
+				{
+					t = A(p,r);
+					A(p,r) = c*t - s*A(r,q);
+					A(r,q) = s*t + c*A(r,q);
+				}
+				for (int r = q + 1; r < n; r++)
+				{
+					t = A(p,r);
+					A(p,r) = c*t - s*A(q,r);
+					A(q,r) = s*t + c*A(q,r);
+				}
+
+				// Update eigenvectors
+#ifndef EVALS_ONLY          
+				for (int r = 0; r < n; r++)
+				{
+					t = Q(r, p);
+					Q(r,p) = c*t - s*Q(r,q);
+					Q(r,q) = s*t + c*Q(r,q);
+				}
+#endif
+			}
+		}
+	}
+
+	return -1;
 }

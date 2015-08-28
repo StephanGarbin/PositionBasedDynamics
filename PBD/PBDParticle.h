@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <Eigen/Dense>
 
 class PBDParticle
@@ -22,8 +23,12 @@ public:
 
 	void swapStates();
 
-private:
+	int getNumContainingTetrahedra() { return m_tetrahedra.size(); }
 
+	std::vector<int>& getContainingTetIdxs(){ return m_tetrahedra; }
+
+private:
+	std::vector<int> m_tetrahedra;
 	float m_inverseMass;
 
 	Eigen::Vector3f m_pastPosition;

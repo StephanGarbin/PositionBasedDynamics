@@ -40,14 +40,16 @@
 #include <GL\glew.h>
 #include <gl\GL.h>
 
-PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>&& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles)
+PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>&& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles, int thisIdx)
 {
+	m_thisIdx = thisIdx;
 	m_vertexIndices = std::move(vertexIndices);
 	initialise(vertexIndices, particles);
 }
 
-PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles)
+PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles, int thisIdx)
 {
+	m_thisIdx = thisIdx;
 	m_vertexIndices = vertexIndices;
 	initialise(vertexIndices, particles);
 }
@@ -72,6 +74,11 @@ PBDTetrahedra3d::initialise(std::vector<int>& vertexIndices, const std::shared_p
 	m_distortionElastic.setZero();
 	m_deformedShapeMatrix_previousVelocity.setZero();
 	m_deformedShapeMatrix_previousPosition.setZero();
+
+	for (int i = 0; i < m_vertexIndices.size(); ++i)
+	{
+		(*m_particles)[m_vertexIndices[i]].getContainingTetIdxs().push_back(m_thisIdx);
+	}
 }
 
 const Eigen::Matrix3f&

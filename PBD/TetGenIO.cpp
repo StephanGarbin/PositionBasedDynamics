@@ -90,6 +90,7 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 
 	//ignore first line
 	std::getline(file, currentLine);
+	int tetIDx = 0;
 
 	while (std::getline(file, currentLine))
 	{
@@ -131,8 +132,9 @@ TetGenIO::readTetrahedra(const std::string& fileName, std::vector<PBDTetrahedra3
 
 		//std::cout << "Converted Indices" << std::endl;
 
-		tetrahedra.emplace_back(std::move(vertexIndices), particles);
+		tetrahedra.emplace_back(std::move(vertexIndices), particles, tetIDx);
 		//std::cout << "done: " << currentLine << std::endl;
+		++tetIDx;
 	}
 
 	std::cout << "Read " << tetrahedra.size() << " tets. " << std::endl;
