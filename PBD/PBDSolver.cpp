@@ -29,13 +29,17 @@ std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& setting
 std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
 std::vector<CollisionMesh>& collisionGeometry,
-std::vector<CollisionRod>& collisionGeometry2)
+std::vector<CollisionRod>& collisionGeometry2,
+std::vector<CollisionSphere>& collisionGeometry3)
 {
 	//Advance Velocities
 	advanceVelocities(tetrahedra, particles, settings);
 
 	//Advance Positions
 	advancePositions(tetrahedra, particles, settings);
+
+	processCollisions(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry,
+		collisionGeometry2, collisionGeometry3);
 
 	if (!settings.disableConstraintProjection)
 	{
@@ -56,13 +60,18 @@ std::vector<CollisionRod>& collisionGeometry2)
 		//projectConstraintsVolume(tetrahedra, particles, settings.numConstraintIts, settings.youngsModulus);
 		if (settings.useMultiThreadedSolver)
 		{
-			projectConstraintsVISCOELASTIC_MULTI(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry, collisionGeometry2);
+			projectConstraintsVISCOELASTIC_MULTI(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry,
+				collisionGeometry2, collisionGeometry3);
 		}
 		else
 		{
-			projectConstraintsVISCOELASTIC(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry, collisionGeometry2);
+			projectConstraintsVISCOELASTIC(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry,
+				collisionGeometry2, collisionGeometry3);
 		}
 	}
+
+	//processCollisions(tetrahedra, particles, settings, temporaryPositions, numConstraintInfluences, probabilisticConstraints, collisionGeometry,
+	//	collisionGeometry2, collisionGeometry3);
 
 	//Update Velocities
 	updateVelocities(tetrahedra, particles, settings);
@@ -99,10 +108,36 @@ void
 PBDSolver::advancePositions(std::vector<PBDTetrahedra3d>& tetrahedra,
 std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings)
 {
+	//if (!settings.useSecondOrderUpdates)
+	//if (true)
+	//{
+	//	Eigen::Vector3f gravityVector(0.0f, settings.gravity, 0.0f);
+	//	for (auto& p : *particles)
+	//	{
+	//		if (p.inverseMass() != 0.0f)
+	//		{
+	//			p.position() = p.previousPosition() + settings.deltaT * p.velocity() + std::powf(settings.deltaT, 1.0f) * p.inverseMass() * gravityVector;
+	//			//std::cout << p.velocity().transpose() << std::endl;
+	//		}
+	//	}
+	//}
+	//else
+	//{
+	//	Eigen::Vector3f gravityVector(0.0f, settings.gravity, 0.0f);
+	//	for (auto& p : *particles)
+	//	{
+	//		p.position() = (4.0f / 3.0f) * p.position()
+	//			- (1.0f / 3.0f) * p.previousPosition()
+	//			+ (8.0f / 9.0f) * settings.deltaT * p.velocity()
+	//			- (2.0f / 9.0f) * settings.deltaT * p.previousPosition()
+	//			+ (4.0f / 9.0f) * std::powf(settings.deltaT, 2.0f) * p.inverseMass() * gravityVector;
+	//		//std::cout << p.velocity().transpose() << std::endl;
+	//	}
+	//}
 	for (auto& p : *particles)
 	{
-		p.position() = p.previousPosition() + settings.deltaT * p.velocity() * p.inverseMass();
-		//std::cout << p.velocity().transpose() << std::endl;
+		p.position() = p.previousPosition() + settings.deltaT * p.velocity();
+
 	}
 
 	//if (settings.currentFrame == 1)
@@ -122,9 +157,19 @@ void
 PBDSolver::updateVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
 std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings)
 {
-	for (auto& p : *particles)
+	if (!settings.useSecondOrderUpdates)
 	{
-		p.velocity() = (1.0 / settings.deltaT) * (p.position() - p.previousPosition());
+		for (auto& p : *particles)
+		{
+			p.velocity() = (1.0 / settings.deltaT) * (p.position() - p.previousPosition());
+		}
+	}
+	else
+	{
+		for (auto& p : *particles)
+		{
+			p.velocity() = (1.0 / settings.deltaT) * ((3.0f / 2.0f) * p.position() - 2.0f * p.previousPosition() + 0.5f * p.pastPosition());
+		}
 	}
 }
 
@@ -733,13 +778,14 @@ PBDSolver::projectConstraintsVISCOELASTIC_MULTI(std::vector<PBDTetrahedra3d>& te
 std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
 std::vector<CollisionMesh>& collisionGeometry,
-std::vector<CollisionRod>& collisionGeometry2)
+std::vector<CollisionRod>& collisionGeometry2,
+std::vector<CollisionSphere>& collisionGeometry3)
 {
 	for (int it = 0; it < settings.numConstraintIts; ++it)
 	{
 
 		tbb::parallel_for(tbb::blocked_range<size_t>(0, tetrahedra.size()), PBDSolverTBB(tetrahedra, particles,
-			settings, probabilisticConstraints, collisionGeometry, collisionGeometry2, m_mutex), tbb::auto_partitioner());
+			settings, probabilisticConstraints, collisionGeometry, collisionGeometry2, collisionGeometry3, m_mutex), tbb::auto_partitioner());
 
 		if (settings.enableGroundPlaneCollision)
 		{
@@ -753,17 +799,47 @@ std::vector<CollisionRod>& collisionGeometry2)
 		}
 
 		//COLLISION HANDLING
-		for (int c = 0; c < collisionGeometry.size(); ++c)
-		{
-			collisionGeometry[c].resolveParticleCollisions(*particles);
-		}
+		//for (int c = 0; c < collisionGeometry.size(); ++c)
+		//{
+		//	collisionGeometry[c].resolveParticleCollisions(*particles);
+		//}
 
-		for (int c = 0; c < collisionGeometry2.size(); ++c)
-		{
-			collisionGeometry2[c].resolveParticleCollisions(*particles, settings.currentFrame, settings.deltaT,
-				settings.collisionSpheresNum[c], settings.collisionSpheresRadius[c]);
-		}
+		//for (int c = 0; c < collisionGeometry2.size(); ++c)
+		//{
+		//	collisionGeometry2[c].resolveParticleCollisions(*particles, settings.currentFrame, settings.deltaT,
+		//		settings.collisionSpheresNum[c], settings.collisionSpheresRadius[c]);
+		//}
+
+		//if (it == settings.numConstraintIts % 2 != 0)
+		//{
+		//	processCollisions(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry, collisionGeometry2, collisionGeometry3);
+		//}
 	}
+
+	//processCollisions(tetrahedra, particles, settings, probabilisticConstraints, collisionGeometry, collisionGeometry2, collisionGeometry3);
+}
+
+void
+PBDSolver::processCollisions(std::vector<PBDTetrahedra3d>& tetrahedra,
+	std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
+	std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
+	std::vector<CollisionMesh>& collisionGeometry,
+	std::vector<CollisionRod>& collisionGeometry2,
+	std::vector<CollisionSphere>& collisionGeometry3)
+{
+	for (int c = 0; c < collisionGeometry3.size(); ++c)
+	{
+		collisionGeometry3[c].calculateNewSphereCentre(settings.currentFrame, settings.deltaT);
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, particles->size()), [&](const tbb::blocked_range<size_t>& r)
+		{
+			collisionGeometry3[c].resolveParticleCollisions_SAFE(*particles, settings.currentFrame, settings.deltaT,
+				settings.collisionSpheresRadius[c],
+				r.begin(), r.end());
+		});
+		//collisionGeometry3[c].resolveParticleCollisions(*particles, settings.currentFrame, settings.deltaT,
+		//	settings.collisionSpheresRadius[c]);
+	}
+
 }
 
 void
@@ -771,7 +847,8 @@ PBDSolver::projectConstraintsVISCOELASTIC(std::vector<PBDTetrahedra3d>& tetrahed
 std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
 std::vector<CollisionMesh>& collisionGeometry,
-std::vector<CollisionRod>& collisionGeometry2)
+std::vector<CollisionRod>& collisionGeometry2,
+std::vector<CollisionSphere>& collisionGeometry3)
 {
 	Eigen::Vector3f a(0.0f, 1.0f, 0.0f);
 
@@ -945,13 +1022,13 @@ std::vector<CollisionRod>& collisionGeometry2)
 						F(j, j) = minXVal;
 				}
 
-				const float maxXVal = 10000.0f;
+				//const float maxXVal = 10000.0f;
 
-				for (unsigned char j = 0; j < 3; j++)
-				{
-					if (F(j, j) > maxXVal)
-						F(j, j) = maxXVal;
-				}
+				//for (unsigned char j = 0; j < 3; j++)
+				//{
+				//	if (F(j, j) > maxXVal)
+				//		F(j, j) = maxXVal;
+				//}
 			}
 
 			if (settings.disableInversionHandling)
@@ -976,8 +1053,9 @@ std::vector<CollisionRod>& collisionGeometry2)
 
 				/*PF = settings.mu * F - settings.mu * FInverseTranspose;
 				PF_vol =  ((settings.lambda * logI3) / 2.0) * FInverseTranspose;*/
-				PF = settings.mu * F - settings.mu * FInverseTranspose
-				 + ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+				PF = settings.mu * F - settings.mu * FInverseTranspose;
+
+				PF_vol = ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
 				//Compute Strain Energy density field
 				strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
@@ -1209,6 +1287,12 @@ std::vector<CollisionRod>& collisionGeometry2)
 		{
 			collisionGeometry2[c].resolveParticleCollisions(*particles, settings.currentFrame, settings.deltaT,
 				settings.collisionSpheresNum[c], settings.collisionSpheresRadius[c]);
+		}
+
+		for (int c = 0; c < collisionGeometry3.size(); ++c)
+		{
+			collisionGeometry3[c].resolveParticleCollisions(*particles, settings.currentFrame, settings.deltaT,
+				settings.collisionSpheresRadius[c]);
 		}
 
 	}

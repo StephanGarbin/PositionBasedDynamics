@@ -26,9 +26,10 @@ struct PBDSolverTBB
 	std::vector<PBDProbabilisticConstraint>& in_probabilisticConstraints,
 	std::vector<CollisionMesh>& in_collisionGeometry,
 	std::vector<CollisionRod>& in_collisionGeometry2,
+	std::vector<CollisionSphere>& in_collisionGeometry3,
 	tbb::queuing_mutex& in_mutex) : tetrahedra(in_tetrahedra), particles(in_particles),
 	settings(in_settings), probabilisticConstraints(in_probabilisticConstraints),
-	collisionGeometry(in_collisionGeometry), collisionGeometry2(in_collisionGeometry2), mutex(in_mutex)
+	collisionGeometry(in_collisionGeometry), collisionGeometry2(in_collisionGeometry2), collisionGeometry3(in_collisionGeometry3), mutex(in_mutex)
 	{
 		//nothing else to do
 	}
@@ -39,6 +40,7 @@ struct PBDSolverTBB
 	std::vector<PBDProbabilisticConstraint>& probabilisticConstraints;
 	std::vector<CollisionMesh>& collisionGeometry;
 	std::vector<CollisionRod>& collisionGeometry2;
+	std::vector<CollisionSphere>& collisionGeometry3;
 
 	tbb::queuing_mutex& mutex;
 
@@ -93,10 +95,10 @@ struct PBDSolverTBB
 
 				if (!settings.disableInversionHandling)
 				{
-					Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-					S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
-					V = eigenSolver.pseudoEigenvectors(); //eigenvectors
-					//eigenDecompositionCardano(FTransposeF, S, V);
+					//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+					//S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+					//V = eigenSolver.pseudoEigenvectors(); //eigenvectors
+					eigenDecompositionCardano(FTransposeF, S, V);
 
 					for (int i = 0; i < 3; ++i)
 					{
@@ -192,12 +194,21 @@ struct PBDSolverTBB
 							F(j, j) = minXVal;
 					}
 
-					const float maxXVal = 10000.0f;
+					const float maxXVal = 500.0f;
 
 					for (unsigned char j = 0; j < 3; j++)
 					{
-						if (F(j, j) > maxXVal)
-							F(j, j) = maxXVal;
+						if (std::abs(F(j, j)) > maxXVal)
+						{
+							if (F(j, j) < 0.0f)
+							{
+								F(j, j) = -maxXVal;
+							}
+							else
+							{
+								F(j, j) = maxXVal;
+							}
+						}
 					}
 				}
 
@@ -223,8 +234,11 @@ struct PBDSolverTBB
 
 					/*PF = settings.mu * F - settings.mu * FInverseTranspose;
 					PF_vol =  ((settings.lambda * logI3) / 2.0) * FInverseTranspose;*/
-					PF = settings.mu * F - settings.mu * FInverseTranspose
-					   + ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+					//PF = settings.mu * F - settings.mu * FInverseTranspose
+					//   + ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+					PF = settings.mu * F - settings.mu * FInverseTranspose;
+
+					PF_vol = ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 
 					//Compute Strain Energy density field
 					strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
@@ -383,6 +397,8 @@ struct PBDSolverTBB
 				}
 				else
 				{
+					//std::cout << strainEnergy << ",";
+
 					//Acquire Lock
 					tbb::queuing_mutex::scoped_lock lock(mutex);
 
@@ -395,7 +411,30 @@ struct PBDSolverTBB
 								deltaX = (tetrahedra[t].get_x(cI).inverseMass()
 									* lagrangeM) * gradient.col(cI);
 
-								tetrahedra[t].get_x(cI).position() += deltaX;
+								Eigen::Vector3f proposedEndpoint = tetrahedra[t].get_x(cI).position() + deltaX;
+								float penetrationDistance;
+								bool penetrates;
+								for (int cS = 0; cS < collisionGeometry3.size(); ++cS)
+								{
+									collisionGeometry3[cS].checkForSinglePointIntersection_SAFE(proposedEndpoint, penetrationDistance, penetrates,
+										settings.collisionSpheresRadius[cS]);
+
+									if (penetrates)
+									{
+										Eigen::Vector3f temp = penetrationDistance * (tetrahedra[t].get_x(cI).position() - proposedEndpoint).normalized();
+										if (std::sqrtf(temp.squaredNorm()) > std::sqrtf((tetrahedra[t].get_x(cI).position() - proposedEndpoint).squaredNorm()))
+										{
+											proposedEndpoint = tetrahedra[t].get_x(cI).position();
+										}
+										else
+										{
+											proposedEndpoint += penetrationDistance * (tetrahedra[t].get_x(cI).position() - proposedEndpoint).normalized();
+										}
+									}
+								}
+								tetrahedra[t].get_x(cI).position() = proposedEndpoint;
+
+								//tetrahedra[t].get_x(cI).position() += deltaX;
 
 								//if (settings.trackAverageDeltaXLength)
 								//{

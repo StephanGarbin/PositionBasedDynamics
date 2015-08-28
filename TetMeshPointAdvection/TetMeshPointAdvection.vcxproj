@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{005D67A6-8506-4126-95F5-85E7353995E2}</ProjectGuid>
+    <ProjectGuid>{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>AnisotropicVeinModel</RootNamespace>
+    <RootNamespace>TetMeshPointAdvection</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -116,15 +116,12 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\TOOLS\Eigen;C:\TOOLS\OpenMesh3.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>C:\TOOLS\OpenMesh3.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenMeshTools.lib;OpenMeshCore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -135,35 +132,25 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_USE_MATH_DEFINES;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\..\..\..\..\..\..\TOOLS\Eigen;..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\..\..\..\..\TOOLS\boost\boost_1_57_0\;..\..\..\..\..\..\..\..\TOOLS\Eigen;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\win64_2013\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenMeshTools.lib;OpenMeshCore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\vc\vc9\IlmBase\x64\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\win64_2013\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\hdf5-1.8.9-win64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>AlembicIlmBase.lib;AlembicAbcCoreAbstract.lib;hdf5_hl.lib;hdf5_tools.lib;libszip.lib;libzlib.lib;hdf5.lib;AlembicAbcCollection.lib;AlembicAbcCoreFactory.lib;AlembicAbcCoreOgawa.lib;AlembicAbcGeom.lib;AlembicAbcMaterial.lib;AlembicAbcOpenGL.lib;AlembicOgawa.lib;AlembicUtil.lib;AlembicZLIB.lib;AlembicAbcCoreHDF5.lib;AlembicAbc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="common.cpp" />
+    <ClCompile Include="AbcReader.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MeshIO.cpp" />
-    <ClCompile Include="PBDParticle.cpp" />
-    <ClCompile Include="PBDTetrahedra3d.cpp" />
-    <ClCompile Include="TetGenIO.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="common.h" />
-    <ClInclude Include="commonMath.h" />
-    <ClInclude Include="MeshIO.h" />
-    <ClInclude Include="OMDefinitions.h" />
-    <ClInclude Include="PBDParticle.h" />
-    <ClInclude Include="PBDTetrahedra3d.h" />
-    <ClInclude Include="TetGenIO.h" />
+    <ClInclude Include="AbcReader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

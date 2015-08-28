@@ -11,6 +11,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConvertRaw2EXR", "ConvertRa
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnisotropicVeinModel", "AnisotropicVeinModel\AnisotropicVeinModel.vcxproj", "{005D67A6-8506-4126-95F5-85E7353995E2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TransferTetAnim2SurfaceMesh", "TransferTetAnim2SurfaceMesh\TransferTetAnim2SurfaceMesh.vcxproj", "{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TetMeshPointAdvection", "TetMeshPointAdvection\TetMeshPointAdvection.vcxproj", "{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -65,6 +69,26 @@ Global
 		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|Win32.ActiveCfg = Release|Win32
 		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|Win32.Build.0 = Release|Win32
 		{005D67A6-8506-4126-95F5-85E7353995E2}.Release|x64.ActiveCfg = Release|x64
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Debug|Win32.Build.0 = Debug|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Debug|x64.ActiveCfg = Debug|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Release|Win32.ActiveCfg = Release|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Release|Win32.Build.0 = Release|Win32
+		{36D1D8BB-6645-4117-907E-6DEAF26CAA6F}.Release|x64.ActiveCfg = Release|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Debug|Win32.ActiveCfg = Debug|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Debug|Win32.Build.0 = Debug|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Debug|x64.ActiveCfg = Debug|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Release|Win32.ActiveCfg = Release|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Release|Win32.Build.0 = Release|Win32
+		{995198B0-C0D6-4D96-92B8-CC02F26D7FCF}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

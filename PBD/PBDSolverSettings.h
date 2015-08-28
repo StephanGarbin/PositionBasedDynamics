@@ -82,6 +82,8 @@ struct PBDSolverSettings
 
 	bool useMultiThreadedSolver;
 
+	bool useSecondOrderUpdates;
+
 	enum CONSTITUTIVE_MODEL
 	{
 		NEO_HOOKEAN,
@@ -136,6 +138,7 @@ struct PBDSolverSettings
 
 		disableInversionHandling = false;
 		useMultiThreadedSolver = true;
+		useSecondOrderUpdates = false;
 	}
 
 	void print()

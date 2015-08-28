@@ -17,6 +17,8 @@ CollisionRod::~CollisionRod()
 void
 CollisionRod::glRender(int systemFrame, float timeStep, int numSpheres, float sphereRadius)
 {
+	timeStep *= 8.0f;
+
 	//get start & end point
 	Eigen::Vector3f top;
 	Eigen::Vector3f bottom;
@@ -52,7 +54,9 @@ CollisionRod::glRender(int systemFrame, float timeStep, int numSpheres, float sp
 		
 		glPushMatrix();
 		glTranslated(sphereCentre[0], sphereCentre[1], sphereCentre[2]);
+		glColor3f(1.0, 0.0, 0.0);
 		glutSolidSphere(sphereRadius, 50, 50);
+		glColor3f(1.0, 1.0, 1.0);
 		glPopMatrix();
 	}
 }
@@ -86,6 +90,8 @@ void
 CollisionRod::resolveParticleCollisions(std::vector<PBDParticle>& particles, int systemFrame, float timeStep,
 int numSpheres, float sphereRadius)
 {
+	timeStep *= 8.0f;
+
 	//get start & end point
 	Eigen::Vector3f top;
 	Eigen::Vector3f bottom;
@@ -127,8 +133,8 @@ int numSpheres, float sphereRadius)
 				float w2 = particles[p].inverseMass();
 				Eigen::Vector3f x2 = particles[p].position();
 				Eigen::Vector3f deltaX;
-				computeDeltaXPositionConstraint(0.0f, w2, sphereRadius + 1e-15, sphereCentre, x2, temp, deltaX);
-				//computeDeltaXPositionConstraint(w2, 0.0f, sphereRadius, x2, sphereCentre, temp, deltaX);
+				//computeDeltaXPositionConstraint(0.0f, w2, sphereRadius + 1e-15, sphereCentre, x2, temp, deltaX);
+				computeDeltaXPositionConstraint(w2, 0.0f, sphereRadius, x2, sphereCentre, temp, deltaX);
 				particles[p].position() += deltaX;
 			}
 		}

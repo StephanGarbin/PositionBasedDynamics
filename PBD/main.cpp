@@ -35,6 +35,7 @@
 #include "FiberMesh.h"
 #include "CollisionMesh.h"
 #include "CollisionRod.h"
+#include "CollisionSphere.h"
 
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
@@ -46,6 +47,7 @@ std::vector<std::vector<Eigen::Vector2f>> trackingData;
 std::shared_ptr<FiberMesh> fiberMesh;
 std::vector<CollisionMesh> collisionGeometry;
 std::vector<CollisionRod> collisionGeometry2;
+std::vector<CollisionSphere> collisionGeometry3;
 
 PBDSolver solver;
 FEMSimulator FEMsolver;
@@ -321,6 +323,12 @@ void mainLoop()
 			collisionGeometry2[i].glRender(parameters.getCurrentFrame(), parameters.solverSettings.deltaT,
 				parameters.solverSettings.collisionSpheresNum[i], parameters.solverSettings.collisionSpheresRadius[i]);
 		}
+
+		for (int i = 0; i < collisionGeometry3.size(); ++i)
+		{
+			collisionGeometry3[i].glRender(parameters.getCurrentFrame(), parameters.solverSettings.deltaT,
+				parameters.solverSettings.collisionSpheresRadius[i]);
+		}
 	}
 
 	for (int i = 0; i < probabilisticConstraints.size(); ++i)
@@ -345,7 +353,7 @@ void mainLoop()
 				updateProbabilisticConstraints();
 			}
 			solver.advanceSystem(tetrahedra, particles, parameters.solverSettings, currentPositions, numConstraintInfluences,
-				probabilisticConstraints, collisionGeometry, collisionGeometry2);
+				probabilisticConstraints, collisionGeometry, collisionGeometry2, collisionGeometry3);
 		}
 		else
 		{
@@ -585,14 +593,18 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
+	std::cout << "Parameters setup completed..." << std::endl;
+
 	//We potentially need these for the FEM solver
 	std::vector<int> vertexConstraintIndices;
 
 	if (!doIO(parameters, ioParameters, vertexConstraintIndices,
-		tetrahedra, particles, trackingData, collisionGeometry2))
+		tetrahedra, particles, trackingData, collisionGeometry2, collisionGeometry3))
 	{
 		return 0;
 	}
+
+	std::cout << "IO completed..." << std::endl;
 
 	std::cout << "MESH COMPLEXITY: " << std::endl;
 	std::cout << "Num Tets: " << tetrahedra.size() << "; Num Nodes: " << particles->size() << std::endl;
@@ -600,28 +612,26 @@ int main(int argc, char* argv[])
 
 	numConstraintInfluences.resize(particles->size());
 	currentPositions.resize(particles->size());
-
+	
 	if (parameters.useTrackingConstraints)
 	{
 		createProabilisticConstraints();
 	}
 
+
 	GLUTSettings glutSettings;
-	glutSettings.height = 700;
-	glutSettings.width = 700;
+	glutSettings.height = 600;
+	glutSettings.width = 600;
 	glutSettings.windowName = "PBD FEM";
 	glutSettings.GLVersionMajor = 3;
 	glutSettings.GLVersionMinor = 0;
 	glutSettings.positionX = 100;
 	glutSettings.positionY = 100;
-
 	GLUTHelper helper;
 	helper.initWindow(argc, argv, glutSettings);
 	helper.setIdleFunc(idleLoopGlut);
-
 	determineLookAt();
 	//parameters.initialiseCamera();
-
 	if (parameters.useFEMSolver)
 	{
 		std::cout << "FEM SOLVER INIT:" << std::endl;
@@ -659,6 +669,8 @@ int main(int argc, char* argv[])
 		{
 			collisionGeometry[c].readFromAbc(parameters.collisionGeometryFiles[c]);
 		}
+
+		std::cout << "Read collision geometry files!" << std::endl;
 	}
 
 	//TweakBar Interface

@@ -14,6 +14,7 @@
 #include "PBDProbabilisticConstraint.h"
 #include "CollisionMesh.h"
 #include "CollisionRod.h"
+#include "CollisionSphere.h"
 
 #include <boost/thread.hpp>
 
@@ -29,10 +30,18 @@ public:
 		std::vector<Eigen::Vector3f>& temporaryPositions, std::vector<int>& numConstraintInfluences,
 		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
 		std::vector<CollisionMesh>& collisionGeometry,
-		std::vector<CollisionRod>& collisionGeometry2);
+		std::vector<CollisionRod>& collisionGeometry2,
+		std::vector<CollisionSphere>& collisionGeometry3);
 	PBDSolver();
 
 	~PBDSolver();
+
+	void processCollisions(std::vector<PBDTetrahedra3d>& tetrahedra,
+		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
+		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
+		std::vector<CollisionMesh>& collisionGeometry,
+		std::vector<CollisionRod>& collisionGeometry2,
+		std::vector<CollisionSphere>& collisionGeometry3);
 
 	void advanceVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings);
@@ -44,13 +53,15 @@ public:
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
 		std::vector<CollisionMesh>& collisionGeometry,
-		std::vector<CollisionRod>& collisionGeometry2);
+		std::vector<CollisionRod>& collisionGeometry2,
+		std::vector<CollisionSphere>& collisionGeometry3);
 
 	void projectConstraintsVISCOELASTIC_MULTI(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, PBDSolverSettings& settings,
 		std::vector<PBDProbabilisticConstraint>& probabilisticConstraints,
 		std::vector<CollisionMesh>& collisionGeometry,
-		std::vector<CollisionRod>& collisionGeometry2);
+		std::vector<CollisionRod>& collisionGeometry2,
+		std::vector<CollisionSphere>& collisionGeometry3);
 
 	void updateVelocities(std::vector<PBDTetrahedra3d>& tetrahedra,
 		std::shared_ptr<std::vector<PBDParticle>>& particles, const PBDSolverSettings& settings);

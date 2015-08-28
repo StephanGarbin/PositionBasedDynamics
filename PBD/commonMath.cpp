@@ -117,3 +117,32 @@ void eigenDecompositionCardano(Eigen::Matrix3f& A, Eigen::Matrix3f& eigenValues,
 	}
 
 }
+
+void raySphereIntersect(const Eigen::Vector3f& sphereCentre, float sphereRadius,
+	const Eigen::Vector3f& rayOrigin, const Eigen::Vector3f rayDirection, int& numIntersection, std::vector<Eigen::Vector3f>& intersectionPoints)
+{
+	float term = std::powf(rayDirection.dot(rayOrigin - sphereCentre), 2.0f) - std::sqrtf((rayOrigin - sphereCentre).squaredNorm()) + std::powf(sphereRadius, 2.0f);
+
+	if (term < 0)
+	{
+		numIntersection = 0;
+		intersectionPoints[0].setZero();
+		intersectionPoints[1].setZero();
+	}
+	else if (term == 0.0f)
+	{
+		numIntersection = 1;
+		float d = -rayDirection.dot(rayOrigin - sphereCentre);
+		intersectionPoints[0] = rayOrigin + d * rayDirection;
+		intersectionPoints[1].setZero();
+	}
+	else
+	{
+		numIntersection = 2;
+		float d1 = -rayDirection.dot(rayOrigin - sphereCentre) + std::sqrtf(term);
+		float d2 = -rayDirection.dot(rayOrigin - sphereCentre) - std::sqrtf(term);
+		intersectionPoints[0] = rayOrigin + d1 * rayDirection;
+		intersectionPoints[1] = rayOrigin + d2 * rayDirection;
+	}
+
+}

@@ -82,6 +82,9 @@ void initTest_10(Parameters& params, IOParameters& paramsIO);
 
 void initTest_11(Parameters& params, IOParameters& paramsIO);
 
+//Sphere Indentation Test
+void initTest_12(Parameters& params, IOParameters& paramsIO);
+
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
 {
@@ -163,6 +166,9 @@ bool parseTerminalParameters(const int argc, char* argv[],
 	case 11:
 		initTest_11(params, paramsIO);
 		break;
+	case 12:
+		initTest_12(params, paramsIO);
+		break;
 	default:
 		break;
 	}
@@ -184,11 +190,12 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 	std::vector<PBDTetrahedra3d>& tetrahedra,
 	std::shared_ptr<std::vector<PBDParticle>>& particles,
 	std::vector<std::vector<Eigen::Vector2f>>& trackingData,
-	std::vector<CollisionRod>& collisionRodGeometry)
+	std::vector<CollisionRod>& collisionRodGeometry,
+	std::vector<CollisionSphere>& collisionSphereGeometry)
 {
 	if (params.TEST_IDX == 0)
 	{
-		MeshCreator::generateTetBar(particles, tetrahedra, 5, 3, 3);
+		MeshCreator::generateTetBar(particles, tetrahedra, 10, 4, 4);
 		return true;
 	}
 	else if (params.TEST_IDX == 1 || params.TEST_IDX == 2 || params.TEST_IDX == 3 || params.TEST_IDX == 4)
@@ -256,6 +263,47 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 			std::cout << "WARNING: Constraint file ignored!" << std::endl;
 		}
 	}
+	else if (params.TEST_IDX == 12)
+	{
+		Eigen::Vector3f initialVelocity;
+		initialVelocity.setZero();
+		TetGenIO::readNodes(paramsIO.nodeFile, *particles, params.solverSettings.inverseMass, initialVelocity);
+		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
+
+		//pin ground vertices
+		//for (int p = 0; p < particles->size(); ++p)
+		//{
+		//	if((*particles)[p].position()[1] <= 110.273f)
+		//	{
+		//		(*particles)[p].inverseMass() = 0.0;
+		//	}
+		//}
+
+		//for (int p = 0; p < particles->size(); ++p)
+		//{
+		//	std::cout << p << ": " << std::endl;
+		//	std::cout << (*particles)[p].position() << std::endl;
+		//}
+
+		if (paramsIO.constraintFile != "DUMMY")
+		{
+			ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, paramsIO.constraintFile);
+			for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+			{
+				(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+			}
+		}
+		else
+		{
+			std::cout << "WARNING: Constraint file ignored!" << std::endl;
+		}
+
+		collisionSphereGeometry.resize(1);
+		collisionSphereGeometry[0].readFromAbc("phantomDeformationSphere.abc","deforminationSphere");
+		collisionSphereGeometry[0].getFrameLimit() = 28;
+		return true;
+		
+	}
 	else
 	{
 		Eigen::Vector3f initialVelocity;
@@ -312,7 +360,7 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.useFEMSolver = false;
 	params.disableSolver = false;
 
-	params.solverSettings.poissonRatio = 0.3f;
+	params.solverSettings.poissonRatio = 0.4f;
 	params.solverSettings.youngsModulus = 10.0f;
 	params.solverSettings.numConstraintIts = 10;
 	params.solverSettings.deltaT = 0.005f;
@@ -333,6 +381,12 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 
 	params.solverSettings.disableInversionHandling = false;
 	params.zoom = 0.328f;
+
+	params.solverSettings.useSecondOrderUpdates = false;
+	params.solverSettings.useMultiThreadedSolver = true;
+
+	params.solverSettings.enableGroundPlaneCollision = true;
+	params.solverSettings.groundplaneHeight = -1.0f;
 
 	if (params.TEST_VERSION == 0)
 	{
@@ -1125,13 +1179,13 @@ void initTest_11(Parameters& params, IOParameters& paramsIO)
 	params.renderCollisionGoemetry = true;
 
 	params.solverSettings.poissonRatio = 0.40f;
-	params.solverSettings.youngsModulus = 1.0f;
+	params.solverSettings.youngsModulus = 0.01f;
 	params.solverSettings.numConstraintIts = 5;
 	params.solverSettings.deltaT = 0.005f;
 	params.solverSettings.inverseMass = 1.0f;
 	params.solverSettings.printStrainEnergy = false;
 	params.solverSettings.printStrainEnergyToFile = false;
-	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.gravity = -0.0f;
 	params.solverSettings.externalForce.setZero();
 	params.solverSettings.forceMultiplicationFactor = 0.0f;
 	params.solverSettings.rho = 1.0f;
@@ -1147,8 +1201,8 @@ void initTest_11(Parameters& params, IOParameters& paramsIO)
 	//params.solverSettings.enableGroundPlaneCollision = true;
 	//params.solverSettings.groundplaneHeight = -50.0f;
 
-	params.writeToAlembic = true;
-	params.maxFrames = 6000;
+	//params.writeToAlembic = true;
+	params.maxFrames = 1000;
 
 	params.solverSettings.rho = 0.5f;
 
@@ -1158,9 +1212,11 @@ void initTest_11(Parameters& params, IOParameters& paramsIO)
 
 
 	//rod
-	params.solverSettings.collisionSpheresNum.push_back(40);
-	params.solverSettings.collisionSpheresRadius.push_back(1.0f);
+	params.solverSettings.collisionSpheresNum.push_back(4);
+	params.solverSettings.collisionSpheresRadius.push_back(2.0f);
 
+	params.writeToAlembic = false;
+	params.disableSolver = false;
 	params.solverSettings.useMultiThreadedSolver = true;
 
 	if (params.TEST_VERSION == 0)
@@ -1185,3 +1241,78 @@ void initTest_11(Parameters& params, IOParameters& paramsIO)
 	}
 }
 
+void initTest_12(Parameters& params, IOParameters& paramsIO)
+{
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+	params.solverSettings.disableConstraintProjection = false;
+	params.renderCollisionGoemetry = true;
+
+	params.solverSettings.poissonRatio = 0.40f;
+	params.solverSettings.youngsModulus = 0.1f;
+	params.solverSettings.numConstraintIts = 5;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.forceMultiplicationFactor = 0.0f;
+	params.solverSettings.rho = 1.0f;
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	paramsIO.nodeFile = "LiverInitialLowResolution_00625.1.node";
+	paramsIO.elementFile = "LiverInitialLowResolution_00625.1.ele";
+	//paramsIO.constraintFile = "DUMMY";
+	paramsIO.constraintFile = "phantomIdentationGood_00625.txt";
+	//paramsIO.constraintFile = "phantomIdentationLow_00625.txt";
+
+	//params.solverSettings.enableGroundPlaneCollision = true;
+	//params.solverSettings.groundplaneHeight = -50.0f;
+
+	params.writeToAlembic = true;
+	params.maxFrames = 1000;
+
+	params.solverSettings.rho = 0.05f;
+
+	params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER;
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
+	params.solverSettings.anisotropyParameter = 0.0f;
+	params.solverSettings.disableConstraintProjection = false;
+
+	//rod
+	params.solverSettings.collisionSpheresRadius.push_back(41.129f);
+
+	params.writeToAlembic = true;
+	params.disableSolver = false;
+	params.solverSettings.useMultiThreadedSolver = true;
+
+	//params.solverSettings.useSecondOrderUpdates = true;
+
+	params.solverSettings.enableGroundPlaneCollision = false;
+	params.solverSettings.groundplaneHeight = 103.41f;
+
+	if (params.TEST_VERSION == 0)
+	{
+		params.solverSettings.alpha = 0.0f;
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.alpha = 0.25f;
+	}
+	else if (params.TEST_VERSION == 2)
+	{
+		params.solverSettings.alpha = 0.5f;
+	}
+	else if (params.TEST_VERSION == 3)
+	{
+		params.solverSettings.alpha = 0.75f;
+	}
+	else if (params.TEST_VERSION == 4)
+	{
+		params.solverSettings.alpha = 0.99f;
+	}
+}

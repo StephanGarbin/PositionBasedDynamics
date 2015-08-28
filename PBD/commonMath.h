@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <Eigen\Dense>
 
 
@@ -19,3 +20,7 @@ T sqr(T x)
 {
 	return x * x;
 }
+
+
+void raySphereIntersect(const Eigen::Vector3f& sphereCentre, float sphereRadius,
+	const Eigen::Vector3f& rayOrigin, const Eigen::Vector3f rayDirection, int& numIntersection, std::vector<Eigen::Vector3f>& intersectionPoints);
