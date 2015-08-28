@@ -111,6 +111,11 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 
 	m_positions.resize(m_inverseMasses.size() * 3);
 
+	//Resize arrays for diagonalisation
+	m_F.resize(tetrahedra.size() * 3);
+	m_U.resize(tetrahedra.size() * 9);
+	m_V.resize(tetrahedra.size() * 9);
+
 	queryCUDADevices();
 
 	setupCUDA();
@@ -161,7 +166,9 @@ Parameters& settings)
 	CUDA_updateBuffers(m_device_positions, m_positions);
 
 	CUDA_projectConstraints(m_device_indices, m_device_positions, m_device_inverseMasses,
-		m_device_referenceShapeMatrices, m_device_undeformedVolumes, settings);
+		m_device_referenceShapeMatrices, m_device_undeformedVolumes,
+		m_device_F, m_device_U, m_device_V,
+		settings);
 
 	CUDA_getBuffers(m_device_positions, m_positions);
 
@@ -237,13 +244,16 @@ PBDGPU_Solver::setupCUDA()
 {
 	CUDA_allocateBuffers(&m_device_indices, &m_device_positions, &m_device_inverseMasses,
 		&m_device_referenceShapeMatrices, &m_device_undeformedVolumes,
-		m_indices, m_positions, m_inverseMasses, m_referenceShapeMatrices, m_undeformedVolumes);
+		&m_device_F, &m_device_U, &m_device_V,
+		m_indices, m_positions, m_inverseMasses, m_referenceShapeMatrices, m_undeformedVolumes,
+		m_F, m_U, m_V);
 }
 
 void
 PBDGPU_Solver::deleteCUDA()
 {
 	CUDA_destroyBuffers(m_device_indices, m_device_positions, m_device_inverseMasses,
-		m_device_referenceShapeMatrices, m_device_undeformedVolumes);
+		m_device_referenceShapeMatrices, m_device_undeformedVolumes,
+		m_device_F, m_device_U, m_device_V);
 }
 

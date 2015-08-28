@@ -84,7 +84,8 @@ __device__ __forceinline__ float calculateStrainEnergy_NEO_HOOKEAN(float volume,
 
 __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float lagrangeMultiplier, float* positions,
 	float* masses, int* indices, int trueNumConstraints, int numParticles, float volume, float* refShapeMatrixInverse,
-	float I3, float lambda, float mu, float det)
+	float I3, float lambda, float mu, float det,
+	float* globalU, float* globalV)
 {
 	//1. Copy refShapeMatrixInverse from global memory
 	//for (int row = 0; row < 3; ++row)
@@ -96,7 +97,56 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 	//	}
 	//}
 
+	float temp0[3][3];
 	float temp[3][3];
+	// Load U
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			temp0[row][col] = globalU[IDX * 9 + row * 3 + col];
+		}
+	}
+
+	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+	//	temp0[0][0], temp0[0][1], temp0[0][2],
+	//	temp0[1][0], temp0[1][1], temp0[1][2],
+	//	temp0[2][0], temp0[2][1], temp0[2][2]);
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			for (int i = 0; i < 3; ++i)
+			{
+				float FInverseTEntry = 0.0f;
+
+				if (F[LOCAL_IDX][i][col] != 0.0f)
+				{
+					FInverseTEntry = 1.0f / F[LOCAL_IDX][i][col];
+				}
+
+				//FInverseTEntry /= det;
+
+				sum += temp0[row][i] * (F[LOCAL_IDX][i][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f));
+			}
+			temp[row][col] = sum;
+		}
+	}
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += temp[row][i] * globalV[IDX * 9 + col * 3 + i];
+			}
+			temp0[row][col] = sum;
+		}
+	}
 
 	//3. Multiply with First Piola-Kirchoff Stress tensor
 	for (int row = 0; row < 3; ++row)
@@ -107,59 +157,7 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 
 			for (int i = 0; i < 3; ++i)
 			{
-				float FInverseTEntry;
-
-				if (row == 0)
-				{
-					if (i == 0)
-					{
-						FInverseTEntry = F[idx][1][1] * F[idx][2][2] - F[idx][2][1] * F[idx][1][2];
-					}
-					else if (i == 1)
-					{
-						FInverseTEntry = -(F[idx][1][0] * F[idx][2][2] - F[idx][2][0] * F[idx][1][2]);
-					}
-					else if (i == 2)
-					{
-						FInverseTEntry = F[idx][1][0] * F[idx][2][1] - F[idx][2][0] * F[idx][1][1];
-					}
-				}
-				else if (row == 1)
-				{
-					if (i == 0)
-					{
-						FInverseTEntry = -(F[idx][0][1] * F[idx][2][2] - F[idx][2][1] * F[idx][0][2]);
-					}
-					else if (i == 1)
-					{
-						FInverseTEntry = F[idx][0][0] * F[idx][2][2] - F[idx][2][0] * F[idx][0][2];
-					}
-					else if (i == 2)
-					{
-						FInverseTEntry = -(F[idx][0][0] * F[idx][2][1] - F[idx][2][0] * F[idx][0][1]);
-					}
-				}
-				else if (row == 2)
-				{
-					if (i == 0)
-					{
-						FInverseTEntry = F[idx][0][1] * F[idx][1][2] - F[idx][1][1] * F[idx][0][2];
-					}
-					else if (i == 1)
-					{
-						FInverseTEntry = -(F[idx][0][0] * F[idx][1][2] - F[idx][1][0] * F[idx][0][2]);
-					}
-					else if (i == 2)
-					{
-						FInverseTEntry = F[idx][0][0] * F[idx][1][1] - F[idx][1][0] * F[idx][0][1];
-					}
-				}
-
-				FInverseTEntry /= det;
-
-				float PFEntry = F[idx][row][i] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f);
-
-				sum += PFEntry * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + globalIdx];
+				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + globalIdx];
 			}
 
 			temp[row][col] = sum;
@@ -193,7 +191,7 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 }
 
 
-__device__ float calculateTraceFTransposeF_INPLACE()
+__device__ __forceinline__ float calculateTraceFTransposeF_INPLACE()
 {
 	float trace = 0.0f;
 	for (int diagIdx = 0; diagIdx < 3; ++diagIdx)
@@ -300,6 +298,9 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 
 				float PFEntry = F[idx][row][i] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f);
 
+				//correct PF entry to take into account diagonalisation
+
+
 				sum += PFEntry * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + globalIdx];
 			}
 
@@ -343,9 +344,126 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 	snGr3 = sqrtf(snGr3);
 }
 
+__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints, float mu, float lambda, float I3,
+	float& snGr0, float& snGr1, float& snGr2, float& snGr3, float det,
+	float* globalU, float* globalV)
+{
+	//1. Copy refShapeMatrixInverse from global memory
+	//for (int row = 0; row < 3; ++row)
+	//{
+	//	for (int col = 0; col < 3; ++col)
+	//	{
+	//		//We need the TRANSPOSE of the reference shape matrix inverse
+	//		Gradient[idx][row][col] = refShapeMatrixInverse[(col * 3 + row) * trueNumConstraints + globalIdx];
+	//	}
+	//}
+
+
+	float temp0[3][3];
+	float temp[3][3];
+	// Load U
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			temp0[row][col] = globalU[IDX * 9 + row * 3 + col];
+		}
+	}
+
+	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+	//	temp0[0][0], temp0[0][1], temp0[0][2],
+	//	temp0[1][0], temp0[1][1], temp0[1][2],
+	//	temp0[2][0], temp0[2][1], temp0[2][2]);
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			for (int i = 0; i < 3; ++i)
+			{
+				float FInverseTEntry = 0.0f;
+				
+				if (F[LOCAL_IDX][i][col] != 0.0f)
+				{
+					FInverseTEntry = 1.0f / F[LOCAL_IDX][i][col];
+				}
+
+				//FInverseTEntry /= det;
+
+				sum += temp0[row][i] * (F[LOCAL_IDX][i][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f));
+			}
+			temp[row][col] = sum;
+		}
+	}
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += temp[row][i] * globalV[IDX * 9 + col * 3 + i];
+			}
+			temp0[row][col] = sum;
+		}
+	}
+
+	//3. Multiply with First Piola-Kirchoff Stress tensor
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + globalIdx];
+			}
+
+			temp[row][col] = sum;
+		}
+	}
+
+	//4. Copy back
+	snGr0 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		snGr0 += sqr(temp[i][0] * volume);
+	}
+	snGr0 = sqrtf(snGr0);
+
+	snGr1 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		snGr1 += sqr(temp[i][1] * volume);
+	}
+	snGr1 = sqrtf(snGr1);
+
+	snGr2 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		snGr2 += sqr(temp[i][2] * volume);
+	}
+	snGr2 = sqrtf(snGr2);
+
+	//4. Calculate last column
+	snGr3 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		float sum = 0.0f;
+		for (int col = 0; col < 3; ++col)
+		{
+			sum += temp[i][col] * volume;
+		}
+		snGr3 += sqr(sum);
+	}
+	snGr3 = sqrtf(snGr3);
+}
 
 __global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
-	float lambda, float mu, int trueNumConstraints, int numParticles)
+	float lambda, float mu, int trueNumConstraints, int numParticles, float* globalF, float* globalU, float* globalV)
 {
 	if (IDX > trueNumConstraints)
 	{
@@ -353,7 +471,25 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	}
 
 	//1. Calculate Deformation Gradient F
-	calculateF(IDX, threadIdx.x, positions, refShapeMatrixInverse, indices, trueNumConstraints, numParticles);
+	//calculateF(IDX, threadIdx.x, positions, refShapeMatrixInverse, indices, trueNumConstraints, numParticles);
+
+	//1. Load Deformation Gradient
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			F[LOCAL_IDX][0][0] = 0.0f;
+		}
+	}
+
+	F[LOCAL_IDX][0][0] = globalF[IDX * 3 + 0];
+	F[LOCAL_IDX][1][1] = globalF[IDX * 3 + 1];
+	F[LOCAL_IDX][2][2] = globalF[IDX * 3 + 2];
+
+	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+	//	F[LOCAL_IDX][0][0], F[LOCAL_IDX][0][1], F[LOCAL_IDX][0][2],
+	//	F[LOCAL_IDX][1][0], F[LOCAL_IDX][1][1], F[LOCAL_IDX][1][2],
+	//	F[LOCAL_IDX][2][0], F[LOCAL_IDX][2][1], F[LOCAL_IDX][2][2]);
 
 	//3. Compute Invariants
 
@@ -369,7 +505,8 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	float det = determinantF(threadIdx.x);
 
 	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(IDX, threadIdx.x, volume[IDX], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3,
-		snGr0, snGr1, snGr2, snGr3, det);
+		snGr0, snGr1, snGr2, snGr3, det,
+		globalU, globalV);
 
 	//7. Calculate Lagrange Multiplier
 	float denominator = 0.0f;
@@ -387,10 +524,11 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	//8. Update Positions
 	updatePositions_recomputeGradients(IDX, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles,
-		volume[IDX], refShapeMatrixInverse, I3, lambda, mu, det);
+		volume[IDX], refShapeMatrixInverse, I3, lambda, mu, det,
+		globalU, globalV);
 }
 
-__global__ void computeDiagonalF(float* positions, int* indices, float* F, float* U, float* V, float* refShapeMatrixInverse, int trueNumConstraints)
+__global__ void computeDiagonalF(float* positions, int* indices, float* globalF, float* globalU, float* globalV, float* refShapeMatrixInverse, int trueNumConstraints)
 {
 	if (IDX > trueNumConstraints)
 	{
@@ -436,25 +574,369 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* F, float
 		}
 	}
 
+	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+	//	F_functionLevel[0][0], F_functionLevel[0][1], F_functionLevel[0][2],
+	//	F_functionLevel[1][0], F_functionLevel[1][1], F_functionLevel[1][2],
+	//	F_functionLevel[2][0], F_functionLevel[2][1], F_functionLevel[2][2]);
+
 	//1. DIAGONALISE F--------------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------------------------------
+	double Q[3][3];
+	double w[3];
+	const int n = 3;
+	double sd = 0.0;
+	double so = 0.0;                  // Sums of diagonal resp. off-diagonal elements
+	double s = 0.0;
+	double c = 0.0;
+	double t = 0.0;                 // sin(phi), cos(phi), tan(phi) and temporary storage
+	double g = 0.0;
+	double h = 0.0;
+	double z = 0.0;
+	double theta = 0.0;          // More temporary storage
+	double thresh = 0.0;
 
+
+	// Initialize Q to the identitity matrix
+	for (int i = 0; i < n; i++)
+	{
+		Q[i][i] = 1.0;
+		for (int j = 0; j < i; j++)
+		{
+			Q[i][j] = Q[j][i] = 0.0;
+		}
+	}
+
+	// Initialize w to diag(F_functionLevel)
+	for (int i = 0; i < n; i++)
+		w[i] = F_functionLevel[i][i];
+
+	// Calculate SQR(tr(F_functionLevel))  
+	sd = 0.0;
+	for (int i = 0; i < n; i++)
+		sd += fabs(w[i]);
+	sd = sd * sd;
+
+	// Main iteration loop
+	for (int nIter = 0; nIter < 50; nIter++)
+	{
+		// Test for convergence 
+		so = 0.0;
+		for (int p = 0; p < n; p++)
+		{
+			for (int q = p + 1; q < n; q++)
+			{
+				so += fabs(F_functionLevel[p][q]);
+			}
+		}
+
+		if (nIter < 4)
+		{
+			thresh = 0.2 * so / (n * n);
+		}
+		else
+		{
+			thresh = 0.0;
+		}
+
+		// Do sweep
+		for (int p = 0; p < n; p++)
+		{
+			for (int q = p + 1; q < n; q++)
+			{
+				g = 100.0 * fabs(F_functionLevel[p][q]);
+				if (nIter > 4 && fabs(w[p]) + g == fabs(w[p])
+					&& fabs(w[q]) + g == fabs(w[q]))
+				{
+					F_functionLevel[p][q] = 0.0;
+				}
+				else if (fabs(F_functionLevel[p][q]) > thresh)
+				{
+					// Calculate Jacobi transformation
+					h = w[q] - w[p];
+					if (fabs(h) + g == fabs(h))
+					{
+						t = F_functionLevel[p][q] / h;
+					}
+					else
+					{
+						theta = 0.5 * h / F_functionLevel[p][q];
+						if (theta < 0.0)
+						{
+							t = -1.0 / (sqrt(1.0 + (theta * theta)) - theta);
+						}
+						else
+						{
+							t = 1.0 / (sqrt(1.0 + (theta * theta)) + theta);
+						}
+					}
+					c = 1.0 / sqrt(1.0 + (t * t));
+					s = t * c;
+					z = t * F_functionLevel[p][q];
+
+					// Apply Jacobi transformation
+					F_functionLevel[p][q] = 0.0;
+					w[p] -= z;
+					w[q] += z;
+					for (int r = 0; r < p; r++)
+					{
+						t = F_functionLevel[r][p];
+						F_functionLevel[r][p] = c*t - s*F_functionLevel[r][q];
+						F_functionLevel[r][q] = s*t + c*F_functionLevel[r][q];
+					}
+					for (int r = p + 1; r < q; r++)
+					{
+						t = F_functionLevel[p][r];
+						F_functionLevel[p][r] = c*t - s*F_functionLevel[r][q];
+						F_functionLevel[r][q] = s*t + c*F_functionLevel[r][q];
+					}
+					for (int r = q + 1; r < n; r++)
+					{
+						t = F_functionLevel[p][r];
+						F_functionLevel[p][r] = c*t - s*F_functionLevel[q][r];
+						F_functionLevel[q][r] = s*t + c*F_functionLevel[q][r];
+					}
+
+					// Update eigenvectors
+					for (int r = 0; r < n; r++)
+					{
+						t = Q[r][p];
+						Q[r][p] = c*t - s*Q[r][q];
+						Q[r][q] = s*t + c*Q[r][q];
+					}
+				}
+			}
+		}
+	}
+
+	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
+
+	float U[3][3];
+
+	//Correct diagonalised F
+	for (int i = 0; i < 3; ++i)
+	{
+		w[i] = fmaxf(w[i], 0.0f);
+	}
+
+	float determinantQ = Q[0][0]
+		* (Q[1][1] * Q[2][2] - Q[1][2] * Q[2][1])
+		- Q[0][1]
+		* (Q[1][0] * Q[2][2] - Q[1][2] * Q[2][0])
+		+ Q[0][2]
+		* (Q[1][0] * Q[2][1] - Q[1][1] * Q[2][0]);
+
+	//printf("%.4f, ", determinantQ);
+
+	//remove reflection from V if necessary
+	if (determinantQ < 0.0f)
+	{
+		float minElementValue = 1.5e+38f;
+		int minElementIdx = 111;
+		for (int i = 0; i < 3; ++i)
+		{
+			if (w[i] < minElementValue)
+			{
+				minElementValue = Q[i][i];
+				minElementIdx = i;
+			}
+		}
+		for (int row = 0; row < 3; ++row)
+		{
+			Q[row][minElementIdx] *= -1.0f;
+		}
+	}
+
+	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
+
+	//determine entries of F
+	for (int i = 0; i < 3; ++i)
+	{
+		w[i] = sqrtf(w[i]);
+	}
+
+	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
+
+	//U = F_orig * V * F.inverse();
+	float sum;
+	for (int row = 0; row < 3; row++)
+	{
+		for (int col = 0; col < 3; col++)
+		{
+			sum = 0.0f;
+			for (int i = 0; i < 3; i++)
+			{
+				sum = sum + F_functionLevel[row][i] * Q[i][col];
+			}
+
+			U[row][col] = sum;
+		}
+	}
+
+	for (int row = 0; row < 3; row++)
+	{
+		for (int col = 0; col < 3; col++)
+		{
+			sum = 0.0f;
+			for (int i = 0; i < 3; i++)
+			{
+				if (i == col)
+				{
+					sum = sum + U[row][i] * (1.0f / w[i]);
+				}
+			}
+
+			U[row][col] = sum;
+		}
+	}
+
+
+	int numEntriesNearZero = 0;
+	int idx = 0;
+	for (int i = 0; i < 3; ++i)
+	{
+		if (fabs(w[i]) < 1.0e-4f)
+		{
+			++numEntriesNearZero;
+			idx = i;
+		}
+	}
+
+	if (numEntriesNearZero > 0)
+	{
+		if (numEntriesNearZero == 1)
+		{
+			if (idx == 0)
+			{
+				//U.col(0) = U.col(1).cross(U.col(2)).normalized();
+				U[0][0] = U[1][1] * U[2][2] - U[2][1] * U[1][2];
+				U[1][0] = U[2][1] * U[0][2] - U[0][1] * U[2][2];
+				U[2][0] = U[0][1] * U[1][2] - U[1][1] * U[0][2];
+				U[0][0] /= sqrtf((U[0][0] * U[0][0]) + (U[1][0] * U[1][0]) + (U[2][0] * U[2][0]));
+				U[1][0] /= sqrtf((U[0][0] * U[0][0]) + (U[1][0] * U[1][0]) + (U[2][0] * U[2][0]));
+				U[2][0] /= sqrtf((U[0][0] * U[0][0]) + (U[1][0] * U[1][0]) + (U[2][0] * U[2][0]));
+			}
+			else if (idx == 1)
+			{
+				//U.col(1) = U.col(0).cross(U.col(2)).normalized();
+				U[0][1] = U[1][0] * U[2][2] - U[2][0] * U[1][2];
+				U[1][1] = U[2][0] * U[0][2] - U[0][0] * U[2][2];
+				U[2][1] = U[0][0] * U[1][2] - U[1][0] * U[0][2];
+				U[0][1] /= sqrtf((U[0][1] * U[0][1]) + (U[1][1] * U[1][1]) + (U[2][1] * U[2][1]));
+				U[1][1] /= sqrtf((U[0][1] * U[0][1]) + (U[1][1] * U[1][1]) + (U[2][1] * U[2][1]));
+				U[2][1] /= sqrtf((U[0][1] * U[0][1]) + (U[1][1] * U[1][1]) + (U[2][1] * U[2][1]));
+			}
+			else
+			{
+				//U.col(2) = U.col(0).cross(U.col(1)).normalized();
+				U[0][2] = U[1][0] * U[2][1] - U[2][0] * U[1][1];
+				U[1][2] = U[2][0] * U[0][1] - U[0][0] * U[2][1];
+				U[2][2] = U[0][0] * U[1][1] - U[1][0] * U[0][1];
+				U[0][2] /= sqrtf((U[0][2] * U[0][2]) + (U[1][2] * U[1][2]) + (U[2][2] * U[2][2]));
+				U[1][2] /= sqrtf((U[0][2] * U[0][2]) + (U[1][2] * U[1][2]) + (U[2][2] * U[2][2]));
+				U[2][2] /= sqrtf((U[0][2] * U[0][2]) + (U[1][2] * U[1][2]) + (U[2][2] * U[2][2]));
+			}
+		}
+		else
+		{
+			//set U to identity
+			U[0][0] = 1.0f;
+			U[1][1] = 1.0f;
+			U[2][2] = 1.0f;
+
+			U[0][1] = 0.0f;
+			U[0][2] = 0.0f;
+
+			U[1][0] = 0.0f;
+			U[1][2] = 0.0f;
+
+			U[2][0] = 0.0f;
+			U[2][1] = 0.0f;
+		}
+	}
+
+	float determinantU = U[0][0]
+		* (U[1][1] * U[2][2] - U[1][2] * U[2][1])
+		- U[0][1]
+		* (U[1][0] * U[2][2] - U[1][2] * U[2][0])
+		+ U[0][2]
+		* (U[1][0] * U[2][1] - U[1][1] * U[2][0]);
+
+	//remove reflection from U if necessary
+	if (determinantU < 0.0f)
+	{
+		float minElementValue = 1.5e+38f;
+		int minElementIdx = 111;
+		for (int i = 0; i < 3; ++i)
+		{
+			if (w[i] < minElementValue)
+			{
+				minElementValue = w[i];
+				minElementIdx = i;
+			}
+		}
+
+		w[minElementIdx] *= -1.0f;
+		for (int row = 0; row < 3; ++row)
+		{
+			U[row][minElementIdx] *= -1.0f;
+		}
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		w[i] = fmaxf(w[i], 0.577f);
+	}
+	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
+
+	//Store U, V & F
+	globalF[IDX * 3 + 0] = w[0];
+	globalF[IDX * 3 + 1] = w[1];
+	globalF[IDX * 3 + 2] = w[2];
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			globalU[IDX * 9 + row * 3 + col] = U[row][col];
+		}
+	}
+
+	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+	//	U[0][0], U[0][1], U[0][2],
+	//	U[1][0], U[1][1], U[1][2],
+	//	U[2][0], U[2][1], U[2][2]);
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			globalV[IDX * 9 + row * 3 + col] = Q[row][col];
+		}
+	}
+	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+	//	Q[0][0], Q[0][1], Q[0][2],
+	//	Q[1][0], Q[1][1], Q[1][2],
+	//	Q[2][0], Q[2][1], Q[2][2]);
+
+	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
 }
 
 
 cudaError_t projectConstraints(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
 	float* device_volumes,
+	float* device_F, float* device_U, float* device_V,
 	const Parameters& settings);
 
 int CUDA_projectConstraints(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
 	float* device_volumes,
+	float* device_F, float* device_U, float* device_V,
 	const Parameters& settings)
 {
 	//GPU
 	cudaError_t cudaStatus = projectConstraints(device_indices, device_positions,
-		device_inverseMasses, device_refShapeMatrixInverses, device_volumes, settings);
+		device_inverseMasses, device_refShapeMatrixInverses, device_volumes, device_F, device_U, device_V, settings);
 
 	if (cudaStatus != cudaSuccess) {
 		fprintf(stderr, "Critical Error, aborting...");
@@ -513,6 +995,7 @@ void queryCUDADevices()
 cudaError_t projectConstraints(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
 	float* device_volumes,
+	float* device_F, float* device_U, float* device_V,
 	const Parameters& settings)
 {
 	float* dev_positions = 0;
@@ -545,15 +1028,27 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 	cudaEventCreate(&end);
 
 	cudaEventRecord(start);
+
 	for (int it = 0; it < settings.numConstraintIterations; ++it)
 	{
+		computeDiagonalF << <numBlocks, numThreads >> >(
+			device_positions, device_indices,
+			device_F, device_U, device_V,
+			device_refShapeMatrixInverses,
+			settings.trueNumberOfConstraints);
+
+		cudaErrorWrapper(cudaDeviceSynchronize());
+		std::cout << "Projection-------------------------------------------------------------------------" << std::endl;
+
 		solveFEMConstraint << <numBlocks, numThreads >> >(
 			device_positions, device_indices, device_inverseMasses,
 			device_volumes, device_refShapeMatrixInverses,
 			settings.lambda, settings.mu, settings.trueNumberOfConstraints,
-			settings.numParticles);
+			settings.numParticles,
+			device_F, device_U, device_V);
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
+		std::cout << "Projection done-------------------------------------------------------------------------" << std::endl;
 	}
 	cudaErrorWrapper(cudaDeviceSynchronize());
 
@@ -572,11 +1067,15 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	float** device_inverseMasses, float** device_refShapeMatrixInverses,
 	float** device_volumes,
+	float** device_F, float** device_U, float** device_V,
 	std::vector<int>& indices,
 	std::vector<float>& positions,
 	std::vector<float>& inverseMasses,
 	std::vector<float>& refShapeMatrixInverses,
-	std::vector<float>& volumes)
+	std::vector<float>& volumes,
+	std::vector<float>& F,
+	std::vector<float>& U,
+	std::vector<float>& V)
 {
 	std::cout << "Allocating CUDA Buffers" << std::endl;
 	cudaError_t deviceStatus;
@@ -613,6 +1112,21 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	{
 		return false;
 	}
+	deviceStatus = cudaMalloc((void**)device_F, F.size() * sizeof(float));
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
+	deviceStatus = cudaMalloc((void**)device_U, U.size() * sizeof(float));
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
+	deviceStatus = cudaMalloc((void**)device_V, V.size() * sizeof(float));
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
 
 	std::cout << "Copying Memory to CUDA device..." << std::endl;
 	deviceStatus = cudaMemcpy(*device_indices, &indices[0], indices.size() * sizeof(int), cudaMemcpyHostToDevice);
@@ -640,6 +1154,21 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	{
 		return false;
 	}
+	deviceStatus = cudaMemcpy(*device_F, &F[0], F.size() * sizeof(float), cudaMemcpyHostToDevice);
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
+	deviceStatus = cudaMemcpy(*device_U, &U[0], U.size() * sizeof(float), cudaMemcpyHostToDevice);
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
+	deviceStatus = cudaMemcpy(*device_V, &V[0], V.size() * sizeof(float), cudaMemcpyHostToDevice);
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
 
 
 	//Print some statistics
@@ -647,7 +1176,10 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 		+positions.size() * sizeof(float)
 		+volumes.size() * sizeof(float)
 		+inverseMasses.size() * sizeof(float)
-		+refShapeMatrixInverses.size() * sizeof(float);
+		+refShapeMatrixInverses.size() * sizeof(float)
+		+F.size() * sizeof(float)
+		+U.size() * sizeof(float)
+		+V.size() * sizeof(float);
 
 	std::cout << "Memory Usage: " << std::endl;
 	std::cout << "	Indices (int32)             : " << indices.size() * sizeof(int) << " bytes" << std::endl;
@@ -655,13 +1187,17 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	std::cout << "	Volumes (float)             : " << volumes.size() * sizeof(float) << " bytes" << std::endl;
 	std::cout << "	Masses (float)              : " << inverseMasses.size() * sizeof(float) << " bytes" << std::endl;
 	std::cout << "	Ref. Shape Matrices: (float): " << refShapeMatrixInverses.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	F...........................: " << F.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	U...........................: " << U.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	V...........................: " << V.size() * sizeof(float) << " bytes" << std::endl;
 	std::cout << "	--------------------------------------------------------" << std::endl;
 	std::cout << "	Total                       : " << totalNumbytes << " bytes (" << totalNumbytes / 1000.0 << " kb)" << std::endl;
 }
 
 bool CUDA_destroyBuffers(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
-	float* device_volumes)
+	float* device_volumes,
+	float* device_F, float* device_U, float* device_V)
 {
 	cudaError_t deviceStatus;
 
@@ -670,6 +1206,9 @@ bool CUDA_destroyBuffers(int* device_indices, float* device_positions,
 	cudaFree(device_indices);
 	cudaFree(device_refShapeMatrixInverses);
 	cudaFree(device_volumes);
+	cudaFree(device_F);
+	cudaFree(device_U);
+	cudaFree(device_V);
 
 	// cudaDeviceReset must be called before exiting in order for profiling and
 	// tracing tools such as Nsight and Visual Profiler to show complete traces.

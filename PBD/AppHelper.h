@@ -243,12 +243,15 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 		TetGenIO::readNodes(paramsIO.nodeFile, *particles, params.solverSettings.inverseMass, initialVelocity);
 		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
 
-		collisionRodGeometry.resize(1);
-		std::vector<std::string> rodTransformNames;
-		rodTransformNames.push_back("top1_bakedToWorld");
-		rodTransformNames.push_back("bottom_bakedToWorld");
+		if (params.TEST_VERSION != 5)
+		{
+			collisionRodGeometry.resize(1);
+			std::vector<std::string> rodTransformNames;
+			rodTransformNames.push_back("top1_bakedToWorld");
+			rodTransformNames.push_back("bottom_bakedToWorld");
 
-		collisionRodGeometry[0].readFromAbc("rod_liver1.abc", rodTransformNames);
+			collisionRodGeometry[0].readFromAbc("rod_liver1.abc", rodTransformNames);
+		}
 
 		if (paramsIO.constraintFile != "DUMMY")
 		{
@@ -1147,6 +1150,8 @@ void initTest_10(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.materialModel = PBDSolverSettings::CONSTITUTIVE_MODEL::NEO_HOOKEAN;
 	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
 
+	params.solverSettings.useMultiThreadedSolver = true;
+
 	if (params.TEST_VERSION == 0)
 	{
 		params.solverSettings.alpha = 0.0f;
@@ -1249,7 +1254,7 @@ void initTest_12(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.disableConstraintProjection = false;
 	params.renderCollisionGoemetry = true;
 
-	params.solverSettings.poissonRatio = 0.4f;
+	params.solverSettings.poissonRatio = 0.40f;
 	params.solverSettings.youngsModulus = 0.02f;
 	params.solverSettings.numConstraintIts = 5;
 	params.solverSettings.deltaT = 0.005f;
@@ -1304,18 +1309,32 @@ void initTest_12(Parameters& params, IOParameters& paramsIO)
 	}
 	else if (params.TEST_VERSION == 1)
 	{
-		params.solverSettings.alpha = 0.25f;
+		params.solverSettings.alpha = 0.0f;
+		paramsIO.nodeFile = "LiverInitialLowResolution_00625.1.node";
+		paramsIO.elementFile = "LiverInitialLowResolution_00625.1.ele";
+		paramsIO.constraintFile = "phantomIdentationLow_00625.txt";
 	}
 	else if (params.TEST_VERSION == 2)
 	{
-		params.solverSettings.alpha = 0.5f;
+		paramsIO.nodeFile = "LiverInitialLowResolution_lowest2.1.node";
+		paramsIO.elementFile = "LiverInitialLowResolution_lowest2.1.ele";
+		paramsIO.constraintFile = "phantomIdentationGood_Lowest2.txt";
+		params.solverSettings.alpha = 0.0f;
 	}
 	else if (params.TEST_VERSION == 3)
 	{
-		params.solverSettings.alpha = 0.75f;
+		paramsIO.nodeFile = "LiverInitialLowResolution_lowest3.1.node";
+		paramsIO.elementFile = "LiverInitialLowResolution_lowest3.1.ele";
+		paramsIO.constraintFile = "phantomIdentationGood_Lowest3.txt";
+		params.solverSettings.alpha = 0.0f;
 	}
 	else if (params.TEST_VERSION == 4)
 	{
 		params.solverSettings.alpha = 0.99f;
+	}
+	else if (params.TEST_VERSION == 5)
+	{
+		std::cout << "WARNING: This will produce an undeformed configuration for comparison!" << std::endl;
+		params.solverSettings.disableConstraintProjection = true;
 	}
 }

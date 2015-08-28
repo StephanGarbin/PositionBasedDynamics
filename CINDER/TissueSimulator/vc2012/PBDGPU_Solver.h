@@ -39,6 +39,9 @@ private:
 	std::vector<float> m_undeformedVolumes;
 	std::vector<float> m_referenceShapeMatrices;
 	std::vector<float> m_positions;
+	std::vector<float> m_F;
+	std::vector<float> m_U;
+	std::vector<float> m_V;
 
 	//CUDA device ptrs
 	int* m_device_indices;
@@ -46,6 +49,9 @@ private:
 	float* m_device_undeformedVolumes;
 	float* m_device_referenceShapeMatrices;
 	float* m_device_inverseMasses;
+	float* m_device_F;
+	float* m_device_U;
+	float* m_device_V;
 
 	int m_CUDA_NUM_BLOCKS;
 	int m_CUDA_NUM_THREADS_PER_BLOCK;

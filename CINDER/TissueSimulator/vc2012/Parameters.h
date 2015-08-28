@@ -25,14 +25,14 @@ struct Parameters
 
 	void initialiseToDefaults()
 	{
-		youngsModulus = 20.0f;
+		youngsModulus = 10.0f;
 		poissonRatio = 0.3;
 		inverseMass = 1.0f;
 		timeStep = 0.005f;
-		numConstraintIterations = 25;
+		numConstraintIterations = 10;
 		numGPUBlockIterations = 1;
 
-		gravity = -9.8f;
+		gravity = -9.81f;
 
 		tetGenNodeFile = "barout.node";
 		tetGenElementFile = "barout.ele";
