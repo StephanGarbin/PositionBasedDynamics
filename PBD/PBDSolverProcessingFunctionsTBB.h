@@ -117,7 +117,7 @@ struct PBDSolverTBB
 						{
 							if (S(i, i) < minElementValue)
 							{
-								minElementValue = V(i, i);
+								minElementValue = S(i, i);
 								minElementIdx = i;
 							}
 						}

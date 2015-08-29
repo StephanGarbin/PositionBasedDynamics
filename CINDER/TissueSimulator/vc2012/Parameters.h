@@ -29,7 +29,7 @@ struct Parameters
 		poissonRatio = 0.3;
 		inverseMass = 1.0f;
 		timeStep = 0.005f;
-		numConstraintIterations = 10;
+		numConstraintIterations = 1;
 		numGPUBlockIterations = 1;
 
 		gravity = -9.81f;

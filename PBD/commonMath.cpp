@@ -99,6 +99,7 @@ void eigenDecompositionCardano(Eigen::Matrix3f& A, Eigen::Matrix3f& eigenValues,
 	}
 
 	if (recompute)
+	//if (true)
 	{
 		//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(A);
 		//eigenValues = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F

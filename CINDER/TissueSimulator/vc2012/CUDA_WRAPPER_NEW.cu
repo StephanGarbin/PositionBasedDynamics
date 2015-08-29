@@ -122,7 +122,7 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 			{
 				float FInverseTEntry = 0.0f;
 
-				if (F[LOCAL_IDX][i][col] != 0.0f)
+				if (F[LOCAL_IDX][i][col] != 0.0f && i == col)
 				{
 					FInverseTEntry = 1.0f / F[LOCAL_IDX][i][col];
 				}
@@ -384,7 +384,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 			{
 				float FInverseTEntry = 0.0f;
 				
-				if (F[LOCAL_IDX][i][col] != 0.0f)
+				if (F[LOCAL_IDX][i][col] != 0.0f && i == col)
 				{
 					FInverseTEntry = 1.0f / F[LOCAL_IDX][i][col];
 				}
@@ -574,6 +574,21 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		}
 	}
 
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += F_functionLevel[i][row] * F_functionLevel[i][col];
+			}
+
+			temp[row][col] = sum;
+		}
+	}
+
 	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
 	//	F_functionLevel[0][0], F_functionLevel[0][1], F_functionLevel[0][2],
 	//	F_functionLevel[1][0], F_functionLevel[1][1], F_functionLevel[1][2],
@@ -596,25 +611,27 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	double thresh = 0.0;
 
 
+
+	#define SQR(x)      ((x)*(x))                        // x^2 
+
+
 	// Initialize Q to the identitity matrix
 	for (int i = 0; i < n; i++)
 	{
 		Q[i][i] = 1.0;
 		for (int j = 0; j < i; j++)
-		{
 			Q[i][j] = Q[j][i] = 0.0;
-		}
 	}
 
-	// Initialize w to diag(F_functionLevel)
+	// Initialize w to diag(temp)
 	for (int i = 0; i < n; i++)
-		w[i] = F_functionLevel[i][i];
+		w[i] = temp[i][i];
 
-	// Calculate SQR(tr(F_functionLevel))  
+	// Calculate SQR(tr(temp))  
 	sd = 0.0;
 	for (int i = 0; i < n; i++)
 		sd += fabs(w[i]);
-	sd = sd * sd;
+	sd = SQR(sd);
 
 	// Main iteration loop
 	for (int nIter = 0; nIter < 50; nIter++)
@@ -622,87 +639,75 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		// Test for convergence 
 		so = 0.0;
 		for (int p = 0; p < n; p++)
-		{
-			for (int q = p + 1; q < n; q++)
-			{
-				so += fabs(F_functionLevel[p][q]);
-			}
-		}
+		for (int q = p + 1; q < n; q++)
+			so += fabs(temp[p][q]);
+		if (so == 0.0)
+			break;
 
 		if (nIter < 4)
-		{
-			thresh = 0.2 * so / (n * n);
-		}
+			thresh = 0.2 * so / SQR(n);
 		else
-		{
 			thresh = 0.0;
-		}
 
 		// Do sweep
 		for (int p = 0; p < n; p++)
+		for (int q = p + 1; q < n; q++)
 		{
-			for (int q = p + 1; q < n; q++)
+			g = 100.0 * fabs(temp[p][q]);
+			if (nIter > 4 && fabs(w[p]) + g == fabs(w[p])
+				&& fabs(w[q]) + g == fabs(w[q]))
 			{
-				g = 100.0 * fabs(F_functionLevel[p][q]);
-				if (nIter > 4 && fabs(w[p]) + g == fabs(w[p])
-					&& fabs(w[q]) + g == fabs(w[q]))
+				temp[p][q] = 0.0;
+			}
+			else if (fabs(temp[p][q]) > thresh)
+			{
+				// Calculate Jacobi transformation
+				h = w[q] - w[p];
+				if (fabs(h) + g == fabs(h))
 				{
-					F_functionLevel[p][q] = 0.0;
+					t = temp[p][q] / h;
 				}
-				else if (fabs(F_functionLevel[p][q]) > thresh)
+				else
 				{
-					// Calculate Jacobi transformation
-					h = w[q] - w[p];
-					if (fabs(h) + g == fabs(h))
-					{
-						t = F_functionLevel[p][q] / h;
-					}
+					theta = 0.5 * h / temp[p][q];
+					if (theta < 0.0)
+						t = -1.0 / (sqrt(1.0 + SQR(theta)) - theta);
 					else
-					{
-						theta = 0.5 * h / F_functionLevel[p][q];
-						if (theta < 0.0)
-						{
-							t = -1.0 / (sqrt(1.0 + (theta * theta)) - theta);
-						}
-						else
-						{
-							t = 1.0 / (sqrt(1.0 + (theta * theta)) + theta);
-						}
-					}
-					c = 1.0 / sqrt(1.0 + (t * t));
-					s = t * c;
-					z = t * F_functionLevel[p][q];
+						t = 1.0 / (sqrt(1.0 + SQR(theta)) + theta);
+				}
+				c = 1.0 / sqrt(1.0 + SQR(t));
+				s = t * c;
+				z = t * temp[p][q];
 
-					// Apply Jacobi transformation
-					F_functionLevel[p][q] = 0.0;
-					w[p] -= z;
-					w[q] += z;
-					for (int r = 0; r < p; r++)
-					{
-						t = F_functionLevel[r][p];
-						F_functionLevel[r][p] = c*t - s*F_functionLevel[r][q];
-						F_functionLevel[r][q] = s*t + c*F_functionLevel[r][q];
-					}
-					for (int r = p + 1; r < q; r++)
-					{
-						t = F_functionLevel[p][r];
-						F_functionLevel[p][r] = c*t - s*F_functionLevel[r][q];
-						F_functionLevel[r][q] = s*t + c*F_functionLevel[r][q];
-					}
-					for (int r = q + 1; r < n; r++)
-					{
-						t = F_functionLevel[p][r];
-						F_functionLevel[p][r] = c*t - s*F_functionLevel[q][r];
-						F_functionLevel[q][r] = s*t + c*F_functionLevel[q][r];
-					}
+				// Apply Jacobi transformation
+				temp[p][q] = 0.0;
+				w[p] -= z;
+				w[q] += z;
+				for (int r = 0; r < p; r++)
+				{
+					t = temp[r][p];
+					temp[r][p] = c*t - s*temp[r][q];
+					temp[r][q] = s*t + c*temp[r][q];
+				}
+				for (int r = p + 1; r < q; r++)
+				{
+					t = temp[p][r];
+					temp[p][r] = c*t - s*temp[r][q];
+					temp[r][q] = s*t + c*temp[r][q];
+				}
+				for (int r = q + 1; r < n; r++)
+				{
+					t = temp[p][r];
+					temp[p][r] = c*t - s*temp[q][r];
+					temp[q][r] = s*t + c*temp[q][r];
+				}
 
-					// Update eigenvectors
-					for (int r = 0; r < n; r++)
-					{
-						t = Q[r][p];
-						Q[r][p] = c*t - s*Q[r][q];
-						Q[r][q] = s*t + c*Q[r][q];
-					}
+				// Update eigenvectors        
+				for (int r = 0; r < n; r++)
+				{
+					t = Q[r][p];
+					Q[r][p] = c*t - s*Q[r][q];
+					Q[r][q] = s*t + c*Q[r][q];
 				}
 			}
 		}
@@ -736,7 +741,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		{
 			if (w[i] < minElementValue)
 			{
-				minElementValue = Q[i][i];
+				minElementValue = w[i];
 				minElementIdx = i;
 			}
 		}
@@ -765,7 +770,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 			sum = 0.0f;
 			for (int i = 0; i < 3; i++)
 			{
-				sum = sum + F_functionLevel[row][i] * Q[i][col];
+				sum += F_functionLevel[row][i] * Q[i][col];
 			}
 
 			U[row][col] = sum;
@@ -779,16 +784,23 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 			sum = 0.0f;
 			for (int i = 0; i < 3; i++)
 			{
-				if (i == col)
+				if (i == col && w[i] != 0.0f)
 				{
-					sum = sum + U[row][i] * (1.0f / w[i]);
+					sum += U[row][i] * (1.0f / w[i]);
 				}
 			}
 
-			U[row][col] = sum;
+			temp[row][col] = sum;
 		}
 	}
 
+	for (int row = 0; row < 3; row++)
+	{
+		for (int col = 0; col < 3; col++)
+		{
+			U[row][col] = temp[row][col];
+		}
+	}
 
 	int numEntriesNearZero = 0;
 	int idx = 0;
@@ -910,7 +922,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			globalV[IDX * 9 + row * 3 + col] = Q[row][col];
+			globalV[IDX * 9 + row * 3 + col] = Q[col][row];
 		}
 	}
 	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
