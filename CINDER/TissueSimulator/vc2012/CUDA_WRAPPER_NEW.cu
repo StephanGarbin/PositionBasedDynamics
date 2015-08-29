@@ -710,8 +710,6 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 
 	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
 
-	float U[3][3];
-
 	//Correct diagonalised F
 	for (int i = 0; i < 3; ++i)
 	{
@@ -730,7 +728,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	//remove reflection from V if necessary
 	if (determinantQ < 0.0f)
 	{
-		float minElementValue = 1.5e+10f;
+		float minElementValue = 1.5e+38f;
 		int minElementIdx = 111;
 		for (int i = 0; i < 3; ++i)
 		{
@@ -756,7 +754,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 
 	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
 
-	//U = F_orig * V * F.inverse();
+	//temp = F_orig * V * F.inverse();
 	float sum;
 	for (int row = 0; row < 3; ++row)
 	{
@@ -768,7 +766,15 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 				sum += F_functionLevel[row][i] * Q[i][col];
 			}
 
-			U[row][col] = sum;
+			temp[row][col] = sum;
+		}
+	}
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			globalV[IDX * 9 + row * 3 + col] = Q[row][col];
 		}
 	}
 
@@ -777,23 +783,10 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		for (int col = 0; col < 3; ++col)
 		{
 			sum = 0.0f;
-			for (int i = 0; i < 3; i++)
-			{
-				if (i == col && w[i] != 0.0f)
-				{
-					sum += U[row][i] * (1.0f / w[i]);
-				}
-			}
+
+			sum += temp[row][col] * (1.0f / w[col]);
 
 			temp[row][col] = sum;
-		}
-	}
-
-	for (int row = 0; row < 3; row++)
-	{
-		for (int col = 0; col < 3; col++)
-		{
-			U[row][col] = temp[row][col];
 		}
 	}
 
@@ -814,64 +807,64 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		{
 			if (idx == 0)
 			{
-				//U.col(0) = U.col(1).cross(U.col(2)).normalized();
-				U[0][0] = U[1][1] * U[2][2] - U[2][1] * U[1][2];
-				U[1][0] = U[2][1] * U[0][2] - U[0][1] * U[2][2];
-				U[2][0] = U[0][1] * U[1][2] - U[1][1] * U[0][2];
-				U[0][0] /= sqrtf((U[0][0] * U[0][0]) + (U[1][0] * U[1][0]) + (U[2][0] * U[2][0]));
-				U[1][0] /= sqrtf((U[0][0] * U[0][0]) + (U[1][0] * U[1][0]) + (U[2][0] * U[2][0]));
-				U[2][0] /= sqrtf((U[0][0] * U[0][0]) + (U[1][0] * U[1][0]) + (U[2][0] * U[2][0]));
+				//temp.col(0) = temp.col(1).cross(temp.col(2)).normalized();
+				temp[0][0] = temp[1][1] * temp[2][2] - temp[2][1] * temp[1][2];
+				temp[1][0] = temp[2][1] * temp[0][2] - temp[0][1] * temp[2][2];
+				temp[2][0] = temp[0][1] * temp[1][2] - temp[1][1] * temp[0][2];
+				temp[0][0] /= sqrtf((temp[0][0] * temp[0][0]) + (temp[1][0] * temp[1][0]) + (temp[2][0] * temp[2][0]));
+				temp[1][0] /= sqrtf((temp[0][0] * temp[0][0]) + (temp[1][0] * temp[1][0]) + (temp[2][0] * temp[2][0]));
+				temp[2][0] /= sqrtf((temp[0][0] * temp[0][0]) + (temp[1][0] * temp[1][0]) + (temp[2][0] * temp[2][0]));
 			}
 			else if (idx == 1)
 			{
-				//U.col(1) = U.col(0).cross(U.col(2)).normalized();
-				U[0][1] = U[1][0] * U[2][2] - U[2][0] * U[1][2];
-				U[1][1] = U[2][0] * U[0][2] - U[0][0] * U[2][2];
-				U[2][1] = U[0][0] * U[1][2] - U[1][0] * U[0][2];
-				U[0][1] /= sqrtf((U[0][1] * U[0][1]) + (U[1][1] * U[1][1]) + (U[2][1] * U[2][1]));
-				U[1][1] /= sqrtf((U[0][1] * U[0][1]) + (U[1][1] * U[1][1]) + (U[2][1] * U[2][1]));
-				U[2][1] /= sqrtf((U[0][1] * U[0][1]) + (U[1][1] * U[1][1]) + (U[2][1] * U[2][1]));
+				//temp.col(1) = temp.col(0).cross(temp.col(2)).normalized();
+				temp[0][1] = temp[1][0] * temp[2][2] - temp[2][0] * temp[1][2];
+				temp[1][1] = temp[2][0] * temp[0][2] - temp[0][0] * temp[2][2];
+				temp[2][1] = temp[0][0] * temp[1][2] - temp[1][0] * temp[0][2];
+				temp[0][1] /= sqrtf((temp[0][1] * temp[0][1]) + (temp[1][1] * temp[1][1]) + (temp[2][1] * temp[2][1]));
+				temp[1][1] /= sqrtf((temp[0][1] * temp[0][1]) + (temp[1][1] * temp[1][1]) + (temp[2][1] * temp[2][1]));
+				temp[2][1] /= sqrtf((temp[0][1] * temp[0][1]) + (temp[1][1] * temp[1][1]) + (temp[2][1] * temp[2][1]));
 			}
 			else
 			{
-				//U.col(2) = U.col(0).cross(U.col(1)).normalized();
-				U[0][2] = U[1][0] * U[2][1] - U[2][0] * U[1][1];
-				U[1][2] = U[2][0] * U[0][1] - U[0][0] * U[2][1];
-				U[2][2] = U[0][0] * U[1][1] - U[1][0] * U[0][1];
-				U[0][2] /= sqrtf((U[0][2] * U[0][2]) + (U[1][2] * U[1][2]) + (U[2][2] * U[2][2]));
-				U[1][2] /= sqrtf((U[0][2] * U[0][2]) + (U[1][2] * U[1][2]) + (U[2][2] * U[2][2]));
-				U[2][2] /= sqrtf((U[0][2] * U[0][2]) + (U[1][2] * U[1][2]) + (U[2][2] * U[2][2]));
+				//temp.col(2) = temp.col(0).cross(temp.col(1)).normalized();
+				temp[0][2] = temp[1][0] * temp[2][1] - temp[2][0] * temp[1][1];
+				temp[1][2] = temp[2][0] * temp[0][1] - temp[0][0] * temp[2][1];
+				temp[2][2] = temp[0][0] * temp[1][1] - temp[1][0] * temp[0][1];
+				temp[0][2] /= sqrtf((temp[0][2] * temp[0][2]) + (temp[1][2] * temp[1][2]) + (temp[2][2] * temp[2][2]));
+				temp[1][2] /= sqrtf((temp[0][2] * temp[0][2]) + (temp[1][2] * temp[1][2]) + (temp[2][2] * temp[2][2]));
+				temp[2][2] /= sqrtf((temp[0][2] * temp[0][2]) + (temp[1][2] * temp[1][2]) + (temp[2][2] * temp[2][2]));
 			}
 		}
 		else
 		{
-			//set U to identity
-			U[0][0] = 1.0f;
-			U[1][1] = 1.0f;
-			U[2][2] = 1.0f;
+			//set temp to identity
+			temp[0][0] = 1.0f;
+			temp[1][1] = 1.0f;
+			temp[2][2] = 1.0f;
 
-			U[0][1] = 0.0f;
-			U[0][2] = 0.0f;
+			temp[0][1] = 0.0f;
+			temp[0][2] = 0.0f;
 
-			U[1][0] = 0.0f;
-			U[1][2] = 0.0f;
+			temp[1][0] = 0.0f;
+			temp[1][2] = 0.0f;
 
-			U[2][0] = 0.0f;
-			U[2][1] = 0.0f;
+			temp[2][0] = 0.0f;
+			temp[2][1] = 0.0f;
 		}
 	}
 
-	float determinantU = U[0][0]
-		* (U[1][1] * U[2][2] - U[1][2] * U[2][1])
-		- U[0][1]
-		* (U[1][0] * U[2][2] - U[1][2] * U[2][0])
-		+ U[0][2]
-		* (U[1][0] * U[2][1] - U[1][1] * U[2][0]);
+	float determinantU = temp[0][0]
+		* (temp[1][1] * temp[2][2] - temp[1][2] * temp[2][1])
+		- temp[0][1]
+		* (temp[1][0] * temp[2][2] - temp[1][2] * temp[2][0])
+		+ temp[0][2]
+		* (temp[1][0] * temp[2][1] - temp[1][1] * temp[2][0]);
 
-	//remove reflection from U if necessary
+	//remove reflection from temp if necessary
 	if (determinantU < 0.0f)
 	{
-		float minElementValue = 1.5e+10f;
+		float minElementValue = 1.5e+38f;
 		int minElementIdx = 111;
 		for (int i = 0; i < 3; ++i)
 		{
@@ -885,7 +878,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		w[minElementIdx] *= -1.0f;
 		for (int row = 0; row < 3; ++row)
 		{
-			U[row][minElementIdx] *= -1.0f;
+			temp[row][minElementIdx] *= -1.0f;
 		}
 	}
 
@@ -893,9 +886,8 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	{
 		w[i] = fmaxf(w[i], 0.577f);
 	}
-	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
 
-	//Store U, V & F
+	//Store temp, V & F
 	globalF[IDX * 3 + 0] = w[0];
 	globalF[IDX * 3 + 1] = w[1];
 	globalF[IDX * 3 + 2] = w[2];
@@ -904,28 +896,9 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			globalU[IDX * 9 + row * 3 + col] = U[row][col];
+			globalU[IDX * 9 + row * 3 + col] = temp[row][col];
 		}
 	}
-
-	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
-	//	U[0][0], U[0][1], U[0][2],
-	//	U[1][0], U[1][1], U[1][2],
-	//	U[2][0], U[2][1], U[2][2]);
-
-	for (int row = 0; row < 3; ++row)
-	{
-		for (int col = 0; col < 3; ++col)
-		{
-			globalV[IDX * 9 + row * 3 + col] = Q[row][col];
-		}
-	}
-	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
-	//	Q[0][0], Q[0][1], Q[0][2],
-	//	Q[1][0], Q[1][1], Q[1][2],
-	//	Q[2][0], Q[2][1], Q[2][2]);
-
-	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
 }
 
 
