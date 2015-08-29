@@ -478,7 +478,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			F[LOCAL_IDX][0][0] = 0.0f;
+			F[LOCAL_IDX][row][col] = 0.0f;
 		}
 	}
 
@@ -502,7 +502,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	float snGr2;
 	float snGr3;
 
-	float det = determinantF(threadIdx.x);
+	float det = determinantF(LOCAL_IDX);
 
 	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(IDX, threadIdx.x, volume[IDX], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3,
 		snGr0, snGr1, snGr2, snGr3, det,
@@ -610,11 +610,6 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	double theta = 0.0;          // More temporary storage
 	double thresh = 0.0;
 
-
-
-	#define SQR(x)      ((x)*(x))                        // x^2 
-
-
 	// Initialize Q to the identitity matrix
 	for (int i = 0; i < n; i++)
 	{
@@ -631,7 +626,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	sd = 0.0;
 	for (int i = 0; i < n; i++)
 		sd += fabs(w[i]);
-	sd = SQR(sd);
+	sd = sqr(sd);
 
 	// Main iteration loop
 	for (int nIter = 0; nIter < 50; nIter++)
@@ -645,7 +640,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 			break;
 
 		if (nIter < 4)
-			thresh = 0.2 * so / SQR(n);
+			thresh = 0.2 * so / sqr(n);
 		else
 			thresh = 0.0;
 
@@ -671,11 +666,11 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 				{
 					theta = 0.5 * h / temp[p][q];
 					if (theta < 0.0)
-						t = -1.0 / (sqrt(1.0 + SQR(theta)) - theta);
+						t = -1.0 / (sqrt(1.0 + sqr(theta)) - theta);
 					else
-						t = 1.0 / (sqrt(1.0 + SQR(theta)) + theta);
+						t = 1.0 / (sqrt(1.0 + sqr(theta)) + theta);
 				}
-				c = 1.0 / sqrt(1.0 + SQR(t));
+				c = 1.0 / sqrt(1.0 + sqr(t));
 				s = t * c;
 				z = t * temp[p][q];
 
@@ -735,7 +730,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	//remove reflection from V if necessary
 	if (determinantQ < 0.0f)
 	{
-		float minElementValue = 1.5e+38f;
+		float minElementValue = 1.5e+10f;
 		int minElementIdx = 111;
 		for (int i = 0; i < 3; ++i)
 		{
@@ -763,9 +758,9 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 
 	//U = F_orig * V * F.inverse();
 	float sum;
-	for (int row = 0; row < 3; row++)
+	for (int row = 0; row < 3; ++row)
 	{
-		for (int col = 0; col < 3; col++)
+		for (int col = 0; col < 3; ++col)
 		{
 			sum = 0.0f;
 			for (int i = 0; i < 3; i++)
@@ -777,9 +772,9 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		}
 	}
 
-	for (int row = 0; row < 3; row++)
+	for (int row = 0; row < 3; ++row)
 	{
-		for (int col = 0; col < 3; col++)
+		for (int col = 0; col < 3; ++col)
 		{
 			sum = 0.0f;
 			for (int i = 0; i < 3; i++)
@@ -876,7 +871,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	//remove reflection from U if necessary
 	if (determinantU < 0.0f)
 	{
-		float minElementValue = 1.5e+38f;
+		float minElementValue = 1.5e+10f;
 		int minElementIdx = 111;
 		for (int i = 0; i < 3; ++i)
 		{
@@ -922,7 +917,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			globalV[IDX * 9 + row * 3 + col] = Q[col][row];
+			globalV[IDX * 9 + row * 3 + col] = Q[row][col];
 		}
 	}
 	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
@@ -1050,7 +1045,7 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 			settings.trueNumberOfConstraints);
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
-		std::cout << "Projection-------------------------------------------------------------------------" << std::endl;
+		//std::cout << "Projection-------------------------------------------------------------------------" << std::endl;
 
 		solveFEMConstraint << <numBlocks, numThreads >> >(
 			device_positions, device_indices, device_inverseMasses,
@@ -1060,7 +1055,7 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 			device_F, device_U, device_V);
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
-		std::cout << "Projection done-------------------------------------------------------------------------" << std::endl;
+		//std::cout << "Projection done-------------------------------------------------------------------------" << std::endl;
 	}
 	cudaErrorWrapper(cudaDeviceSynchronize());
 
