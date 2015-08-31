@@ -18,6 +18,10 @@
 
 #define GLOBAL_U_IDX ((row * 3 + col) * (trueNumConstraints + 1) + IDX)
 
+#define GLOBAL_Vt_MatrixMult_IDX ((col * 3 + i) * (trueNumConstraints + 1) + IDX)
+#define GLOBAL_Vt_IDX ((row * 3 + col) * (trueNumConstraints + 1) + IDX)
+
+
 __shared__ float F[NUM_THREADS_PER_BLOCK][3];
 
 #define sqr(x) (x * x)
@@ -27,7 +31,14 @@ __device__ __forceinline__ float calculateStrainEnergy_NEO_HOOKEAN(float volume,
 	return volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3)));
 }
 
-__device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float lagrangeMultiplier, float* positions,
+__device__ __forceinline__ float calculateStrainEnergy_NEO_HOOKEAN_ANISOTROPIC(float volume, float lambda, float mu, float I1, float I3,
+	float anisotropyStrength, float stretch)
+{
+	return (volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3))))
+		+ (anisotropyStrength / 2.0f) * powf(stretch - 1.0f, 2.0f);
+}
+
+__device__ void updatePositions_recomputeGradients(float lagrangeMultiplier, float* positions,
 	float* masses, int* indices, int trueNumConstraints, int numParticles, float volume, float* refShapeMatrixInverse,
 	float I3, float lambda, float mu, float det,
 	float* globalU, float* globalV)
@@ -79,7 +90,7 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 			float sum = 0.0f;
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += temp[row][i] * globalV[IDX * 9 + col * 3 + i];
+				sum += temp[row][i] * globalV[GLOBAL_Vt_MatrixMult_IDX];
 			}
 			temp0[row][col] = sum;
 		}
@@ -94,7 +105,7 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + globalIdx];
+				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + IDX];
 			}
 
 			temp[row][col] = sum;
@@ -102,16 +113,16 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 	}
 
 	int localIndices[4];
-	localIndices[0] = indices[globalIdx + trueNumConstraints * 0] * 3;
-	localIndices[1] = indices[globalIdx + trueNumConstraints * 1] * 3;
-	localIndices[2] = indices[globalIdx + trueNumConstraints * 2] * 3;
-	localIndices[3] = indices[globalIdx + trueNumConstraints * 3] * 3;
+	localIndices[0] = indices[IDX + trueNumConstraints * 0] * 3;
+	localIndices[1] = indices[IDX + trueNumConstraints * 1] * 3;
+	localIndices[2] = indices[IDX + trueNumConstraints * 2] * 3;
+	localIndices[3] = indices[IDX + trueNumConstraints * 3] * 3;
 
 	for (int i = 0; i < 3; ++i)
 	{
 		for (int j = 0; j < 3; ++j)
 		{
-			atomicAdd(&positions[localIndices[i] + j], masses[globalIdx + i * trueNumConstraints] * lagrangeMultiplier * temp[j][i] * volume);
+			atomicAdd(&positions[localIndices[i] + j], masses[IDX + i * trueNumConstraints] * lagrangeMultiplier * temp[j][i] * volume);
 		}
 	}
 
@@ -123,10 +134,105 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 			sum += temp[j][col] * volume;
 		}
 
-		atomicAdd(&positions[localIndices[3] + j], masses[globalIdx + 3 * trueNumConstraints] * lagrangeMultiplier * -sum);
+		atomicAdd(&positions[localIndices[3] + j], masses[IDX + 3 * trueNumConstraints] * lagrangeMultiplier * -sum);
 	}
 }
 
+__device__ __forceinline__ void updatePositions_recomputeGradients_ANISOTROPIC(float lagrangeMultiplier, float* positions,
+	float* masses, int* indices, int trueNumConstraints, int numParticles, float volume, float* refShapeMatrixInverse,
+	float I3, float lambda, float mu, float det,
+	float* globalU, float* globalV,
+	float anisotropyStrength, float stretch,
+	float rotA0, float rotA1, float rotA2)
+{
+	float temp0[3][3];
+	float temp[3][3];
+	// Load U
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			temp0[row][col] = globalU[GLOBAL_U_IDX];
+		}
+	}
+	
+	float rotatedA[3];
+	rotatedA[0] = rotA0;
+	rotatedA[1] = rotA1;
+	rotatedA[2] = rotA2;
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			float FInverseTEntry = 0.0f;
+
+			FInverseTEntry = 1.0f / F[LOCAL_IDX][col];
+
+			sum += temp0[row][col] * (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f))
+				+ F[LOCAL_IDX][col] * (
+				powf(F[LOCAL_IDX][0] * F[LOCAL_IDX][1] * F[LOCAL_IDX][2], -2.0f / 3.0f)
+				* anisotropyStrength * (stretch - 1.0f)
+				* (rotatedA[row] * rotatedA[col]) + (stretch / 3.0f) * (1.0f / sqr(F[LOCAL_IDX][col]))
+				);
+			temp[row][col] = sum;
+		}
+	}
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += temp[row][i] * globalV[GLOBAL_Vt_MatrixMult_IDX];
+			}
+			temp0[row][col] = sum;
+		}
+	}
+
+	//3. Multiply with First Piola-Kirchoff Stress tensor
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + IDX];
+			}
+
+			temp[row][col] = sum;
+		}
+	}
+
+	int localIndices[4];
+	localIndices[0] = indices[IDX + trueNumConstraints * 0] * 3;
+	localIndices[1] = indices[IDX + trueNumConstraints * 1] * 3;
+	localIndices[2] = indices[IDX + trueNumConstraints * 2] * 3;
+	localIndices[3] = indices[IDX + trueNumConstraints * 3] * 3;
+
+	for (int i = 0; i < 3; ++i)
+	{
+		for (int j = 0; j < 3; ++j)
+		{
+			atomicAdd(&positions[localIndices[i] + j], masses[IDX + i * trueNumConstraints] * lagrangeMultiplier * temp[j][i] * volume);
+		}
+	}
+
+	for (int j = 0; j < 3; ++j)
+	{
+		float sum = 0.0f;
+		for (int col = 0; col < 3; ++col)
+		{
+			sum += temp[j][col] * volume;
+		}
+
+		atomicAdd(&positions[localIndices[3] + j], masses[IDX + 3 * trueNumConstraints] * lagrangeMultiplier * -sum);
+	}
+}
 
 __device__ __forceinline__ float calculateTraceFTransposeF_INPLACE()
 {
@@ -145,9 +251,11 @@ __device__ __forceinline__ float calculatedeterminantFTransposeF_INPLACE()
 }
 
 
-__device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx, int idx, float volume, float* refShapeMatrixInverse, int trueNumConstraints, float mu, float lambda, float I3,
+__device__ __forceinline__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE_ANISOTROPIC(float volume, float* refShapeMatrixInverse, int trueNumConstraints, float mu, float lambda, float I3,
 	float& snGr0, float& snGr1, float& snGr2, float& snGr3, float det,
-	float* globalU, float* globalV)
+	float* globalU, float* globalV,
+	float anisotropyStrength, float stretch,
+	float rotA0, float rotA1, float rotA2)
 {
 	float temp0[3][3];
 	float temp[3][3];
@@ -160,11 +268,11 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 		}
 	}
 
-	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
-	//	temp0[0][0], temp0[0][1], temp0[0][2],
-	//	temp0[1][0], temp0[1][1], temp0[1][2],
-	//	temp0[2][0], temp0[2][1], temp0[2][2]);
 
+	float rotatedA[3];
+	rotatedA[0] = rotA0;
+	rotatedA[1] = rotA1;
+	rotatedA[2] = rotA2;
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 3; ++col)
@@ -174,7 +282,12 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 
 			FInverseTEntry = 1.0f / F[LOCAL_IDX][col];
 
-			sum += temp0[row][col] * (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f));
+			sum += temp0[row][col] * (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f))
+				+ F[LOCAL_IDX][col] * (
+				powf(F[LOCAL_IDX][0] * F[LOCAL_IDX][1] * F[LOCAL_IDX][2], -2.0f / 3.0f)
+				* anisotropyStrength * (stretch - 1.0f)
+				* (rotatedA[row] * rotatedA[col]) + (stretch / 3.0f) * (1.0f / sqr(F[LOCAL_IDX][col]))
+				);
 			temp[row][col] = sum;
 		}
 	}
@@ -186,7 +299,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 			float sum = 0.0f;
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += temp[row][i] * globalV[IDX * 9 + col * 3 + i];
+				sum += temp[row][i] * globalV[GLOBAL_Vt_MatrixMult_IDX];
 			}
 			temp0[row][col] = sum;
 		}
@@ -201,7 +314,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 
 			for (int i = 0; i < 3; ++i)
 			{
-				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + globalIdx];
+				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + IDX];
 			}
 
 			temp[row][col] = sum;
@@ -279,7 +392,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	float det = 0.0f;
 
-	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(IDX, threadIdx.x, volume[IDX], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3,
+	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(volume[IDX], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3,
 		snGr0, snGr1, snGr2, snGr3, det,
 		globalU, globalV);
 
@@ -298,13 +411,13 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	}
 
 	//8. Update Positions
-	updatePositions_recomputeGradients(IDX, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles,
+	updatePositions_recomputeGradients(lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles,
 		volume[IDX], refShapeMatrixInverse, I3, lambda, mu, det,
 		globalU, globalV);
 }
 
 
-__global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
+__global__ void solveFEMConstraint_ANISOTROPIC(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
 	float lambda, float mu, int trueNumConstraints, int numParticles, float* globalF, float* globalU, float* globalV,
 	float* anisotropyDirection, float anisotropyStrength)
 {
@@ -323,6 +436,31 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	float I3 = calculatedeterminantFTransposeF_INPLACE();
 	float I1 = calculateTraceFTransposeF_INPLACE();
 
+	//Compute rotated direction vector
+	float rotatedDirection[3];
+	float temp = anisotropyDirection[0 * trueNumConstraints + IDX];
+	for (int i = 0; i < 3; ++i)
+	{
+		rotatedDirection[i] = globalV[(i * 0 + row) * trueNumConstraints + IDX] * temp;
+	}
+
+	temp = anisotropyDirection[1 * trueNumConstraints + IDX];
+	for (int i = 0; i < 3; ++i)
+	{
+		rotatedDirection[i] += globalV[(i * 1 + row) * trueNumConstraints + IDX] * temp;
+	}
+
+	temp = anisotropyDirection[2 * trueNumConstraints + IDX];
+	for (int i = 0; i < 3; ++i)
+	{
+		rotatedDirection[i] += globalV[(i * 2 + row) * trueNumConstraints + IDX] * temp;
+	}
+
+	//Compute stretch
+	float stretch = sqrtf(sqr(F[LOCAL_IDX][0]) * sqr()[rotatedDirection[0]]
+		+ sqr(F[LOCAL_IDX][1]) * sqr([rotatedDirection[1]])
+		+ sqr(F[LOCAL_IDX][2]) * sqr([rotatedDirection[2]]));
+
 
 	//6. Calculate Strain Energy Gradient
 	float snGr0;
@@ -332,9 +470,11 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	float det = 0.0f;
 
-	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(IDX, threadIdx.x, volume[IDX], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3,
+	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE_ANISOTROPIC(volume[IDX], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3,
 		snGr0, snGr1, snGr2, snGr3, det,
-		globalU, globalV);
+		globalU, globalV,
+		anisotropyStrength, stretch,
+		rotatedDirection[0], rotatedDirection[1], rotatedDirection[2]);
 
 	//7. Calculate Lagrange Multiplier
 	float denominator = 0.0f;
@@ -343,7 +483,7 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	denominator += inverseMass[IDX + 2 * trueNumConstraints] * snGr2;
 	denominator += inverseMass[IDX + 3 * trueNumConstraints] * snGr3;
 
-	float lagrangeMultiplier = -(calculateStrainEnergy_NEO_HOOKEAN(volume[IDX], lambda, mu, I1, I3) / denominator);
+	float lagrangeMultiplier = -(calculateStrainEnergy_NEO_HOOKEAN_ANISOTROPIC(volume[IDX], lambda, mu, I1, I3, anisotropyStrength, stretch) / denominator);
 
 	if (isnan(lagrangeMultiplier))
 	{
@@ -351,9 +491,11 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	}
 
 	//8. Update Positions
-	updatePositions_recomputeGradients(IDX, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles,
+	updatePositions_recomputeGradients_ANISOTROPIC(lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles,
 		volume[IDX], refShapeMatrixInverse, I3, lambda, mu, det,
-		globalU, globalV);
+		globalU, globalV,
+		anisotropyStrength, stretch,
+		rotatedDirection[0], rotatedDirection[1], rotatedDirection[2]);
 }
 
 
@@ -658,7 +800,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			globalV[IDX * 9 + row * 3 + col] = Q[row][col];
+			globalV[GLOBAL_Vt_IDX] = Q[row][col];
 		}
 	}
 
@@ -907,7 +1049,7 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 			}
 			case Parameters::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER:
 			{
-				solveFEMConstraint << <numBlocks, numThreads >> >(
+				solveFEMConstraint_ANISOTROPIC << <numBlocks, numThreads >> >(
 					device_positions, device_indices, device_inverseMasses,
 					device_volumes, device_refShapeMatrixInverses,
 					settings.lambda, settings.mu, settings.trueNumberOfConstraints,

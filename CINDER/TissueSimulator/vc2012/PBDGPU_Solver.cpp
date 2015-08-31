@@ -175,9 +175,9 @@ Parameters& settings)
 	{
 		for (int i = 0; i < m_anisotropyDirection.size() / 3; ++i)
 		{
-			m_anisotropyDirection[i * 3 + 0] = settings.anisotropyDirection[0];
-			m_anisotropyDirection[i * 3 + 1] = settings.anisotropyDirection[1];
-			m_anisotropyDirection[i * 3 + 2] = settings.anisotropyDirection[2];
+			m_anisotropyDirection[0 * m_anisotropyDirection.size() / 3 + i] = settings.anisotropyDirection[0];
+			m_anisotropyDirection[1 * m_anisotropyDirection.size() / 3 + i] = settings.anisotropyDirection[1];
+			m_anisotropyDirection[2 * m_anisotropyDirection.size() / 3 + i] = settings.anisotropyDirection[2];
 		}
 	}
 
