@@ -1,7 +1,36 @@
 #pragma once
 
+#include <cinder\Vector.h>
+#include <vector>
+#include <string>
+
 struct Parameters
 {
+	//Material Model
+	enum CONSTITUTIVE_MODEL
+	{
+		NEO_HOOKEAN,
+		NEO_HOOKEAN_FIBER,
+		NEO_HOOKEAN_FIBER_VISCOELASTIC
+	};
+
+	int materialModel;
+
+	std::vector<std::string> materialModelNames;
+
+	//Anisotropy
+	cinder::Vec3f anisotropyDirection;
+	float anisotropyStrength;
+	void normaliseAnisotropyDirection()
+	{
+		anisotropyDirection.safeNormalize();
+	}
+
+	//Viscoelasticity
+	float alpha;
+	float rho;
+
+	//Elasticity
 	float youngsModulus;
 	float poissonRatio;
 	float inverseMass;
@@ -25,6 +54,12 @@ struct Parameters
 
 	void initialiseToDefaults()
 	{
+		materialModel = 0;
+		alpha = 0.0f;
+		rho = 0.0f;
+		anisotropyStrength = 0.0f;
+		anisotropyDirection.zero();
+
 		youngsModulus = 20.0f;
 		poissonRatio = 0.3;
 		inverseMass = 1.0f;
@@ -38,6 +73,10 @@ struct Parameters
 		tetGenElementFile = "barout.ele";
 		positionConstraintFile = "barLowVertexConstraints.txt";
 		meshOutputFile = "GPUSolverResult.abc";
+
+		materialModelNames.push_back("Compr.Neo Hookean");
+		materialModelNames.push_back("Compr. Ani. Neo-Hookean");
+		materialModelNames.push_back("Compr. Ani. Visc. Neo-Hookean");
 	}
 
 	float calculateLambda(float youngsModulus, float poissonRatio) const

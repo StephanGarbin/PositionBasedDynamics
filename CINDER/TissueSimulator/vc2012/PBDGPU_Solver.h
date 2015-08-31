@@ -42,6 +42,8 @@ private:
 	std::vector<float> m_F;
 	std::vector<float> m_U;
 	std::vector<float> m_V;
+	std::vector<float> m_anisotropyDirection;
+	std::vector<float> m_viscosityMultiplier;
 
 	//CUDA device ptrs
 	int* m_device_indices;
@@ -52,6 +54,8 @@ private:
 	float* m_device_F;
 	float* m_device_U;
 	float* m_device_V;
+	float* m_device_anisotropyDirection;
+	float* m_device_viscosityMultiplier;
 
 	int m_CUDA_NUM_BLOCKS;
 	int m_CUDA_NUM_THREADS_PER_BLOCK;

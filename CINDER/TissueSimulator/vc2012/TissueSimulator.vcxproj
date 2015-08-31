@@ -208,6 +208,9 @@
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
       <FastMath>true</FastMath>
       <GenerateLineInfo>true</GenerateLineInfo>
+      <Optimization>O3</Optimization>
+      <MaxRegCount>0</MaxRegCount>
+      <TypeInfo>false</TypeInfo>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

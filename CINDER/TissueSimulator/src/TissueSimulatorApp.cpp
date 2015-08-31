@@ -213,8 +213,24 @@ TissueSimulatorApp::setupInterface()
 
 	m_interfaceParams = params::InterfaceGl::create(getWindow(), "App parameters", toPixels(Vec2i(200, 300)));
 
+	m_interfaceParams->addParam("Material", m_params.materialModelNames, &m_params.materialModel);
+
+	//Elasticity
+	m_interfaceParams->addSeparator("Elasticity");
 	m_interfaceParams->addParam("Young's Modulus", &m_params.youngsModulus).min(0.0f).max(100000.0f).precision(4).step(0.25f);
 	m_interfaceParams->addParam("Poisson's Ratio", &m_params.poissonRatio).min(-0.5f).max(0.5f).precision(4).step(0.1f);
+
+	//Ansisotropy
+	m_interfaceParams->addSeparator("Anisotropy");
+	m_interfaceParams->addParam("Anisotropic Strength", &m_params.anisotropyStrength).min(0.0f).max(10.0f).precision(4).step(0.1f);
+	m_interfaceParams->addParam("Anisotropy Direction", &m_params.anisotropyDirection);
+	m_params.normaliseAnisotropyDirection();
+
+	//Viscosity
+	m_interfaceParams->addSeparator("Viscosity");
+	m_interfaceParams->addParam("Alpha", &m_params.alpha);
+	m_interfaceParams->addParam("Rho", &m_params.rho);
+
 	m_interfaceParams->addParam("Inverse Mass", &m_params.inverseMass).min(0.0f).max(100000.0f).precision(4).step(1.0f);
 	m_interfaceParams->addSeparator();
 	m_interfaceParams->addParam("Timestep", &m_params.timeStep).min(0.000001f).max(1.0f).precision(4).step(0.05f);

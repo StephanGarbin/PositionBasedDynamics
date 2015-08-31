@@ -338,6 +338,8 @@ struct PBDSolverTBB
 						//if (it == settings.numConstraintIts - 1)
 						{
 							tetrahedra[t].getUpsilon() = vMult;
+							//std::cout << vMult << std::endl;
+							//std::cout << "---------" << std::endl;
 						}
 					}
 

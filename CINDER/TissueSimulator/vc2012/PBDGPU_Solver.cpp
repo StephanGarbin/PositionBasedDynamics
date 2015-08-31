@@ -116,6 +116,10 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 	m_U.resize(tetrahedra.size() * 9);
 	m_V.resize(tetrahedra.size() * 9);
 
+	//Resize arrays for anisotropy & viscoelasticity
+	m_anisotropyDirection.resize(tetrahedra.size() * 3);
+	m_viscosityMultiplier.resize(tetrahedra.size() * 9);
+
 	queryCUDADevices();
 
 	setupCUDA();
@@ -163,11 +167,26 @@ Parameters& settings)
 	settings.calculateMu();
 	settings.calculateLambda();
 
-	CUDA_updateBuffers(m_device_positions, m_positions);
+	bool updateAnisotropy = m_anisotropyDirection[0] == settings.anisotropyDirection[0]
+		&& m_anisotropyDirection[1] == settings.anisotropyDirection[1]
+		&& m_anisotropyDirection[2] == settings.anisotropyDirection[2];
+
+	if (updateAnisotropy)
+	{
+		for (int i = 0; i < m_anisotropyDirection.size() / 3; ++i)
+		{
+			m_anisotropyDirection[i * 3 + 0] = settings.anisotropyDirection[0];
+			m_anisotropyDirection[i * 3 + 1] = settings.anisotropyDirection[1];
+			m_anisotropyDirection[i * 3 + 2] = settings.anisotropyDirection[2];
+		}
+	}
+
+	CUDA_updateBuffers(m_device_positions, m_positions, m_device_anisotropyDirection, m_anisotropyDirection, updateAnisotropy);
 
 	CUDA_projectConstraints(m_device_indices, m_device_positions, m_device_inverseMasses,
 		m_device_referenceShapeMatrices, m_device_undeformedVolumes,
 		m_device_F, m_device_U, m_device_V,
+		m_device_anisotropyDirection, m_device_viscosityMultiplier,
 		settings);
 
 	CUDA_getBuffers(m_device_positions, m_positions);
@@ -245,8 +264,10 @@ PBDGPU_Solver::setupCUDA()
 	CUDA_allocateBuffers(&m_device_indices, &m_device_positions, &m_device_inverseMasses,
 		&m_device_referenceShapeMatrices, &m_device_undeformedVolumes,
 		&m_device_F, &m_device_U, &m_device_V,
+		&m_device_anisotropyDirection, &m_device_viscosityMultiplier,
 		m_indices, m_positions, m_inverseMasses, m_referenceShapeMatrices, m_undeformedVolumes,
-		m_F, m_U, m_V);
+		m_F, m_U, m_V,
+		m_anisotropyDirection, m_viscosityMultiplier);
 }
 
 void
@@ -254,6 +275,7 @@ PBDGPU_Solver::deleteCUDA()
 {
 	CUDA_destroyBuffers(m_device_indices, m_device_positions, m_device_inverseMasses,
 		m_device_referenceShapeMatrices, m_device_undeformedVolumes,
-		m_device_F, m_device_U, m_device_V);
+		m_device_F, m_device_U, m_device_V,
+		m_device_anisotropyDirection, m_device_viscosityMultiplier);
 }
 

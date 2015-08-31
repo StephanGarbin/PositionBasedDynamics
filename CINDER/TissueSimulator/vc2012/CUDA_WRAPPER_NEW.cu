@@ -296,6 +296,60 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 		globalU, globalV);
 }
 
+
+__global__ void solveFEMConstraint(float* positions, int* indices, float* inverseMass, float* volume, float* refShapeMatrixInverse,
+	float lambda, float mu, int trueNumConstraints, int numParticles, float* globalF, float* globalU, float* globalV,
+	float* anisotropyDirection, float anisotropyStrength)
+{
+	if (IDX > trueNumConstraints)
+	{
+		return;
+	}
+
+	//1. Load Deformation Gradient
+	F[LOCAL_IDX][0] = globalF[IDX * 3 + 0];
+	F[LOCAL_IDX][1] = globalF[IDX * 3 + 1];
+	F[LOCAL_IDX][2] = globalF[IDX * 3 + 2];
+
+	//3. Compute Invariants
+
+	float I3 = calculatedeterminantFTransposeF_INPLACE();
+	float I1 = calculateTraceFTransposeF_INPLACE();
+
+
+	//6. Calculate Strain Energy Gradient
+	float snGr0;
+	float snGr1;
+	float snGr2;
+	float snGr3;
+
+	float det = 0.0f;
+
+	calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(IDX, threadIdx.x, volume[IDX], refShapeMatrixInverse, trueNumConstraints, mu, lambda, I3,
+		snGr0, snGr1, snGr2, snGr3, det,
+		globalU, globalV);
+
+	//7. Calculate Lagrange Multiplier
+	float denominator = 0.0f;
+	denominator += inverseMass[IDX + 0 * trueNumConstraints] * snGr0;
+	denominator += inverseMass[IDX + 1 * trueNumConstraints] * snGr1;
+	denominator += inverseMass[IDX + 2 * trueNumConstraints] * snGr2;
+	denominator += inverseMass[IDX + 3 * trueNumConstraints] * snGr3;
+
+	float lagrangeMultiplier = -(calculateStrainEnergy_NEO_HOOKEAN(volume[IDX], lambda, mu, I1, I3) / denominator);
+
+	if (isnan(lagrangeMultiplier))
+	{
+		return;
+	}
+
+	//8. Update Positions
+	updatePositions_recomputeGradients(IDX, threadIdx.x, lagrangeMultiplier, positions, inverseMass, indices, trueNumConstraints, numParticles,
+		volume[IDX], refShapeMatrixInverse, I3, lambda, mu, det,
+		globalU, globalV);
+}
+
+
 __global__ void computeDiagonalF(float* positions, int* indices, float* globalF, float* globalU, float* globalV, float* refShapeMatrixInverse, int trueNumConstraints)
 {
 	if (IDX > trueNumConstraints)
@@ -364,88 +418,65 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 
 	//1. DIAGONALISE F--------------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------------------------------
-	double Q[3][3];
-	double w[3];
-	const int n = 3;
-	double sd = 0.0;
-	double so = 0.0;                  // Sums of diagonal resp. off-diagonal elements
-	double s = 0.0;
-	double c = 0.0;
-	double t = 0.0;                 // sin(phi), cos(phi), tan(phi) and temporary storage
-	double g = 0.0;
-	double h = 0.0;
-	double z = 0.0;
-	double theta = 0.0;          // More temporary storage
-	double thresh = 0.0;
+	float Q[3][3];
+	float w[3];
+	// Sums of diagonal resp. off-diagonal elements
+	float s = 0.0;
+	float c = 0.0;
+	float t = 0.0;                 // sin(phi), cos(phi), tan(phi) and temporary storage
+	float h = 0.0;
 
 	// Initialize Q to the identitity matrix
-	for (int i = 0; i < n; i++)
-	{
-		Q[i][i] = 1.0;
-		for (int j = 0; j < i; j++)
-			Q[i][j] = Q[j][i] = 0.0;
-	}
+	Q[0][0] = 1.0f;
+	Q[0][1] = 0.0f;
+	Q[0][2] = 0.0f;
+
+	Q[1][0] = 0.0f;
+	Q[1][1] = 1.0f;
+	Q[1][2] = 0.0f;
+
+	Q[2][0] = 0.0f;
+	Q[2][1] = 0.0f;
+	Q[2][2] = 1.0f;
 
 	// Initialize w to diag(temp)
-	for (int i = 0; i < n; i++)
-		w[i] = temp[i][i];
-
-	// Calculate SQR(tr(temp))  
-	sd = 0.0;
-	for (int i = 0; i < n; i++)
-		sd += fabs(w[i]);
-	sd = sqr(sd);
+	w[0] = temp[0][0];
+	w[1] = temp[1][1];
+	w[2] = temp[2][2];
 
 	// Main iteration loop
-	for (int nIter = 0; nIter < 50; nIter++)
+	for (int nIter = 0; nIter < 4; ++nIter)
 	{
-		// Test for convergence 
-		so = 0.0;
-		for (int p = 0; p < n; p++)
-		for (int q = p + 1; q < n; q++)
-			so += fabs(temp[p][q]);
-		if (so == 0.0)
-			break;
-
-		if (nIter < 4)
-			thresh = 0.2 * so / sqr(n);
-		else
-			thresh = 0.0;
-
 		// Do sweep
-		for (int p = 0; p < n; p++)
-		for (int q = p + 1; q < n; q++)
+		for (int p = 0; p < 3; p++)
 		{
-			g = 100.0 * fabs(temp[p][q]);
-			if (nIter > 4 && fabs(w[p]) + g == fabs(w[p])
-				&& fabs(w[q]) + g == fabs(w[q]))
-			{
-				temp[p][q] = 0.0;
-			}
-			else if (fabs(temp[p][q]) > thresh)
+			for (int q = p + 1; q < 3; q++)
 			{
 				// Calculate Jacobi transformation
-				h = w[q] - w[p];
-				if (fabs(h) + g == fabs(h))
+				h = (w[q] - w[p]);
+				if (fabs(h) + 100.0f * fabs(temp[p][q]) == fabs(h))
 				{
 					t = temp[p][q] / h;
 				}
 				else
 				{
-					theta = 0.5 * h / temp[p][q];
-					if (theta < 0.0)
-						t = -1.0 / (sqrt(1.0 + sqr(theta)) - theta);
+					//theta = (0.5f * h / temp[p][q]);
+					if ((0.5f * h / temp[p][q]) < 0.0f)
+					{
+						t = -1.0f / (sqrtf(1.0f + sqr((0.5f * h / temp[p][q]))) - (0.5f * h / temp[p][q]));
+					}
 					else
-						t = 1.0 / (sqrt(1.0 + sqr(theta)) + theta);
+					{
+						t = 1.0f / (sqrtf(1.0f + sqr((0.5f * h / temp[p][q]))) + (0.5f * h / temp[p][q]));
+					}
 				}
-				c = 1.0 / sqrt(1.0 + sqr(t));
-				s = t * c;
-				z = t * temp[p][q];
+				c = 1.0f / sqrtf(1.0f + sqr(t));
+				s = (t * c);
 
 				// Apply Jacobi transformation
-				temp[p][q] = 0.0;
-				w[p] -= z;
-				w[q] += z;
+				w[p] -= (t * temp[p][q]);
+				w[q] += (t * temp[p][q]);
+				temp[p][q] = 0.0f;
 				for (int r = 0; r < p; r++)
 				{
 					t = temp[r][p];
@@ -458,7 +489,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 					temp[p][r] = c*t - s*temp[r][q];
 					temp[r][q] = s*t + c*temp[r][q];
 				}
-				for (int r = q + 1; r < n; r++)
+				for (int r = q + 1; r < 3; r++)
 				{
 					t = temp[p][r];
 					temp[p][r] = c*t - s*temp[q][r];
@@ -466,11 +497,89 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 				}
 
 				// Update eigenvectors        
-				for (int r = 0; r < n; r++)
+				Q[0][p] = c * Q[0][p] - s * Q[0][q];
+				Q[0][q] = s * Q[0][p] + c * Q[0][q];
+				Q[1][p] = c * Q[1][p] - s * Q[1][q];
+				Q[1][q] = s * Q[1][p] + c * Q[1][q];
+				Q[2][p] = c * Q[2][p] - s * Q[2][q];
+				Q[2][q] = s * Q[2][p] + c * Q[2][q];
+			}
+		}
+	}
+
+	for (int nIter = 4; nIter < 50; ++nIter)
+	{
+		// Test for convergence 
+		if (fabs(temp[0][1]) + fabs(temp[0][2])
+			+ fabs(temp[1][2])
+			+ fabs(temp[2][2]) == 0.0f)
+		{
+			break;
+		}
+
+		// Do sweep
+		for (int p = 0; p < 3; p++)
+		{
+			for (int q = p + 1; q < 3; q++)
+			{
+				if (fabs(w[p]) + 100.0f * fabs(temp[p][q]) == fabs(w[p])
+					&& fabs(w[q]) + 100.0f * fabs(temp[p][q]) == fabs(w[q]))
 				{
-					t = Q[r][p];
-					Q[r][p] = c*t - s*Q[r][q];
-					Q[r][q] = s*t + c*Q[r][q];
+					temp[p][q] = 0.0f;
+				}
+				else if (fabs(temp[p][q]) > 0.0f)
+				{
+					// Calculate Jacobi transformation
+					h = w[q] - w[p];
+					if (fabs(h) + 100.0f * fabs(temp[p][q]) == fabs(h))
+					{
+						t = temp[p][q] / h;
+					}
+					else
+					{
+						//theta = 0.5f * h / temp[p][q];
+						if ((0.5f * h / temp[p][q]) < 0.0f)
+						{
+							t = -1.0f / (sqrtf(1.0f + sqr((0.5f * h / temp[p][q]))) - (0.5f * h / temp[p][q]));
+						}
+						else
+						{
+							t = 1.0f / (sqrtf(1.0f + sqr((0.5f * h / temp[p][q]))) + (0.5f * h / temp[p][q]));
+						}
+					}
+					c = 1.0f / sqrtf(1.0f + sqr(t));
+					s = t * c;
+
+					// Apply Jacobi transformation
+					w[p] -= (t * temp[p][q]);
+					w[q] += (t * temp[p][q]);
+					temp[p][q] = 0.0f;
+					for (int r = 0; r < p; r++)
+					{
+						t = temp[r][p];
+						temp[r][p] = c*t - s*temp[r][q];
+						temp[r][q] = s*t + c*temp[r][q];
+					}
+					for (int r = p + 1; r < q; r++)
+					{
+						t = temp[p][r];
+						temp[p][r] = c*t - s*temp[r][q];
+						temp[r][q] = s*t + c*temp[r][q];
+					}
+					for (int r = q + 1; r < 3; r++)
+					{
+						t = temp[p][r];
+						temp[p][r] = c*t - s*temp[q][r];
+						temp[q][r] = s*t + c*temp[q][r];
+					}
+
+					// Update eigenvectors        
+					Q[0][p] = c * Q[0][p] - s * Q[0][q];
+					Q[0][q] = s * Q[0][p] + c * Q[0][q];
+					Q[1][p] = c * Q[1][p] - s * Q[1][q];
+					Q[1][q] = s * Q[1][p] + c * Q[1][q];
+					Q[2][p] = c * Q[2][p] - s * Q[2][q];
+					Q[2][q] = s * Q[2][p] + c * Q[2][q];
 				}
 			}
 		}
@@ -479,10 +588,10 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
 
 	//Correct diagonalised F
-	for (int i = 0; i < 3; ++i)
-	{
-		w[i] = fmaxf(w[i], 0.0f);
-	}
+	//for (int i = 0; i < 3; ++i)
+	//{
+	//	w[i] = fmaxf(w[i], 0.0f);
+	//}
 
 	float determinantQ = Q[0][0]
 		* (Q[1][1] * Q[2][2] - Q[1][2] * Q[2][1])
@@ -550,11 +659,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			sum = 0.0f;
-
-			sum += temp[row][col] * (1.0f / w[col]);
-
-			temp[row][col] = sum;
+			temp[row][col] *= (1.0f / w[col]);
 		}
 	}
 
@@ -674,17 +779,21 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
 	float* device_volumes,
 	float* device_F, float* device_U, float* device_V,
+	float* device_anisotropyDirection, float* device_viscosityMultiplier,
 	const Parameters& settings);
 
 int CUDA_projectConstraints(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
 	float* device_volumes,
 	float* device_F, float* device_U, float* device_V,
+	float* device_anisotropyDirection, float* device_viscosityMultiplier,
 	const Parameters& settings)
 {
 	//GPU
 	cudaError_t cudaStatus = projectConstraints(device_indices, device_positions,
-		device_inverseMasses, device_refShapeMatrixInverses, device_volumes, device_F, device_U, device_V, settings);
+		device_inverseMasses, device_refShapeMatrixInverses, device_volumes, device_F, device_U, device_V,
+		device_anisotropyDirection, device_viscosityMultiplier,
+		settings);
 
 	if (cudaStatus != cudaSuccess) {
 		fprintf(stderr, "Critical Error, aborting...");
@@ -744,20 +853,10 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
 	float* device_volumes,
 	float* device_F, float* device_U, float* device_V,
+	float* device_anisotropyDirection, float* device_viscosityMultiplier,
 	const Parameters& settings)
 {
-	float* dev_positions = 0;
-	float* dev_inverseMasses = 0;
-	int* dev_indices = 0;
-	float* dev_refShapeMatrixInverses = 0;
-	float* dev_volumes = 0;
-
 	cudaError_t deviceStatus;
-
-	//Execute Kernel
-	//std::cout << "Executing Kernel..." << settings.numConstraintIterations<< std::endl;
-	//std::cout << settings.numBlocks * settings.numThreadsPerBlock << "threads..." << std::endl;
-	//std::cout << settings.trueNumberOfConstraints << "true num of constraints..." << std::endl;
 
 	dim3 numBlocks;
 	dim3 numThreads;
@@ -787,13 +886,34 @@ cudaError_t projectConstraints(int* device_indices, float* device_positions,
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
 		//std::cout << "Projection-------------------------------------------------------------------------" << std::endl;
+		switch (settings.materialModel)
+		{
+			case Parameters::CONSTITUTIVE_MODEL::NEO_HOOKEAN:
+			{
+				solveFEMConstraint << <numBlocks, numThreads >> >(
+					device_positions, device_indices, device_inverseMasses,
+					device_volumes, device_refShapeMatrixInverses,
+					settings.lambda, settings.mu, settings.trueNumberOfConstraints,
+					settings.numParticles,
+					device_F, device_U, device_V);
+				break;
+			}
+			case Parameters::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER:
+			{
+				solveFEMConstraint << <numBlocks, numThreads >> >(
+					device_positions, device_indices, device_inverseMasses,
+					device_volumes, device_refShapeMatrixInverses,
+					settings.lambda, settings.mu, settings.trueNumberOfConstraints,
+					settings.numParticles,
+					device_F, device_U, device_V,
+					device_anisotropyDirection, settings.anisotropyStrength);
+				break;
+			}
+			case Parameters::CONSTITUTIVE_MODEL::NEO_HOOKEAN_FIBER_VISCOELASTIC:
+			{
 
-		solveFEMConstraint << <numBlocks, numThreads >> >(
-			device_positions, device_indices, device_inverseMasses,
-			device_volumes, device_refShapeMatrixInverses,
-			settings.lambda, settings.mu, settings.trueNumberOfConstraints,
-			settings.numParticles,
-			device_F, device_U, device_V);
+			}
+		}
 
 		cudaErrorWrapper(cudaDeviceSynchronize());
 		//std::cout << "Projection done-------------------------------------------------------------------------" << std::endl;
@@ -816,6 +936,7 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	float** device_inverseMasses, float** device_refShapeMatrixInverses,
 	float** device_volumes,
 	float** device_F, float** device_U, float** device_V,
+	float** device_anisotropyDirection, float** device_viscosityMultiplier,
 	std::vector<int>& indices,
 	std::vector<float>& positions,
 	std::vector<float>& inverseMasses,
@@ -823,7 +944,9 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	std::vector<float>& volumes,
 	std::vector<float>& F,
 	std::vector<float>& U,
-	std::vector<float>& V)
+	std::vector<float>& V,
+	std::vector<float>& anisotropyDirection,
+	std::vector<float>& viscosityMultiplier)
 {
 	std::cout << "Allocating CUDA Buffers" << std::endl;
 	cudaError_t deviceStatus;
@@ -875,6 +998,16 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	{
 		return false;
 	}
+	deviceStatus = cudaMalloc((void**)device_anisotropyDirection, anisotropyDirection.size() * sizeof(float));
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
+	deviceStatus = cudaMalloc((void**)device_viscosityMultiplier, viscosityMultiplier.size() * sizeof(float));
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
 
 	std::cout << "Copying Memory to CUDA device..." << std::endl;
 	deviceStatus = cudaMemcpy(*device_indices, &indices[0], indices.size() * sizeof(int), cudaMemcpyHostToDevice);
@@ -917,6 +1050,16 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	{
 		return false;
 	}
+	deviceStatus = cudaMemcpy(*device_anisotropyDirection, &anisotropyDirection[0], anisotropyDirection.size() * sizeof(float), cudaMemcpyHostToDevice);
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
+	deviceStatus = cudaMemcpy(*device_viscosityMultiplier, &viscosityMultiplier[0], viscosityMultiplier.size() * sizeof(float), cudaMemcpyHostToDevice);
+	if (!checkCudaErrorStatus(deviceStatus))
+	{
+		return false;
+	}
 
 
 	//Print some statistics
@@ -928,6 +1071,8 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 		+F.size() * sizeof(float)
 		+U.size() * sizeof(float)
 		+V.size() * sizeof(float);
+		+anisotropyDirection.size() * sizeof(float);
+		+viscosityMultiplier.size() * sizeof(float);
 
 	std::cout << "Memory Usage: " << std::endl;
 	std::cout << "	Indices (int32)             : " << indices.size() * sizeof(int) << " bytes" << std::endl;
@@ -935,9 +1080,11 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 	std::cout << "	Volumes (float)             : " << volumes.size() * sizeof(float) << " bytes" << std::endl;
 	std::cout << "	Masses (float)              : " << inverseMasses.size() * sizeof(float) << " bytes" << std::endl;
 	std::cout << "	Ref. Shape Matrices: (float): " << refShapeMatrixInverses.size() * sizeof(float) << " bytes" << std::endl;
-	std::cout << "	F...........................: " << F.size() * sizeof(float) << " bytes" << std::endl;
-	std::cout << "	U...........................: " << U.size() * sizeof(float) << " bytes" << std::endl;
-	std::cout << "	V...........................: " << V.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	F                           : " << F.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	U                           : " << U.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	V                           : " << V.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	Anisotropy Directions       : " << anisotropyDirection.size() * sizeof(float) << " bytes" << std::endl;
+	std::cout << "	Viscosity Multipliers       : " << viscosityMultiplier.size() * sizeof(float) << " bytes" << std::endl;
 	std::cout << "	--------------------------------------------------------" << std::endl;
 	std::cout << "	Total                       : " << totalNumbytes << " bytes (" << totalNumbytes / 1000.0 << " kb)" << std::endl;
 }
@@ -945,7 +1092,8 @@ bool CUDA_allocateBuffers(int** device_indices, float** device_positions,
 bool CUDA_destroyBuffers(int* device_indices, float* device_positions,
 	float* device_inverseMasses, float* device_refShapeMatrixInverses,
 	float* device_volumes,
-	float* device_F, float* device_U, float* device_V)
+	float* device_F, float* device_U, float* device_V,
+	float* device_anisotropyDirection, float* device_viscosityMultiplier)
 {
 	cudaError_t deviceStatus;
 
@@ -957,6 +1105,8 @@ bool CUDA_destroyBuffers(int* device_indices, float* device_positions,
 	cudaFree(device_F);
 	cudaFree(device_U);
 	cudaFree(device_V);
+	cudaFree(device_anisotropyDirection);
+	cudaFree(device_viscosityMultiplier);
 
 	// cudaDeviceReset must be called before exiting in order for profiling and
 	// tracing tools such as Nsight and Visual Profiler to show complete traces.
@@ -978,7 +1128,8 @@ bool CUDA_destroyBuffers(int* device_indices, float* device_positions,
 	}
 }
 
-bool CUDA_updateBuffers(float* device_positions, std::vector<float>& positions)
+bool CUDA_updateBuffers(float* device_positions, std::vector<float>& positions,
+	float* device_anisotropyDirection, std::vector<float>& anisotropyDirection, bool updateAnisotropyDirection)
 {
 	cudaError_t deviceStatus;
 
@@ -986,6 +1137,15 @@ bool CUDA_updateBuffers(float* device_positions, std::vector<float>& positions)
 	if (!checkCudaErrorStatus(deviceStatus))
 	{
 		return false;
+	}
+
+	if (updateAnisotropyDirection)
+	{
+		deviceStatus = cudaMemcpy(device_anisotropyDirection, &anisotropyDirection[0], anisotropyDirection.size() * sizeof(float), cudaMemcpyHostToDevice);
+		if (!checkCudaErrorStatus(deviceStatus))
+		{
+			return false;
+		}
 	}
 
 	return true;

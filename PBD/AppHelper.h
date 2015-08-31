@@ -378,7 +378,8 @@ void initTest_0(Parameters& params, IOParameters& paramsIO)
 	params.solverSettings.correctStrongForcesWithSubteps = false;
 	params.solverSettings.useGeometricConstraintLimits = false;
 
-	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 0.0f);
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 1.0f);
+	//params.solverSettings.anisotropyParameter = 1.0f;
 
 	params.solverSettings.materialModel = PBDSolverSettings::NEO_HOOKEAN_FIBER;
 
