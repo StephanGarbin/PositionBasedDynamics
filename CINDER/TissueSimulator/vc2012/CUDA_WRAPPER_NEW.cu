@@ -11,6 +11,13 @@
 #define IDX (blockIdx.x * blockDim.x + threadIdx.x)
 #define LOCAL_IDX threadIdx.x
 
+//Indexing for F in global memory
+#define GLOBAL_F_IDX_0 ((0 * (trueNumConstraints + 1)) + IDX)
+#define GLOBAL_F_IDX_1 ((1 * (trueNumConstraints + 1)) + IDX)
+#define GLOBAL_F_IDX_2 ((2 * (trueNumConstraints + 1)) + IDX)
+
+#define GLOBAL_U_IDX ((row * 3 + col) * (trueNumConstraints + 1) + IDX)
+
 __shared__ float F[NUM_THREADS_PER_BLOCK][3];
 
 #define sqr(x) (x * x)
@@ -42,7 +49,7 @@ __device__ void updatePositions_recomputeGradients(int globalIdx, int idx, float
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			temp0[row][col] = globalU[IDX * 9 + row * 3 + col];
+			temp0[row][col] = globalU[GLOBAL_U_IDX];
 		}
 	}
 
@@ -126,7 +133,7 @@ __device__ __forceinline__ float calculateTraceFTransposeF_INPLACE()
 	float trace = 0.0f;
 	for (int diagIdx = 0; diagIdx < 3; ++diagIdx)
 	{
-		trace += F[threadIdx.x][diagIdx] * F[threadIdx.x][diagIdx];
+		trace += F[LOCAL_IDX][diagIdx] * F[LOCAL_IDX][diagIdx];
 	}
 
 	return trace;
@@ -149,7 +156,7 @@ __device__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(int globalIdx,
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			temp0[row][col] = globalU[IDX * 9 + row * 3 + col];
+			temp0[row][col] = globalU[GLOBAL_U_IDX];
 		}
 	}
 
@@ -250,9 +257,9 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 
 	//1. Load Deformation Gradient
 
-	F[LOCAL_IDX][0] = globalF[IDX * 3 + 0];
-	F[LOCAL_IDX][1] = globalF[IDX * 3 + 1];
-	F[LOCAL_IDX][2] = globalF[IDX * 3 + 2];
+	F[LOCAL_IDX][0] = globalF[GLOBAL_F_IDX_0];
+	F[LOCAL_IDX][1] = globalF[GLOBAL_F_IDX_1];
+	F[LOCAL_IDX][2] = globalF[GLOBAL_F_IDX_2];
 
 	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
 	//	F[LOCAL_IDX][0][0], F[LOCAL_IDX][0][1], F[LOCAL_IDX][0][2],
@@ -307,9 +314,9 @@ __global__ void solveFEMConstraint(float* positions, int* indices, float* invers
 	}
 
 	//1. Load Deformation Gradient
-	F[LOCAL_IDX][0] = globalF[IDX * 3 + 0];
-	F[LOCAL_IDX][1] = globalF[IDX * 3 + 1];
-	F[LOCAL_IDX][2] = globalF[IDX * 3 + 2];
+	F[LOCAL_IDX][0] = globalF[GLOBAL_F_IDX_0];
+	F[LOCAL_IDX][1] = globalF[GLOBAL_F_IDX_1];
+	F[LOCAL_IDX][2] = globalF[GLOBAL_F_IDX_2];
 
 	//3. Compute Invariants
 
@@ -761,15 +768,15 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	}
 
 	//Store temp, V & F
-	globalF[IDX * 3 + 0] = w[0];
-	globalF[IDX * 3 + 1] = w[1];
-	globalF[IDX * 3 + 2] = w[2];
+	globalF[GLOBAL_F_IDX_0] = w[0];
+	globalF[GLOBAL_F_IDX_1] = w[1];
+	globalF[GLOBAL_F_IDX_2] = w[2];
 
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 3; ++col)
 		{
-			globalU[IDX * 9 + row * 3 + col] = temp[row][col];
+			globalU[GLOBAL_U_IDX] = temp[row][col];
 		}
 	}
 }
