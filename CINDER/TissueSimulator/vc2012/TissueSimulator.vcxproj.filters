@@ -42,6 +42,9 @@
     <ClCompile Include="CUDAMemoryOptimiser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MeshCreator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\Resources.h">
@@ -72,6 +75,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CUDAMemoryOptimiser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshCreator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

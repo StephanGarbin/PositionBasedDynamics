@@ -167,9 +167,10 @@ Parameters& settings)
 	settings.calculateMu();
 	settings.calculateLambda();
 
-	bool updateAnisotropy = m_anisotropyDirection[0] == settings.anisotropyDirection[0]
-		&& m_anisotropyDirection[1] == settings.anisotropyDirection[1]
-		&& m_anisotropyDirection[2] == settings.anisotropyDirection[2];
+	settings.normaliseAnisotropyDirection();
+	bool updateAnisotropy = m_anisotropyDirection[0] != settings.anisotropyDirection[0]
+		|| m_anisotropyDirection[1] != settings.anisotropyDirection[1]
+		|| m_anisotropyDirection[2] != settings.anisotropyDirection[2];
 
 	if (updateAnisotropy)
 	{

@@ -138,6 +138,7 @@
       <PreprocessorDefinitions>_USE_MATH_DEFINES;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\..\..\..\..\..\..\TOOLS\Eigen;..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,6 +148,9 @@
       <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>OpenMeshTools.lib;OpenMeshCore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="common.cpp" />

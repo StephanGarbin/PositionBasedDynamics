@@ -184,6 +184,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <ProjectReference>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
@@ -212,6 +213,9 @@
       <MaxRegCount>0</MaxRegCount>
       <TypeInfo>false</TypeInfo>
     </CudaCompile>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ResourceCompile Include="Resources.rc" />
@@ -219,6 +223,7 @@
   <ItemGroup>
     <ClCompile Include="..\src\TissueSimulatorApp.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
+    <ClCompile Include="MeshCreator.cpp" />
     <ClCompile Include="PBDGPU_Solver.cpp" />
     <ClCompile Include="PBDParticle.cpp" />
     <ClCompile Include="PBDTetrahedra3d.cpp" />
@@ -230,6 +235,7 @@
     <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="CUDA_GLOBALS.h" />
     <ClInclude Include="CUDA_WRAPPER.h" />
+    <ClInclude Include="MeshCreator.h" />
     <ClInclude Include="Parameters.h" />
     <ClInclude Include="PBDGPU_Solver.h" />
     <ClInclude Include="PBDParticle.h" />

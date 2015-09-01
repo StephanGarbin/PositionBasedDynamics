@@ -153,10 +153,10 @@ void raySphereIntersect(const Eigen::Vector3f& sphereCentre, float sphereRadius,
 int dsyevj3(Eigen::Matrix3f& A, Eigen::Matrix3f& Q, Eigen::Matrix3f& w)
 {
 	const int n = 3;
-	double sd, so;                  // Sums of diagonal resp. off-diagonal elements
-	double s, c, t;                 // sin(phi), cos(phi), tan(phi) and temporary storage
-	double g, h, z, theta;          // More temporary storage
-	double thresh;
+	float sd, so;                  // Sums of diagonal resp. off-diagonal elements
+	float s, c, t;                 // sin(phi), cos(phi), tan(phi) and temporary storage
+	float g, h, z, theta;          // More temporary storage
+	float thresh;
 
 	// Initialize Q to the identitity matrix
 	Q.setIdentity();

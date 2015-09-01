@@ -141,6 +141,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>..\..\..\..\..\..\..\..\TOOLS\Eigen;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\include;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\win64_2013\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,6 +151,9 @@
       <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\ilmbase-1.0.3\vc\vc9\IlmBase\x64\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\win64_2013\Release;..\..\..\..\..\..\..\..\TOOLS\ALEMBIC\alembic-1_05_06\contrib\hdf5-1.8.9-win64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>AlembicIlmBase.lib;AlembicAbcCoreAbstract.lib;hdf5_hl.lib;hdf5_tools.lib;libszip.lib;libzlib.lib;hdf5.lib;AlembicAbcCollection.lib;AlembicAbcCoreFactory.lib;AlembicAbcCoreOgawa.lib;AlembicAbcGeom.lib;AlembicAbcMaterial.lib;AlembicAbcOpenGL.lib;AlembicOgawa.lib;AlembicUtil.lib;AlembicZLIB.lib;AlembicAbcCoreHDF5.lib;AlembicAbc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AbcReader.cpp" />

@@ -138,6 +138,7 @@
       <AdditionalIncludeDirectories>C:\Program Files\ilmbase\include\OpenEXR;C:\Program Files\openexr\include\OpenEXR</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -147,6 +148,9 @@
       <AdditionalLibraryDirectories>C:\Program Files\ilmbase\lib;C:\Program Files\openexr\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Half.lib;IlmThread-2_2.lib;IlmImf-2_2.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

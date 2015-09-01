@@ -23,7 +23,10 @@ struct Parameters
 	float anisotropyStrength;
 	void normaliseAnisotropyDirection()
 	{
-		anisotropyDirection.safeNormalize();
+		if (anisotropyDirection.lengthSquared() != 0.0f)
+		{
+			anisotropyDirection.normalize();
+		}
 	}
 
 	//Viscoelasticity
@@ -59,6 +62,7 @@ struct Parameters
 		rho = 0.0f;
 		anisotropyStrength = 0.0f;
 		anisotropyDirection.zero();
+		anisotropyDirection[1] = 1.0f;
 
 		youngsModulus = 20.0f;
 		poissonRatio = 0.3;

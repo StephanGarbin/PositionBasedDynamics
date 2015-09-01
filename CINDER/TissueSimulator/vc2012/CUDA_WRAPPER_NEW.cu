@@ -11,15 +11,20 @@
 #define IDX (blockIdx.x * blockDim.x + threadIdx.x)
 #define LOCAL_IDX threadIdx.x
 
+#define SHIFT_1 1
+#define SHIFT_2 0
 //Indexing for F in global memory
-#define GLOBAL_F_IDX_0 ((0 * (trueNumConstraints + 1)) + IDX)
-#define GLOBAL_F_IDX_1 ((1 * (trueNumConstraints + 1)) + IDX)
-#define GLOBAL_F_IDX_2 ((2 * (trueNumConstraints + 1)) + IDX)
+#define GLOBAL_F_IDX_0 ((0 * (trueNumConstraints + SHIFT_1)) + IDX)
+#define GLOBAL_F_IDX_1 ((1 * (trueNumConstraints + SHIFT_1)) + IDX)
+#define GLOBAL_F_IDX_2 ((2 * (trueNumConstraints + SHIFT_1)) + IDX)
 
-#define GLOBAL_U_IDX ((row * 3 + col) * (trueNumConstraints + 1) + IDX)
+#define GLOBAL_U_IDX ((row * 3 + col) * (trueNumConstraints + SHIFT_2) + IDX)
 
-#define GLOBAL_Vt_MatrixMult_IDX ((col * 3 + i) * (trueNumConstraints + 1) + IDX)
-#define GLOBAL_Vt_IDX ((row * 3 + col) * (trueNumConstraints + 1) + IDX)
+#define GLOBAL_Vt_MatrixMult_IDX ((col * 3 + i) * (trueNumConstraints + SHIFT_2) + IDX)
+#define GLOBAL_Vt_IDX ((row * 3 + col) * (trueNumConstraints + SHIFT_2) + IDX)
+
+
+#define JACOBI_LIMIT_1 1.0e-22f
 
 
 __shared__ float F[NUM_THREADS_PER_BLOCK][3];
@@ -34,8 +39,14 @@ __device__ __forceinline__ float calculateStrainEnergy_NEO_HOOKEAN(float volume,
 __device__ __forceinline__ float calculateStrainEnergy_NEO_HOOKEAN_ANISOTROPIC(float volume, float lambda, float mu, float I1, float I3,
 	float anisotropyStrength, float stretch)
 {
-	return (volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3))))
-		+ (anisotropyStrength / 2.0f) * powf(stretch - 1.0f, 2.0f);
+	float result = (volume * (0.5f * mu * (I1 - log(I3) - 3.0f) + (lambda / 8.0f) * (log(I3) * log(I3))));
+
+	if (stretch - 1.0f > JACOBI_LIMIT_1)
+	{
+		result += ((anisotropyStrength / 2.0f) * powf(stretch - 1.0f, 2.0f));
+	}
+
+	return result;
 }
 
 __device__ void updatePositions_recomputeGradients(float lagrangeMultiplier, float* positions,
@@ -169,13 +180,18 @@ __device__ __forceinline__ void updatePositions_recomputeGradients_ANISOTROPIC(f
 
 			FInverseTEntry = 1.0f / F[LOCAL_IDX][col];
 
-			sum += temp0[row][col] * (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f))
-				+ F[LOCAL_IDX][col] * (
-				powf(F[LOCAL_IDX][0] * F[LOCAL_IDX][1] * F[LOCAL_IDX][2], -2.0f / 3.0f)
-				* anisotropyStrength * (stretch - 1.0f)
-				* (rotatedA[row] * rotatedA[col]) + (stretch / 3.0f) * (1.0f / sqr(F[LOCAL_IDX][col]))
-				);
-			temp[row][col] = sum;
+			sum += (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f));
+
+			if (stretch - 1.0f > JACOBI_LIMIT_1)
+			{
+				sum += ((
+					powf(F[LOCAL_IDX][0] * F[LOCAL_IDX][1] * F[LOCAL_IDX][2], -2.0f / 3.0f)
+					* (anisotropyStrength * (stretch - 1.0f))
+					* ((rotatedA[row] * rotatedA[row]) + (stretch / 3.0f) * (1.0f / std::powf(F[LOCAL_IDX][col], 2.0f)))
+					)
+					);
+			}
+			temp[row][col] = temp0[row][col] * sum;
 		}
 	}
 
@@ -214,6 +230,11 @@ __device__ __forceinline__ void updatePositions_recomputeGradients_ANISOTROPIC(f
 	localIndices[2] = indices[IDX + trueNumConstraints * 2] * 3;
 	localIndices[3] = indices[IDX + trueNumConstraints * 3] * 3;
 
+	if (fabs(lagrangeMultiplier) > 0.5f)
+	{
+		//printf("%.4f, ", lagrangeMultiplier);
+		lagrangeMultiplier = 0.0f;
+	}
 	for (int i = 0; i < 3; ++i)
 	{
 		for (int j = 0; j < 3; ++j)
@@ -250,6 +271,100 @@ __device__ __forceinline__ float calculatedeterminantFTransposeF_INPLACE()
 	return sqr(F[LOCAL_IDX][0]) * sqr(F[LOCAL_IDX][1]) * sqr(F[LOCAL_IDX][2]);
 }
 
+__device__ __forceinline__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE(float volume, float* refShapeMatrixInverse, int trueNumConstraints, float mu, float lambda, float I3,
+	float& snGr0, float& snGr1, float& snGr2, float& snGr3, float det,
+	float* globalU, float* globalV)
+{
+	float temp0[3][3];
+	float temp[3][3];
+	// Load U
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			temp0[row][col] = globalU[GLOBAL_U_IDX];
+		}
+	}
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			float FInverseTEntry = 0.0f;
+
+			FInverseTEntry = 1.0f / F[LOCAL_IDX][col];
+
+			sum += temp0[row][col] * (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f));
+			temp[row][col] = sum;
+		}
+	}
+
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += temp[row][i] * globalV[GLOBAL_Vt_MatrixMult_IDX];
+			}
+			temp0[row][col] = sum;
+		}
+	}
+
+	//3. Multiply with First Piola-Kirchoff Stress tensor
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 3; ++col)
+		{
+			float sum = 0.0f;
+
+			for (int i = 0; i < 3; ++i)
+			{
+				sum += temp0[row][i] * refShapeMatrixInverse[(col * 3 + i) * trueNumConstraints + IDX];
+			}
+
+			temp[row][col] = sum;
+		}
+	}
+
+	//4. Copy back
+	snGr0 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		snGr0 += sqr(temp[i][0] * volume);
+	}
+	snGr0 = sqrtf(snGr0);
+
+	snGr1 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		snGr1 += sqr(temp[i][1] * volume);
+	}
+	snGr1 = sqrtf(snGr1);
+
+	snGr2 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		snGr2 += sqr(temp[i][2] * volume);
+	}
+	snGr2 = sqrtf(snGr2);
+
+	//4. Calculate last column
+	snGr3 = 0.0f;
+	for (int i = 0; i < 3; ++i)
+	{
+		float sum = 0.0f;
+		for (int col = 0; col < 3; ++col)
+		{
+			sum += temp[i][col] * volume;
+		}
+		snGr3 += sqr(sum);
+	}
+	snGr3 = sqrtf(snGr3);
+}
+
 
 __device__ __forceinline__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLACE_ANISOTROPIC(float volume, float* refShapeMatrixInverse, int trueNumConstraints, float mu, float lambda, float I3,
 	float& snGr0, float& snGr1, float& snGr2, float& snGr3, float det,
@@ -282,13 +397,18 @@ __device__ __forceinline__ void calculateStrainEnergyGradient_NEO_HOOKEAN_INPLAC
 
 			FInverseTEntry = 1.0f / F[LOCAL_IDX][col];
 
-			sum += temp0[row][col] * (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f))
-				+ F[LOCAL_IDX][col] * (
-				powf(F[LOCAL_IDX][0] * F[LOCAL_IDX][1] * F[LOCAL_IDX][2], -2.0f / 3.0f)
-				* anisotropyStrength * (stretch - 1.0f)
-				* (rotatedA[row] * rotatedA[col]) + (stretch / 3.0f) * (1.0f / sqr(F[LOCAL_IDX][col]))
-				);
-			temp[row][col] = sum;
+			sum += (F[LOCAL_IDX][col] * mu - (FInverseTEntry * mu) + FInverseTEntry * ((lambda * log(I3)) / 2.0f));
+
+			if (stretch - 1.0f > JACOBI_LIMIT_1)
+			{
+				sum += ((
+					powf(F[LOCAL_IDX][0] * F[LOCAL_IDX][1] * F[LOCAL_IDX][2], -2.0f / 3.0f)
+					* (anisotropyStrength * (stretch - 1.0f))
+					* ((rotatedA[row] * rotatedA[row]) + (stretch / 3.0f) * (1.0f / std::powf(F[LOCAL_IDX][col], 2.0f)))
+					)
+					);
+			}
+			temp[row][col] = temp0[row][col] * sum;
 		}
 	}
 
@@ -426,6 +546,8 @@ __global__ void solveFEMConstraint_ANISOTROPIC(float* positions, int* indices, f
 		return;
 	}
 
+	//anisotropyStrength = 0.0f;
+
 	//1. Load Deformation Gradient
 	F[LOCAL_IDX][0] = globalF[GLOBAL_F_IDX_0];
 	F[LOCAL_IDX][1] = globalF[GLOBAL_F_IDX_1];
@@ -441,27 +563,43 @@ __global__ void solveFEMConstraint_ANISOTROPIC(float* positions, int* indices, f
 	float temp = anisotropyDirection[0 * trueNumConstraints + IDX];
 	for (int i = 0; i < 3; ++i)
 	{
-		rotatedDirection[i] = globalV[(i * 0 + row) * trueNumConstraints + IDX] * temp;
+		rotatedDirection[i] = globalV[(i * 3 + 0) * (trueNumConstraints + 1) + IDX] * temp;
+		//rotatedDirection[i] = globalV[(0 * 3 + i) * (trueNumConstraints + 1) + IDX] * temp;
 	}
 
 	temp = anisotropyDirection[1 * trueNumConstraints + IDX];
 	for (int i = 0; i < 3; ++i)
 	{
-		rotatedDirection[i] += globalV[(i * 1 + row) * trueNumConstraints + IDX] * temp;
+		rotatedDirection[i] += globalV[(i * 3 + 1) * (trueNumConstraints + 1) + IDX] * temp;
+		//rotatedDirection[i] += globalV[(1 * 3 + i) * (trueNumConstraints + 1) + IDX] * temp;
 	}
 
 	temp = anisotropyDirection[2 * trueNumConstraints + IDX];
 	for (int i = 0; i < 3; ++i)
 	{
-		rotatedDirection[i] += globalV[(i * 2 + row) * trueNumConstraints + IDX] * temp;
+		rotatedDirection[i] += globalV[(i * 3 + 2) * (trueNumConstraints + 1) + IDX] * temp;
+		//rotatedDirection[i] += globalV[(2 * 3 + i) * (trueNumConstraints + 1) + IDX] * temp;
 	}
 
+	//rotatedDirection[0] = 0.0f;
+	//rotatedDirection[1] = 0.0f;
+	//rotatedDirection[2] = 0.0f;
+
 	//Compute stretch
-	float stretch = sqrtf(sqr(F[LOCAL_IDX][0]) * sqr()[rotatedDirection[0]]
-		+ sqr(F[LOCAL_IDX][1]) * sqr([rotatedDirection[1]])
-		+ sqr(F[LOCAL_IDX][2]) * sqr([rotatedDirection[2]]));
+	float stretch = sqrtf((sqr(F[LOCAL_IDX][0]) * sqr(rotatedDirection[0]))
+		+ (sqr(F[LOCAL_IDX][1]) * sqr(rotatedDirection[1]))
+		+ (sqr(F[LOCAL_IDX][2]) * sqr(rotatedDirection[2])));
 
+	//printf("%.4f, ", sqr(F[LOCAL_IDX][0]) * sqr(rotatedDirection[0])
+	//	+ sqr(F[LOCAL_IDX][1]) * sqr(rotatedDirection[1])
+	//	+ sqr(F[LOCAL_IDX][2]) * sqr(rotatedDirection[2]));
 
+	//stretch = 0.0f;
+	//anisotropyStrength = 0.0f;
+
+	//printf("[%.4f, %.4f, %.4f]; ", anisotropyDirection[0 * trueNumConstraints + IDX], anisotropyDirection[1 * trueNumConstraints + IDX], anisotropyDirection[2 * trueNumConstraints + IDX]);
+	//printf("%.4f, ", stretch);
+	//anisotropyStrength = 0.0f;
 	//6. Calculate Strain Energy Gradient
 	float snGr0;
 	float snGr1;
@@ -570,10 +708,10 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 	float Q[3][3];
 	float w[3];
 	// Sums of diagonal resp. off-diagonal elements
-	float s = 0.0;
-	float c = 0.0;
-	float t = 0.0;                 // sin(phi), cos(phi), tan(phi) and temporary storage
-	float h = 0.0;
+	float s = 0.0f;
+	float c = 0.0f;
+	float t = 0.0f;                 // sin(phi), cos(phi), tan(phi) and temporary storage
+	float h = 0.0f;
 
 	// Initialize Q to the identitity matrix
 	Q[0][0] = 1.0f;
@@ -605,7 +743,15 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 				h = (w[q] - w[p]);
 				if (fabs(h) + 100.0f * fabs(temp[p][q]) == fabs(h))
 				{
-					t = temp[p][q] / h;
+					if(h > JACOBI_LIMIT_1)
+					{
+						t = temp[p][q] / h;
+					}
+					else
+					{
+						t = 0.0f;
+					}
+					//printf("%.4f, h= %.4f, t= %.4f; ", t, h, temp[p][q]);
 				}
 				else
 				{
@@ -656,7 +802,7 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		}
 	}
 
-	for (int nIter = 4; nIter < 50; ++nIter)
+	for (int nIter = 4; nIter < 100; ++nIter)
 	{
 		// Test for convergence 
 		if (fabs(temp[0][1]) + fabs(temp[0][2])
@@ -682,7 +828,16 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 					h = w[q] - w[p];
 					if (fabs(h) + 100.0f * fabs(temp[p][q]) == fabs(h))
 					{
-						t = temp[p][q] / h;
+						if (h > JACOBI_LIMIT_1)
+						{
+							t = temp[p][q] / h;
+						}
+						else
+						{
+							t = 0.0f;
+						}
+						//printf("%.4f, h= %.4f, t= %.4f; ", t, h, temp[p][q]);
+						//t = temp[p][q] / h;
 					}
 					else
 					{
@@ -733,6 +888,11 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 			}
 		}
 	}
+
+	//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+	//	Q[0][0], Q[0][1], Q[0][2],
+	//	Q[1][0], Q[1][1], Q[1][2],
+	//	Q[2][0], Q[2][1], Q[2][2]);
 
 	//printf("%.4f, %.4f, %.4f", w[0], w[1], w[2]);
 
@@ -801,6 +961,10 @@ __global__ void computeDiagonalF(float* positions, int* indices, float* globalF,
 		for (int col = 0; col < 3; ++col)
 		{
 			globalV[GLOBAL_Vt_IDX] = Q[row][col];
+			//printf("%.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n %.4f, %.4f, %.4f \n",
+			//	Q[0][0], Q[0][1], Q[0][2],
+			//	Q[1][0], Q[1][1], Q[1][2],
+			//	Q[2][0], Q[2][1], Q[2][2]);
 		}
 	}
 
@@ -952,7 +1116,7 @@ int CUDA_projectConstraints(int* device_indices, float* device_positions,
 	return 0;
 }
 
-cudaError_t cudaErrorWrapper(cudaError_t status)
+cudaError_t cudaErrorWrapper(const cudaError_t& status)
 {
 	if (status != cudaSuccess)
 	{
@@ -962,7 +1126,7 @@ cudaError_t cudaErrorWrapper(cudaError_t status)
 	return status;
 }
 
-bool checkCudaErrorStatus(cudaError_t status)
+bool checkCudaErrorStatus(const cudaError_t& status)
 {
 	if (status != cudaSuccess)
 	{

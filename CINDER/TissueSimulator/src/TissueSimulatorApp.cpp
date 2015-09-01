@@ -23,6 +23,8 @@
 #include "ConstraintsIO.h"
 #include "TetGenIO.h"
 
+#include "MeshCreator.h"
+
 #include "PBDGPU_Solver.h"
 #include "CUDAMemoryOptimiser.h"
 
@@ -224,7 +226,6 @@ TissueSimulatorApp::setupInterface()
 	m_interfaceParams->addSeparator("Anisotropy");
 	m_interfaceParams->addParam("Anisotropic Strength", &m_params.anisotropyStrength).min(0.0f).max(10.0f).precision(4).step(0.1f);
 	m_interfaceParams->addParam("Anisotropy Direction", &m_params.anisotropyDirection);
-	m_params.normaliseAnisotropyDirection();
 
 	//Viscosity
 	m_interfaceParams->addSeparator("Viscosity");
@@ -243,16 +244,24 @@ void TissueSimulatorApp::handleIO()
 	Eigen::Vector3f initialVelocity;
 	initialVelocity.setZero();
 
-	TetGenIO::readNodes(m_params.tetGenNodeFile, m_data.getParticles(), m_params.inverseMass, initialVelocity);
-	TetGenIO::readTetrahedra(m_params.tetGenElementFile, m_data.getTets(), m_data.particles);
+	//TetGenIO::readNodes(m_params.tetGenNodeFile, m_data.getParticles(), m_params.inverseMass, initialVelocity);
+	//TetGenIO::readTetrahedra(m_params.tetGenElementFile, m_data.getTets(), m_data.particles);
 
-	ConstraintsIO::readMayaVertexConstraints(m_data.getPositionConstraints(), m_params.positionConstraintFile);
+	//ConstraintsIO::readMayaVertexConstraints(m_data.getPositionConstraints(), m_params.positionConstraintFile);
 
-	//Set inverse mass of constrained nodes to 0
-	for (int i = 0; i < m_data.getPositionConstraints().size(); ++i)
-	{
-		m_data.getParticles()[m_data.getPositionConstraints()[i]].inverseMass() = 0.0;
-	}
+	////Set inverse mass of constrained nodes to 0
+	//for (int i = 0; i < m_data.getPositionConstraints().size(); ++i)
+	//{
+	//	m_data.getParticles()[m_data.getPositionConstraints()[i]].inverseMass() = 0.0;
+	//}
+
+	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 10, 4, 4);
+
+	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 10, 8, 8);
+	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 20, 8, 8);
+	MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 12, 11, 12);
+	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 20, 32, 32);
+
 
 	//OPTIMISE MEMORY LAYOUT FOR CUDA
 	//CUDAMemoryOptimiser::optimiseTetrahedralIndexingBasedOnNodeMemory(m_data.getParticles(), m_data.getTets());

@@ -121,15 +121,15 @@ int width, int height, int depth)
 		localIndices[2] = indices[i * 4 + 2];
 		localIndices[3] = indices[i * 4 + 3];
 
-		tets.push_back(PBDTetrahedra3d(localIndices, particles, i));
+		tets.push_back(PBDTetrahedra3d(localIndices, particles));
 	}
 }
 
 void
 MeshCreator::generateTetBarToFit(std::shared_ptr<std::vector<PBDParticle>>& particles, std::vector<PBDTetrahedra3d>& tets,
-	int numDivsWidth, int numDivsHeight, int numDivsDepth,
-	Eigen::Vector2f bottomLeft_above, Eigen::Vector2f topLeft_above, Eigen::Vector2f topRight_above,
-	float thickness)
+int numDivsWidth, int numDivsHeight, int numDivsDepth,
+Eigen::Vector2f bottomLeft_above, Eigen::Vector2f topLeft_above, Eigen::Vector2f topRight_above,
+float thickness)
 {
 	//Eigen::Vector3f originBottomLeft_above = Eigen::Vector3f(bottomLeft_above[0], 0.0f, bottomLeft_above[1]);
 	Eigen::Vector3f originBottomLeft_above = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
@@ -263,7 +263,7 @@ MeshCreator::generateTetBarToFit(std::shared_ptr<std::vector<PBDParticle>>& part
 		localIndices[2] = indices[i * 4 + 2];
 		localIndices[3] = indices[i * 4 + 3];
 
-		tets.push_back(PBDTetrahedra3d(localIndices, particles, i));
+		tets.push_back(PBDTetrahedra3d(localIndices, particles));
 	}
 
 
@@ -271,7 +271,7 @@ MeshCreator::generateTetBarToFit(std::shared_ptr<std::vector<PBDParticle>>& part
 
 void
 MeshCreator::generateSingleTet(std::shared_ptr<std::vector<PBDParticle>>& particles, std::vector<PBDTetrahedra3d>& tets,
-	int width, int height, int depth)
+int width, int height, int depth)
 {
 	//1. Generate 4 Nodes
 	Eigen::Vector3f position;
@@ -307,5 +307,5 @@ MeshCreator::generateSingleTet(std::shared_ptr<std::vector<PBDParticle>>& partic
 
 	//3. Generate 1 Tet Element
 	std::vector<int> indices = { 0, 1, 2, 3 };
-	tets.push_back(PBDTetrahedra3d(std::move(indices), particles, 0));
+	tets.push_back(PBDTetrahedra3d(std::move(indices), particles));
 }

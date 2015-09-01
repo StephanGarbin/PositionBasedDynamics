@@ -85,6 +85,9 @@ void initTest_11(Parameters& params, IOParameters& paramsIO);
 //Sphere Indentation Test
 void initTest_12(Parameters& params, IOParameters& paramsIO);
 
+//Resolution
+void initTest_13(Parameters& params, IOParameters& paramsIO);
+
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
 {
@@ -168,6 +171,9 @@ bool parseTerminalParameters(const int argc, char* argv[],
 		break;
 	case 12:
 		initTest_12(params, paramsIO);
+		break;
+	case 13:
+		initTest_13(params, paramsIO);
 		break;
 	default:
 		break;
@@ -306,6 +312,34 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 		collisionSphereGeometry[0].getFrameLimit() = 28;
 		return true;
 		
+	}
+	else if (params.TEST_IDX == 13)
+	{
+		if (params.TEST_VERSION == 0)
+		{
+			MeshCreator::generateTetBar(particles, tetrahedra, 10, 4, 4);
+		}
+		else if (params.TEST_VERSION == 1)
+		{
+			MeshCreator::generateTetBar(particles, tetrahedra, 10, 8, 8);
+		}
+		else if (params.TEST_VERSION == 2)
+		{
+			MeshCreator::generateTetBar(particles, tetrahedra, 20, 8, 8);
+		}
+		else if (params.TEST_VERSION == 3)
+		{
+			MeshCreator::generateTetBar(particles, tetrahedra, 20, 16, 16);
+		}
+		else if (params.TEST_VERSION == 4)
+		{
+			MeshCreator::generateTetBar(particles, tetrahedra, 20, 32, 32);
+		}
+		else if (params.TEST_VERSION == 5)
+		{
+			MeshCreator::generateTetBar(particles, tetrahedra, 12, 11, 12);
+		}
+		return true;
 	}
 	else
 	{
@@ -1339,3 +1373,65 @@ void initTest_12(Parameters& params, IOParameters& paramsIO)
 		params.solverSettings.disableConstraintProjection = true;
 	}
 }
+
+void initTest_13(Parameters& params, IOParameters& paramsIO)
+{
+	params.maxFrames = 100000;
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+	params.disableSolver = false;
+
+	params.solverSettings.poissonRatio = 0.4f;
+	params.solverSettings.youngsModulus = 10.0f;
+	params.solverSettings.numConstraintIts = 10;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -9.81f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.forceMultiplicationFactor = 0.0f;
+	params.solverSettings.rho = 0.1f;
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 1.0f);
+	//params.solverSettings.anisotropyParameter = 1.0f;
+
+	params.solverSettings.materialModel = PBDSolverSettings::NEO_HOOKEAN_FIBER;
+
+	params.solverSettings.disableInversionHandling = false;
+	params.zoom = 0.328f;
+
+	params.solverSettings.useSecondOrderUpdates = false;
+	//params.solverSettings.useMultiThreadedSolver = true;
+
+	params.solverSettings.enableGroundPlaneCollision = true;
+	params.solverSettings.groundplaneHeight = -1.0f;
+	params.solverSettings.alpha = 0.0f;
+	//if (params.TEST_VERSION == 0)
+	//{
+	//	params.solverSettings.alpha = 0.0f;
+
+	//}
+	//else if (params.TEST_VERSION == 1)
+	//{
+	//	params.solverSettings.alpha = 0.25f;
+	//}
+	//else if (params.TEST_VERSION == 2)
+	//{
+	//	params.solverSettings.alpha = 0.5f;
+	//}
+	//else if (params.TEST_VERSION == 3)
+	//{
+	//	params.solverSettings.alpha = 0.75f;
+	//}
+	//else if (params.TEST_VERSION == 4)
+	//{
+	//	params.solverSettings.alpha = 1.0f;
+	//}
+}
+

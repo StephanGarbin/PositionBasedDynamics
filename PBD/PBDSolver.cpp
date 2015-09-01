@@ -923,10 +923,10 @@ std::vector<CollisionSphere>& collisionGeometry3)
 
 			if (!settings.disableInversionHandling)
 			{
-				Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
-				S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
-				V = eigenSolver.pseudoEigenvectors(); //eigenvectors
-				//eigenDecompositionCardano(FTransposeF, S, V);
+				//Eigen::EigenSolver<Eigen::Matrix3f> eigenSolver(FTransposeF);
+				//S = eigenSolver.pseudoEigenvalueMatrix(); //squared eigenvalues of F
+				//V = eigenSolver.pseudoEigenvectors(); //eigenvectors
+				eigenDecompositionCardano(FTransposeF, S, V);
 
 				for (int i = 0; i < 3; ++i)
 				{
@@ -1093,7 +1093,7 @@ std::vector<CollisionSphere>& collisionGeometry3)
 
 				strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(lambda - 1.0f, 2.0f);
 
-				PF += F * std::pow(F.determinant(), -2.0 / 3.0)
+				PF += std::pow(F.determinant(), -2.0 / 3.0)
 					* (settings.anisotropyParameter * (lambda - 1.0f)
 					* (kroneckerProduct(rotated_a, rotated_a) + (lambda / 3.0f) * FTransposeF.inverse()));
 			}
@@ -1109,7 +1109,7 @@ std::vector<CollisionSphere>& collisionGeometry3)
 			}
 			
 			//VISCOELASTICITY -----------------------------------------------------------------------------------------------------------
-			//if (settings.alpha != 0.0f && settings.rho != 0.0f)
+			if (settings.alpha != 0.0f && settings.rho != 0.0f)
 			{
 				//FInverseTranspose = F.inverse();
 				/*PF = U * PF * V.transpose();*/

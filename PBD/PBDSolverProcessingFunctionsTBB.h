@@ -273,10 +273,13 @@ struct PBDSolverTBB
 
 					 //STRETCH ('pseudo-invariant' of C)
 					 float lambda = std::sqrtf((rotated_a.transpose() * (1.0f * FTransposeF)).dot(rotated_a));
+					 //float lambda = sqrtf(sqr(F(0, 0)) * sqr(rotated_a[0])
+						// + sqr(F(1, 1)) * sqr(rotated_a[1])
+						// + sqr(F(2, 2)) * sqr(rotated_a[2]));
 
 					 strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(lambda - 1.0f, 2.0f);
 
-					 PF += F * std::pow(F.determinant(), -2.0 / 3.0)
+					 PF += std::pow(F.determinant(), -2.0 / 3.0)
 						 * (settings.anisotropyParameter * (lambda - 1.0f)
 						 * (kroneckerProduct(rotated_a, rotated_a) + (lambda / 3.0f) * FTransposeF.inverse()));
 				}
@@ -292,7 +295,7 @@ struct PBDSolverTBB
 				}
 
 				//VISCOELASTICITY -----------------------------------------------------------------------------------------------------------
-				//if (settings.alpha != 0.0f && settings.rho != 0.0f)
+				if (settings.alpha != 0.0f && settings.rho != 0.0f)
 				{
 					//FInverseTranspose = F.inverse();
 					/*PF = U * PF * V.transpose();*/
