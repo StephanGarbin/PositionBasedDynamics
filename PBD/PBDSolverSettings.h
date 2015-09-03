@@ -110,6 +110,8 @@ struct PBDSolverSettings
 
 	bool disableInversionHandling;
 
+	bool usePerTetMaterialAttributes;
+
 	void initialise()
 	{
 		
@@ -139,6 +141,7 @@ struct PBDSolverSettings
 		disableInversionHandling = false;
 		useMultiThreadedSolver = true;
 		useSecondOrderUpdates = false;
+		usePerTetMaterialAttributes = false;
 	}
 
 	void print()

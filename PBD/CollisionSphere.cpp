@@ -172,8 +172,15 @@ CollisionSphere::resolveParticleCollisions_SAFE(std::vector<PBDParticle>& partic
 			particleMotion = particles[p].position() - particles[p].previousPosition();
 
 			float penetrationAmount = sphereRadius - std::sqrtf((sphereCentre - particles[p].position()).squaredNorm());
-
+			
 			Eigen::Vector3f correction = (sphereCentre - particles[p].position()).normalized() * penetrationAmount;
+
+			if (std::isnan(correction[0]) || std::isinf(correction[0])
+				|| std::isnan(correction[1]) || std::isinf(correction[1])
+				|| std::isnan(correction[2]) || std::isinf(correction[2]))
+			{
+				std::cout << "ERROR in spher collision: NaN result!" << std::endl;
+			}
 
 			particles[p].position() -= correction;
 			//for (int n = 0; n < particles[p].getContainingTetIdxs().size(); ++n)

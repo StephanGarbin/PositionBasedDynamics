@@ -37,8 +37,6 @@
 #define pbdv3 (*m_particles)[m_vertexIndices[__idx3]].velocity() 
 #define pbdv4 (*m_particles)[m_vertexIndices[__idx4]].velocity() 
 
-#include <GL\glew.h>
-#include <gl\GL.h>
 
 PBDTetrahedra3d::PBDTetrahedra3d(std::vector<int>&& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles)
 {
@@ -262,24 +260,24 @@ PBDTetrahedra3d::get_X(int index)
 void
 PBDTetrahedra3d::glRender(double r, double g, double b)
 {
-	glBegin(GL_TRIANGLES);
-	glColor3d(r, g, b);
-	glVertex3d(pbdx1.x(), pbdx1.y(), pbdx1.z());
-	glVertex3d(pbdx2.x(), pbdx2.y(), pbdx2.z());
-	glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
+	//glBegin(GL_TRIANGLES);
+	//glColor3d(r, g, b);
+	//glVertex3d(pbdx1.x(), pbdx1.y(), pbdx1.z());
+	//glVertex3d(pbdx2.x(), pbdx2.y(), pbdx2.z());
+	//glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
 
-	glVertex3d(pbdx1.x(), pbdx1.y(), pbdx1.z());
-	glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
-	glVertex3d(pbdx4.x(), pbdx4.y(), pbdx4.z());
+	//glVertex3d(pbdx1.x(), pbdx1.y(), pbdx1.z());
+	//glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
+	//glVertex3d(pbdx4.x(), pbdx4.y(), pbdx4.z());
 
-	glVertex3d(pbdx1.x(), pbdx1.y(), pbdx1.z());
-	glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
-	glVertex3d(pbdx2.x(), pbdx2.y(), pbdx2.z());
+	//glVertex3d(pbdx1.x(), pbdx1.y(), pbdx1.z());
+	//glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
+	//glVertex3d(pbdx2.x(), pbdx2.y(), pbdx2.z());
 
-	glVertex3d(pbdx2.x(), pbdx2.y(), pbdx2.z());
-	glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
-	glVertex3d(pbdx4.x(), pbdx4.y(), pbdx4.z());
-	glEnd();
+	//glVertex3d(pbdx2.x(), pbdx2.y(), pbdx2.z());
+	//glVertex3d(pbdx3.x(), pbdx3.y(), pbdx3.z());
+	//glVertex3d(pbdx4.x(), pbdx4.y(), pbdx4.z());
+	//glEnd();
 }
 
 void

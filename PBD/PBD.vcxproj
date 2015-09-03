@@ -186,6 +186,7 @@
     <ClCompile Include="CollisionSphere.cpp" />
     <ClCompile Include="commonMath.cpp" />
     <ClCompile Include="ConstraintsIO.cpp" />
+    <ClCompile Include="CustomTetAttributeIO.cpp" />
     <ClCompile Include="FEMSimulator.cpp" />
     <ClCompile Include="FiberMesh.cpp" />
     <ClCompile Include="cImageIO.cpp" />
@@ -195,6 +196,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MeshCreator.cpp" />
+    <ClCompile Include="MovingHardConstraints.cpp" />
     <ClCompile Include="PBDProbabilisticConstraint.cpp" />
     <ClCompile Include="PBDTetrahedra3d.cpp" />
     <ClCompile Include="PBDParticle.cpp" />
@@ -216,6 +218,7 @@
     <ClInclude Include="ConstraintsIO.h" />
     <ClInclude Include="CUDAPBD_SolverSettings.h" />
     <ClInclude Include="CUDA_WRAPPER.h" />
+    <ClInclude Include="CustomTetAttributeIO.h" />
     <ClInclude Include="dVector.h" />
     <ClInclude Include="EnergyConstraint.h" />
     <ClInclude Include="FEMSimulator.h" />
@@ -225,6 +228,7 @@
     <ClInclude Include="IOParameters.h" />
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="MeshCreator.h" />
+    <ClInclude Include="MovingHardConstraints.h" />
     <ClInclude Include="Parameters.h" />
     <ClInclude Include="PBDProbabilisticConstraint.h" />
     <ClInclude Include="PBDSolverProcessingFunctionsTBB.h" />

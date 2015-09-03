@@ -137,7 +137,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_USE_MATH_DEFINES;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\..\..\..\..\..\..\TOOLS\Eigen;..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\TOOLS\ann_1.1.2\include;..\..\..\..\..\..\..\..\TOOLS\boost\boost_1_57_0\;..\..\..\..\..\..\..\..\TOOLS\Eigen;..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
@@ -145,8 +145,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenMeshTools.lib;OpenMeshCore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\TOOLS\ann_1.1.2\lib;..\..\..\..\..\..\..\..\TOOLS\boost\boost_1_57_0\bin.v2\libs\BUILD\msvc-12.0\release\address-model-64\link-static\threading-multi\;..\..\..\..\..\..\..\..\TOOLS\OpenMesh3.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ANN.lib;OpenMeshTools.lib;OpenMeshCore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
@@ -154,6 +154,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="common.cpp" />
+    <ClCompile Include="CustomTetAttributeIO.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshIO.cpp" />
     <ClCompile Include="PBDParticle.cpp" />
@@ -163,6 +164,7 @@
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="commonMath.h" />
+    <ClInclude Include="CustomTetAttributeIO.h" />
     <ClInclude Include="MeshIO.h" />
     <ClInclude Include="OMDefinitions.h" />
     <ClInclude Include="PBDParticle.h" />

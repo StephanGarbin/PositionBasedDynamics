@@ -84,6 +84,26 @@ struct PBDSolverTBB
 		{
 			for (size_t t = r.begin(); t != r.end(); ++t)
 			{
+				float lambda;
+				float mu;
+				float anisotropyStrength;
+				Eigen::Vector3f anisotropyDirection;
+
+				if (settings.usePerTetMaterialAttributes)
+				{
+					lambda = settings.calculateLambda(tetrahedra[t].getPerTetYoungsModulus(), settings.poissonRatio);
+					mu = settings.calculateMu(tetrahedra[t].getPerTetYoungsModulus(), settings.poissonRatio);
+					anisotropyStrength = tetrahedra[t].getPerTetAnisotropyStrength();
+					anisotropyDirection = tetrahedra[t].getPerTetAnisotropyDirection();
+				}
+				else
+				{
+					lambda = settings.lambda;
+					mu = settings.mu;
+					anisotropyStrength = settings.anisotropyParameter;
+					anisotropyDirection = settings.MR_a;
+				}
+
 				float lagrangeM;
 				float strainEnergy;
 				float Volume;
@@ -218,7 +238,7 @@ struct PBDSolverTBB
 				}
 
 				FInverseTranspose = F.inverse().transpose();
-				FTransposeF = F.transpose() * F;
+				FTransposeF = F.transpose() * F * std::powf(F.determinant(), -2.0f / 3.0f);
 
 				switch (settings.materialModel)
 				{
@@ -236,12 +256,12 @@ struct PBDSolverTBB
 					PF_vol =  ((settings.lambda * logI3) / 2.0) * FInverseTranspose;*/
 					//PF = settings.mu * F - settings.mu * FInverseTranspose
 					//   + ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
-					PF = settings.mu * F - settings.mu * FInverseTranspose;
+					PF = mu * F - mu * FInverseTranspose;
 
-					PF_vol = ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+					PF_vol = ((lambda * logI3) / 2.0) * FInverseTranspose;
 
 					//Compute Strain Energy density field
-					strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+					strainEnergy = Volume * (0.5 * mu * (I1 - logI3 - 3.0) + (lambda / 8.0) * std::pow(logI3, 2.0));
 
 				}
 					break;
@@ -255,33 +275,33 @@ struct PBDSolverTBB
 
 					 float logI3 = log(I3);
 
-					 Eigen::Vector3f rotated_a = V.transpose() * settings.MR_a;
+					 Eigen::Vector3f rotated_a = V.transpose() * anisotropyDirection;
 
 					 if (settings.disableInversionHandling)
 					 {
-						 rotated_a = settings.MR_a;
+						 rotated_a = anisotropyDirection;
 					 }
 
 					 //PF = settings.mu * F - settings.mu * FInverseTranspose;
 					 //PF_vol = ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
 					 PF = settings.mu * F - settings.mu * FInverseTranspose;
 
-					 PF_vol = ((settings.lambda * logI3) / 2.0) * FInverseTranspose;
+					 PF_vol = ((lambda * logI3) / 2.0) * FInverseTranspose;
 
 					 //Compute Strain Energy density field
-					 strainEnergy = Volume * (0.5 * settings.mu * (I1 - logI3 - 3.0) + (settings.lambda / 8.0) * std::pow(logI3, 2.0));
+					 strainEnergy = Volume * (0.5 * mu * (I1 - logI3 - 3.0) + (lambda / 8.0) * std::pow(logI3, 2.0));
 
 					 //STRETCH ('pseudo-invariant' of C)
-					 float lambda = std::sqrtf((rotated_a.transpose() * (1.0f * FTransposeF)).dot(rotated_a));
+					 float stretch = std::sqrtf((rotated_a.transpose() * (1.0f * FTransposeF)).dot(rotated_a));
 					 //float lambda = sqrtf(sqr(F(0, 0)) * sqr(rotated_a[0])
 						// + sqr(F(1, 1)) * sqr(rotated_a[1])
 						// + sqr(F(2, 2)) * sqr(rotated_a[2]));
 
-					 strainEnergy += (settings.anisotropyParameter / 2.0f) * std::pow(lambda - 1.0f, 2.0f);
+					 strainEnergy += (anisotropyStrength / 2.0f) * std::pow(stretch - 1.0f, 2.0f);
 
 					 PF += std::pow(F.determinant(), -2.0 / 3.0)
-						 * (settings.anisotropyParameter * (lambda - 1.0f)
-						 * (kroneckerProduct(rotated_a, rotated_a) + (lambda / 3.0f) * FTransposeF.inverse()));
+						 * (anisotropyStrength * (stretch - 1.0f)
+						 * (kroneckerProduct(rotated_a, rotated_a) + (stretch / 3.0f) * FTransposeF.inverse()));
 				}
 					break;
 				case PBDSolverSettings::CONSTITUTIVE_MODEL::RUBIN_BODNER:
@@ -429,14 +449,17 @@ struct PBDSolverTBB
 
 									if (penetrates)
 									{
-										Eigen::Vector3f temp = penetrationDistance * (tetrahedra[t].get_x(cI).position() - proposedEndpoint).normalized();
-										if (std::sqrtf(temp.squaredNorm()) > std::sqrtf((tetrahedra[t].get_x(cI).position() - proposedEndpoint).squaredNorm()))
+										if (!(tetrahedra[t].get_x(cI).position() - proposedEndpoint).squaredNorm() == 0.0f)
 										{
-											proposedEndpoint = tetrahedra[t].get_x(cI).position();
-										}
-										else
-										{
-											proposedEndpoint += penetrationDistance * (tetrahedra[t].get_x(cI).position() - proposedEndpoint).normalized();
+											Eigen::Vector3f temp = penetrationDistance * (tetrahedra[t].get_x(cI).position() - proposedEndpoint).normalized();
+											if (std::sqrtf(temp.squaredNorm()) > std::sqrtf((tetrahedra[t].get_x(cI).position() - proposedEndpoint).squaredNorm()))
+											{
+												proposedEndpoint = tetrahedra[t].get_x(cI).position();
+											}
+											else
+											{
+												proposedEndpoint += penetrationDistance * (tetrahedra[t].get_x(cI).position() - proposedEndpoint).normalized();
+											}
 										}
 									}
 

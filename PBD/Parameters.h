@@ -89,6 +89,9 @@ struct Parameters
 
 	bool renderCollisionGoemetry;
 
+	bool overrideLookAt;
+	Eigen::Vector3f lookatEye;
+
 	void initialiseToDefaults()
 	{
 		disableSolver = false;
@@ -121,6 +124,8 @@ struct Parameters
 		applyPressure = false;
 
 		renderCollisionGoemetry = false;
+
+		overrideLookAt = false;
 	}
 
 	void initialiseCamera()

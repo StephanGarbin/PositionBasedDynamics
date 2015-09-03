@@ -37,6 +37,8 @@
 #include "CollisionRod.h"
 #include "CollisionSphere.h"
 
+#include "MovingHardConstraints.h"
+
 std::vector<PBDTetrahedra3d> tetrahedra;
 std::shared_ptr<std::vector<PBDParticle>> particles = std::make_shared<std::vector<PBDParticle>>();
 std::vector<Eigen::Vector3f> currentPositions;
@@ -48,6 +50,7 @@ std::shared_ptr<FiberMesh> fiberMesh;
 std::vector<CollisionMesh> collisionGeometry;
 std::vector<CollisionRod> collisionGeometry2;
 std::vector<CollisionSphere> collisionGeometry3;
+std::vector<MovingHardConstraints> movingConstraints;
 
 PBDSolver solver;
 FEMSimulator FEMsolver;
@@ -72,6 +75,16 @@ void invertSingleElementAtStart();
 void applyCollisitionGeometryTranslation();
 
 void applyPressure();
+
+void updateMovingHardConstraints()
+{
+	for (int i = 0; i < movingConstraints.size(); ++i)
+	{
+		movingConstraints[i].updatePositions(*particles, parameters.getCurrentFrame(), parameters.solverSettings.deltaT, 0);
+		movingConstraints[i].updatePositions(*particles, parameters.getCurrentFrame(), parameters.solverSettings.deltaT, 1);
+	}
+
+}
 
 std::string generateFileName(const std::string& base, const std::string& extension, int idx, int version)
 {
@@ -175,12 +188,20 @@ void setCamera()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity;
 
-	gluLookAt(-(parameters.baryCentre[0] + parameters.radius * parameters.zoom),
-		parameters.baryCentre[1] + parameters.radius * parameters.zoom,
-		-(parameters.baryCentre[2] + parameters.radius * parameters.zoom),  /* eye is at (0,0,5) */
-		parameters.baryCentre[0], parameters.baryCentre[1], parameters.baryCentre[2],      /* center is at (0,0,0) */
-		0.0, 1.0, 0.0);      /* up is in positive Y direction */
-
+	if (!parameters.overrideLookAt)
+	{
+		gluLookAt(-(parameters.baryCentre[0] + parameters.radius * parameters.zoom),
+			parameters.baryCentre[1] + parameters.radius * parameters.zoom,
+			-(parameters.baryCentre[2] + parameters.radius * parameters.zoom),  /* eye is at (0,0,5) */
+			parameters.baryCentre[0], parameters.baryCentre[1], parameters.baryCentre[2],      /* center is at (0,0,0) */
+			0.0, 1.0, 0.0);      /* up is in positive Y direction */
+	}
+	else
+	{
+		gluLookAt(parameters.lookatEye[0], parameters.lookatEye[1], parameters.lookatEye[2],  /* eye is at (0,0,5) */
+			parameters.baryCentre[0], parameters.baryCentre[1], parameters.baryCentre[2],      /* center is at (0,0,0) */
+			0.0, 1.0, 0.0);      /* up is in positive Y direction */
+	}
 	glTranslated(parameters.baryCentre[0], parameters.baryCentre[1], parameters.baryCentre[2]);
 	glRotated(parameters.rotation[0], 1.0, 0.0, 0.0);
 	glRotated(parameters.rotation[1], 0.0, 1.0, 0.0);
@@ -278,6 +299,8 @@ void mainLoop()
 	{
 		applyPressure();
 	}
+
+	updateMovingHardConstraints();
 
 	parameters.solverSettings.calculateLambda();
 	parameters.solverSettings.calculateMu();
@@ -599,7 +622,7 @@ int main(int argc, char* argv[])
 	std::vector<int> vertexConstraintIndices;
 
 	if (!doIO(parameters, ioParameters, vertexConstraintIndices,
-		tetrahedra, particles, trackingData, collisionGeometry2, collisionGeometry3))
+		tetrahedra, particles, trackingData, collisionGeometry2, collisionGeometry3, movingConstraints))
 	{
 		return 0;
 	}
@@ -689,7 +712,7 @@ int main(int argc, char* argv[])
 	TwAddSeparator(solverSettings, NULL, NULL);
 	TwAddButton(solverSettings, "comment0", NULL, NULL, " label='Elasticity' ");
 	TwAddVarRW(solverSettings, "YoungsModulus", TW_TYPE_FLOAT, &parameters.solverSettings.youngsModulus,
-		" label='Youngs Modulus' min=0.0 max=1000.0 step=0.01 keyIncr=s keyDecr=S help='Stiffness' ");
+		" label='Youngs Modulus' min=0.0 max=1000.0 step=0.0001 keyIncr=s keyDecr=S help='Stiffness' ");
 
 	TwAddVarRW(solverSettings, "PoissonRatio", TW_TYPE_FLOAT, &parameters.solverSettings.poissonRatio,
 		" label='Poisson Ratio' min=0.0 max=0.5 step=0.01 keyIncr=s keyDecr=S help='Poisson Ratio' ");

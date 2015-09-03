@@ -84,6 +84,10 @@ public:
 	Eigen::Matrix3f calculateRelativeDeformationGradientPosition();
 
 	void glRender(double r, double g, double b);
+
+	float& getPerTetYoungsModulus(){ return c_youngsModulus; }
+	float& getPerTetAnisotropyStrength() { return c_anisotropyStrength; }
+	Eigen::Vector3f& getPerTetAnisotropyDirection() { return c_anisotropyDirection; }
 private:
 
 	void initialise(std::vector<int>& vertexIndices, const std::shared_ptr<std::vector<PBDParticle>>& particles);
@@ -123,5 +127,10 @@ private:
 	Eigen::Matrix3f m_distortionElastic;
 	Eigen::Matrix3f m_distortionDissipative;
 
+
+	//Per-Tet Material Attributes
+	Eigen::Vector3f c_anisotropyDirection;
+	float c_anisotropyStrength;
+	float c_youngsModulus;
 };
 

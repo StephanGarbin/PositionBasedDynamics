@@ -11,6 +11,12 @@ struct IOParameters
 
 	std::vector<std::string> trackerFiles;
 
+	std::vector<std::string> movingHardConstraintsIndexFiles;
+	std::vector<std::string> movingHardConstraintsLocatorNames;
+	std::string movingHardConstraintsAbcArchive;
+
+	std::string customTetAttributeFile;
+
 	void initialiseToDefaults()
 	{
 		nodeFile = ("barout.node");
