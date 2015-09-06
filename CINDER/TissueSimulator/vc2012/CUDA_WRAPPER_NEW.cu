@@ -1,3 +1,4 @@
+//NOTE: As outlined in thesis, code for diagonalisation is largely based on Kopp's work, see http://www.mpi-hd.mpg.de/personalhomes/globes/3x3/
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 

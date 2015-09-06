@@ -92,6 +92,7 @@ void initTest_13(Parameters& params, IOParameters& paramsIO);
 
 //NAZIM PHANTOM
 void initTest_14(Parameters& params, IOParameters& paramsIO);
+void initTest_15(Parameters& params, IOParameters& paramsIO);
 
 //Torus Collision Test
 void initTest_19(Parameters& params, IOParameters& paramsIO);
@@ -101,6 +102,9 @@ void initTest_20(Parameters& params, IOParameters& paramsIO);
 
 //Anisotropic
 void initTest_21(Parameters& params, IOParameters& paramsIO);
+
+//Chicken Sequence
+void initTest_22(Parameters& params, IOParameters& paramsIO);
 
 bool parseTerminalParameters(const int argc, char* argv[],
 	Parameters& params, IOParameters& paramsIO)
@@ -192,6 +196,9 @@ bool parseTerminalParameters(const int argc, char* argv[],
 	case 14:
 		initTest_14(params, paramsIO);
 		break;
+	case 15:
+		initTest_15(params, paramsIO);
+		break;
 	case 19:
 		initTest_19(params, paramsIO);
 		break;
@@ -200,6 +207,9 @@ bool parseTerminalParameters(const int argc, char* argv[],
 		break;
 	case 21:
 		initTest_21(params, paramsIO);
+		break;
+	case 22:
+		initTest_22(params, paramsIO);
 		break;
 	default:
 		break;
@@ -387,6 +397,51 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 		movingHardConstraints[0].readFromAbc(paramsIO.movingHardConstraintsAbcArchive,
 			paramsIO.movingHardConstraintsLocatorNames);
 	}
+	else if (params.TEST_IDX == 15)
+	{
+		Eigen::Vector3f initialVelocity;
+		initialVelocity.setZero();
+		TetGenIO::readNodes(paramsIO.nodeFile, *particles, params.solverSettings.inverseMass, initialVelocity);
+		TetGenIO::readTetrahedra(paramsIO.elementFile, tetrahedra, particles);
+
+		ConstraintsIO::readMayaVertexConstraints(vertexConstraintIndices, paramsIO.constraintFile);
+		for (int i = 0; i < vertexConstraintIndices.size(); ++i)
+		{
+			(*particles)[vertexConstraintIndices[i]].inverseMass() = 0.0;
+		}
+
+		movingHardConstraints.resize(1);
+		movingHardConstraints[0].readConstraintFiles(paramsIO.movingHardConstraintsIndexFiles);
+		movingHardConstraints[0].initialisePositionMasses(*particles);
+		movingHardConstraints[0].readFromAbc(paramsIO.movingHardConstraintsAbcArchive,
+			paramsIO.movingHardConstraintsLocatorNames);
+
+		//Now read custom tet attributes
+		std::vector<float> cYoungsModulus;
+		std::vector<float> cAnisotropyStrength;
+		std::vector<Eigen::Vector3f> cAnisotropyDirection;
+		readCustomTetAttributes(cYoungsModulus, cAnisotropyStrength, cAnisotropyDirection, paramsIO.customTetAttributeFile);
+		for (int t = 0; t < tetrahedra.size(); ++t)
+		{
+			if (params.TEST_VERSION > 0)
+			{
+				tetrahedra[t].getPerTetYoungsModulus() = cYoungsModulus[t];
+				tetrahedra[t].getPerTetAnisotropyStrength() = 0.0f;
+				tetrahedra[t].getPerTetAnisotropyDirection() = Eigen::Vector3f::Zero();
+			}
+			//if (params.TEST_VERSION > 0)
+			//{
+			//	tetrahedra[t].getPerTetYoungsModulus() = cYoungsModulus[t];
+			//	tetrahedra[t].getPerTetAnisotropyStrength() = 0.0f;
+			//	tetrahedra[t].getPerTetAnisotropyDirection() = Eigen::Vector3f::Zero();
+			//}
+			//if (params.TEST_VERSION > 1)
+			//{
+			//	tetrahedra[t].getPerTetAnisotropyStrength() = cAnisotropyStrength[t];
+			//	tetrahedra[t].getPerTetAnisotropyDirection() = cAnisotropyDirection[t].normalized();
+			//}
+		}
+	}
 	else if (params.TEST_IDX == 19)
 	{
 		Eigen::Vector3f initialVelocity;
@@ -451,17 +506,19 @@ bool doIO(Parameters& params, IOParameters& paramsIO, std::vector<int>& vertexCo
 			if (params.TEST_VERSION > 0)
 			{
 				tetrahedra[t].getPerTetYoungsModulus() = cYoungsModulus[t];
+				tetrahedra[t].getPerTetAnisotropyStrength() = 0.0f;
+				tetrahedra[t].getPerTetAnisotropyDirection() = Eigen::Vector3f::Zero();
 			}
 			if (params.TEST_VERSION > 1)
 			{
 				tetrahedra[t].getPerTetAnisotropyStrength() = cAnisotropyStrength[t];
-				tetrahedra[t].getPerTetAnisotropyDirection() = cAnisotropyDirection[t];
+				tetrahedra[t].getPerTetAnisotropyDirection() = cAnisotropyDirection[t].normalized();
 			}
 		}
 
 		return true;
 	}
-	else
+	else if (params.TEST_IDX == 22)
 	{
 		Eigen::Vector3f initialVelocity;
 		initialVelocity.x() = 0; initialVelocity.y() = 0; initialVelocity.z() = 0;
@@ -1628,6 +1685,88 @@ void initTest_14(Parameters& params, IOParameters& paramsIO)
 	//}
 }
 
+void initTest_15(Parameters& params, IOParameters& paramsIO)
+{
+	params.maxFrames = 3000;
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+	params.disableSolver = false;
+
+	params.solverSettings.poissonRatio = 0.4f;
+	params.solverSettings.numConstraintIts = 5;
+	params.solverSettings.deltaT = 0.05f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -0.0f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.forceMultiplicationFactor = 0.0f;
+	params.solverSettings.rho = 0.1f;
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 1.0f);
+	//params.solverSettings.anisotropyParameter = 1.0f;
+
+	params.solverSettings.materialModel = PBDSolverSettings::NEO_HOOKEAN_FIBER;
+
+	params.solverSettings.disableInversionHandling = false;
+	params.zoom = 0.328f;
+
+	params.solverSettings.useSecondOrderUpdates = false;
+	params.solverSettings.useMultiThreadedSolver = true;
+
+	paramsIO.nodeFile = "Nazim/parenchyma_reduce_1.node";
+	paramsIO.elementFile = "Nazim/parenchyma_reduce_1.ele";
+	paramsIO.constraintFile = "config1Hard.txt";
+
+	paramsIO.movingHardConstraintsAbcArchive = "config1_locatorAnim.abc";
+	paramsIO.movingHardConstraintsIndexFiles.push_back("config1Pulley.txt");
+	paramsIO.movingHardConstraintsLocatorNames.push_back("locatorPulley");
+	paramsIO.movingHardConstraintsIndexFiles.push_back("config1Table.txt");
+	paramsIO.movingHardConstraintsLocatorNames.push_back("tablePulley");
+
+	paramsIO.customTetAttributeFile = "Nazim/nazimCustomTetAttrs.txt";
+	params.solverSettings.youngsModulus = 0.05f;
+	params.solverSettings.minYoungsModulus = 0.001f;
+
+	params.overrideLookAt = true;
+	params.lookatEye = Eigen::Vector3f(177.564f, 237.164f, -303.59f);
+
+	params.writeToAlembic = true;
+	params.solverSettings.disableConstraintProjection = false;
+	if (params.TEST_VERSION == 0)
+	{
+		params.solverSettings.alpha = 0.0f;
+
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.alpha = 0.99f;
+		params.solverSettings.rho = 0.85f;
+	}
+	else if (params.TEST_VERSION == 2)
+	{
+		params.solverSettings.alpha = 0.5f;
+	}
+	else if (params.TEST_VERSION == 3)
+	{
+		params.solverSettings.alpha = 0.75f;
+	}
+	else if (params.TEST_VERSION == 4)
+	{
+		params.solverSettings.alpha = 1.0f;
+	}
+	else if (params.TEST_VERSION == 5)
+	{
+		params.solverSettings.disableConstraintProjection = true;
+	}
+}
+
+
 void initTest_19(Parameters& params, IOParameters& paramsIO)
 {
 	params.useTrackingConstraints = false;
@@ -1782,7 +1921,7 @@ void initTest_20(Parameters& params, IOParameters& paramsIO)
 
 void initTest_21(Parameters& params, IOParameters& paramsIO)
 {
-	params.maxFrames = 5000;
+	params.maxFrames = 500;
 	params.writeToAlembic = false;
 	params.useTrackingConstraints = false;
 	params.readVertexConstraintData = false;
@@ -1790,7 +1929,7 @@ void initTest_21(Parameters& params, IOParameters& paramsIO)
 	params.disableSolver = false;
 
 	params.solverSettings.poissonRatio = 0.4f;
-	params.solverSettings.youngsModulus = 0.01f;
+	params.solverSettings.youngsModulus = 20.0f;
 	params.solverSettings.numConstraintIts = 5;
 	params.solverSettings.deltaT = 0.005f;
 	params.solverSettings.inverseMass = 1.0f;
@@ -1814,6 +1953,8 @@ void initTest_21(Parameters& params, IOParameters& paramsIO)
 
 	params.solverSettings.useSecondOrderUpdates = false;
 	params.solverSettings.useMultiThreadedSolver = true;
+
+	params.solverSettings.minYoungsModulus = 0.1f;
 
 	paramsIO.nodeFile = "ani/cube2.1.node";
 	paramsIO.elementFile = "ani/cube2.1.ele";
@@ -1853,3 +1994,65 @@ void initTest_21(Parameters& params, IOParameters& paramsIO)
 	}
 }
 
+void initTest_22(Parameters& params, IOParameters& paramsIO)
+{
+	params.maxFrames = 100000;
+	params.writeToAlembic = false;
+	params.useTrackingConstraints = false;
+	params.readVertexConstraintData = false;
+	params.useFEMSolver = false;
+	params.disableSolver = false;
+
+	params.solverSettings.poissonRatio = 0.4f;
+	params.solverSettings.youngsModulus = 10.0f;
+	params.solverSettings.numConstraintIts = 10;
+	params.solverSettings.deltaT = 0.005f;
+	params.solverSettings.inverseMass = 1.0f;
+	params.solverSettings.printStrainEnergy = false;
+	params.solverSettings.printStrainEnergyToFile = false;
+	params.solverSettings.gravity = -0.0f;
+	params.solverSettings.externalForce.setZero();
+	params.solverSettings.forceMultiplicationFactor = 0.0f;
+	params.solverSettings.rho = 0.1f;
+	params.solverSettings.numTetrahedraIterations = 0;
+	params.solverSettings.correctStrongForcesWithSubteps = false;
+	params.solverSettings.useGeometricConstraintLimits = false;
+
+	params.solverSettings.MR_a = Eigen::Vector3f(0.0f, 1.0f, 1.0f);
+	//params.solverSettings.anisotropyParameter = 1.0f;
+
+	params.solverSettings.materialModel = PBDSolverSettings::NEO_HOOKEAN_FIBER;
+
+	params.solverSettings.disableInversionHandling = false;
+	params.zoom = 0.328f;
+
+	params.solverSettings.useSecondOrderUpdates = false;
+	params.solverSettings.useMultiThreadedSolver = true;
+
+	params.solverSettings.enableGroundPlaneCollision = true;
+	params.solverSettings.groundplaneHeight = -1.0f;
+
+	params.generateMeshFromTrackingData = true;
+
+	if (params.TEST_VERSION == 0)
+	{
+		params.solverSettings.alpha = 0.0f;
+
+	}
+	else if (params.TEST_VERSION == 1)
+	{
+		params.solverSettings.alpha = 0.25f;
+	}
+	else if (params.TEST_VERSION == 2)
+	{
+		params.solverSettings.alpha = 0.5f;
+	}
+	else if (params.TEST_VERSION == 3)
+	{
+		params.solverSettings.alpha = 0.75f;
+	}
+	else if (params.TEST_VERSION == 4)
+	{
+		params.solverSettings.alpha = 1.0f;
+	}
+}

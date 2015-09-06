@@ -4,7 +4,7 @@
 
 MovingHardConstraints::MovingHardConstraints()
 {
-	m_speed = 10.0f;
+	m_speed = 1.0f;
 	m_reader = std::make_shared<AbcReaderTransform>();
 }
 
