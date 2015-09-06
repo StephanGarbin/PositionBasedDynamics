@@ -95,8 +95,8 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 	//	}
 	//}
 
-	for (int i = 0; i < tetrahedra.size(); ++i)
-	{
+	//for (int i = 0; i < tetrahedra.size(); ++i)
+	//{
 		for (int row = 0; row < 3; ++row)
 		{
 			for (int col = 0; col < 3; ++col)
@@ -107,7 +107,7 @@ std::shared_ptr<std::vector<PBDParticle>>& particles)
 				}
 			}
 		}
-	}
+	//}
 
 	m_positions.resize(m_inverseMasses.size() * 3);
 
