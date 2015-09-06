@@ -91,8 +91,8 @@ struct PBDSolverTBB
 
 				if (settings.usePerTetMaterialAttributes)
 				{
-					lambda = settings.calculateLambda(tetrahedra[t].getPerTetYoungsModulus(), settings.poissonRatio);
-					mu = settings.calculateMu(tetrahedra[t].getPerTetYoungsModulus(), settings.poissonRatio);
+					lambda = settings.calculateLambda(settings.minYoungsModulus + tetrahedra[t].getPerTetYoungsModulus() * settings.youngsModulus, settings.poissonRatio);
+					mu = settings.calculateMu(settings.minYoungsModulus + tetrahedra[t].getPerTetYoungsModulus()* settings.youngsModulus, settings.poissonRatio);
 					anisotropyStrength = tetrahedra[t].getPerTetAnisotropyStrength();
 					anisotropyDirection = tetrahedra[t].getPerTetAnisotropyDirection();
 				}

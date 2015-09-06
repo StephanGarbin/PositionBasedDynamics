@@ -13,6 +13,11 @@ int main(int argc, char* argv[])
 	std::string input1;
 	input1 = std::string(argv[1]);
 	std::cout << "Abc File: " << input1 << std::endl;
+	float scaleFactor = 0.05f;
+	if (argc > 2)
+	{
+		scaleFactor = std::stof(argv[2]);
+	}
 
 	//Read the archives
 	AbcReader reader1;
@@ -24,18 +29,30 @@ int main(int argc, char* argv[])
 
 	std::cout << "Done reading tet mesh..." << std::endl;
 
+	//INDENTATION
 	//Open Point Data Files
-	std::vector<int> sampleFrames = { 7, 11, 15, 19, 23, 28 };
+	//std::vector<int> sampleFrames = { 7, 11, 15, 19, 23, 28 };
+	//std::vector<std::vector<Eigen::Vector3f>> samplePointsFrames;
+	//std::vector<std::string> samplePointsFramesFileNames =
+	//{ "MarkerDisp_Liver7.txt",
+	//"MarkerDisp_Liver11.txt",
+	//"MarkerDisp_Liver15.txt",
+	//"MarkerDisp_Liver19.txt",
+	//"MarkerDisp_Liver23.txt",
+	//"MarkerDisp_Liver28.txt" };
+
+	//std::string fileLocation = "C:/Users/Stephan/Desktop/NEW_LIVER_DATA/LiverPhantomIndentation/MarkerDisplacement/";
+	//HAOUCHINE CONFIG 1
+	std::vector<int> sampleFrames = { 0, 30, 60, 90, 120};
 	std::vector<std::vector<Eigen::Vector3f>> samplePointsFrames;
 	std::vector<std::string> samplePointsFramesFileNames =
-	{ "MarkerDisp_Liver7.txt",
-	"MarkerDisp_Liver11.txt",
-	"MarkerDisp_Liver15.txt",
-	"MarkerDisp_Liver19.txt",
-	"MarkerDisp_Liver23.txt",
-	"MarkerDisp_Liver28.txt" };
+	{ "locations_0.txt",
+	  "locations_30.txt",
+	  "locations_60.txt",
+	  "locations_90.txt",
+	  "locations_120.txt" };
 
-	std::string fileLocation = "C:/Users/Stephan/Desktop/NEW_LIVER_DATA/LiverPhantomIndentation/MarkerDisplacement/";
+	std::string fileLocation = "C:/Users/Stephan/Desktop/vascular_phantom_liver_meshes/vascular_phantom_liver_meshes/config1Tumors/";
 
 	samplePointsFrames.resize(samplePointsFramesFileNames.size());
 
@@ -50,13 +67,17 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
+		int counter = 0;
 		std::string currentLine;
 		while (std::getline(file, currentLine))
 		{
 			std::vector<std::string> inputs;
 			boost::split(inputs, currentLine, boost::is_any_of(" "));
-
-			samplePointsFrames[i].push_back(Eigen::Vector3f(std::stof(inputs[0]), std::stof(inputs[1]), std::stof(inputs[2])));
+			if (counter == 2)
+			{
+				samplePointsFrames[i].push_back(Eigen::Vector3f(std::stof(inputs[0]), std::stof(inputs[1]), std::stof(inputs[2])));
+			}
+			++counter;
 		}
 	}
 
@@ -198,7 +219,7 @@ int main(int argc, char* argv[])
 	for (int i = 0; i < sampleFrames.size(); ++i)
 	{
 		int currentFrame = sampleFrames[i];
-		int fileFrame = (int)((float)currentFrame / 0.005f);
+		int fileFrame = (int)((float)currentFrame / scaleFactor); //0.05f for INDENTATION
 
 		if (!reader1.sampleSpecific(fileFrame))
 		{

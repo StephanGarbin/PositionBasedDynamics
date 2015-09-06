@@ -9,6 +9,7 @@
 #include "PBDTetrahedra3d.h"
 
 //NOTE: The core code (i.e. what is found int the function 'generateTetBar') is DIRECTLY from Bender et al. (the 'Positions-Based Simulation of Continuous Materials' paper)
+//This can be found at https://github.com/janbender/PositionBasedDynamics
 class MeshCreator
 {
 public:

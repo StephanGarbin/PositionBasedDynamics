@@ -36,6 +36,8 @@ struct PBDSolverSettings
 	float youngsModulus;
 	float poissonRatio;
 
+	float minYoungsModulus;
+
 	//Viscoelasticity
 	float alpha;
 	float rho;
@@ -142,6 +144,7 @@ struct PBDSolverSettings
 		useMultiThreadedSolver = true;
 		useSecondOrderUpdates = false;
 		usePerTetMaterialAttributes = false;
+		minYoungsModulus = 0.0f;
 	}
 
 	void print()
