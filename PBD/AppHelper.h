@@ -1584,7 +1584,7 @@ void initTest_13(Parameters& params, IOParameters& paramsIO)
 	params.zoom = 0.328f;
 
 	params.solverSettings.useSecondOrderUpdates = false;
-	//params.solverSettings.useMultiThreadedSolver = true;
+	params.solverSettings.useMultiThreadedSolver = true;
 
 	params.solverSettings.enableGroundPlaneCollision = true;
 	params.solverSettings.groundplaneHeight = -1.0f;

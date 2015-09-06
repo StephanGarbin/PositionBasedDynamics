@@ -259,8 +259,8 @@ void TissueSimulatorApp::handleIO()
 
 	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 10, 8, 8);
 	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 20, 8, 8);
-	MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 12, 11, 12);
-	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 20, 32, 32);
+	//MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 12, 11, 12);
+	MeshCreator::generateTetBar(m_data.particles, m_data.getTets(), 20, 16, 16);
 
 
 	//OPTIMISE MEMORY LAYOUT FOR CUDA
